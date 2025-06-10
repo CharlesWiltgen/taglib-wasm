@@ -1,0 +1,49 @@
+{
+  "name": "taglib-wasm-ts",
+  "version": "0.1.0",
+  "description": "TagLib compiled to WebAssembly with TypeScript bindings",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "lib/taglib/COPYING*",
+    "README.md"
+  ],
+  "scripts": {
+    "build:wasm": "./build/build-wasm.sh",
+    "build:ts": "tsc",
+    "build": "npm run build:wasm && npm run build:ts",
+    "test": "jest",
+    "update-taglib": "./scripts/update-taglib.sh"
+  },
+  "keywords": [
+    "taglib",
+    "webassembly",
+    "wasm",
+    "metadata",
+    "mp3",
+    "mp4",
+    "flac",
+    "audio",
+    "typescript"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/taglib-wasm-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/taglib-wasm-ts/issues"
+  },
+  "homepage": "https://github.com/yourusername/taglib-wasm-ts#readme",
+  "devDependencies": {
+    "@types/emscripten": "^1.39.6",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.5.0"
+  }
+}

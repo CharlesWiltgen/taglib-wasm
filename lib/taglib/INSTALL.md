@@ -1,8 +1,8 @@
 # TagLib Installation
 
 TagLib uses the CMake build system. As a user, you will most likely want to
-build TagLib in release mode and install it into a system-wide location.
-This can be done using the following commands:
+build TagLib in release mode and install it into a system-wide location. This
+can be done using the following commands:
 
     cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release .
     make
@@ -27,7 +27,7 @@ These are the most important build options. For details, have a look into the
 CMakeLists.txt file.
 
 | Option                  | Description                                        |
-|-------------------------|----------------------------------------------------|
+| ----------------------- | -------------------------------------------------- |
 | `BUILD_SHARED_LIBS`     | Build shared libraries                             |
 | `CMAKE_BUILD_TYPE`      | Debug, Release, RelWithDebInfo, MinSizeRel         |
 | `BUILD_EXAMPLES`        | Build examples                                     |
@@ -45,12 +45,11 @@ CMakeLists.txt file.
 | `TESTS_DIR`             | Where to find unit test data (with data appended)  |
 | `TESTS_TMPDIR`          | Where to create temporary files in unit tests      |
 
-
 If you want to install TagLib 2 alongside TagLib 1, you can use
-`-DTAGLIB_INSTALL_SUFFIX=-2` and make sure that `BUILD_EXAMPLES` is not `ON`
-for both versions. The installed files will then include bin/taglib-2-config,
-include/taglib-2, cmake/taglib-2, pkgconfig/taglib-2.pc,
-pkgconfig/taglib_c-2.pc and the libraries have a suffix "-2".
+`-DTAGLIB_INSTALL_SUFFIX=-2` and make sure that `BUILD_EXAMPLES` is not `ON` for
+both versions. The installed files will then include bin/taglib-2-config,
+include/taglib-2, cmake/taglib-2, pkgconfig/taglib-2.pc, pkgconfig/taglib_c-2.pc
+and the libraries have a suffix "-2".
 
 ### Compile Time Configuration of Supported Formats
 
@@ -58,24 +57,24 @@ To reduce the size of the library, it is possible to switch off supported file
 formats. By default, all formats are enabled. Support for MPEG files (MP3, AAC)
 and ID3 tags cannot be disabled. The following CMake options are available:
 
-| Option                  | Description                                        |
-|-------------------------|----------------------------------------------------|
-| `WITH_APE`              | Build with APE, MPC, WavPack (default ON)          |
-| `WITH_ASF`              | Build with ASF (default ON)                        |
-| `WITH_DSF`              | Build with DSF (default ON)                        |
-| `WITH_MOD`              | Build with Tracker modules (default ON)            |
-| `WITH_MP4`              | Build with MP4 (default ON)                        |
-| `WITH_RIFF`             | Build with AIFF, RIFF, WAV (default ON)            |
-| `WITH_SHORTEN`          | Build with Shorten (default ON)                    |
-| `WITH_TRUEAUDIO`        | Build with TrueAudio (default ON)                  |
-| `WITH_VORBIS`           | Build with Vorbis, FLAC, Ogg, Opus (default ON)    |
+| Option           | Description                                     |
+| ---------------- | ----------------------------------------------- |
+| `WITH_APE`       | Build with APE, MPC, WavPack (default ON)       |
+| `WITH_ASF`       | Build with ASF (default ON)                     |
+| `WITH_DSF`       | Build with DSF (default ON)                     |
+| `WITH_MOD`       | Build with Tracker modules (default ON)         |
+| `WITH_MP4`       | Build with MP4 (default ON)                     |
+| `WITH_RIFF`      | Build with AIFF, RIFF, WAV (default ON)         |
+| `WITH_SHORTEN`   | Build with Shorten (default ON)                 |
+| `WITH_TRUEAUDIO` | Build with TrueAudio (default ON)               |
+| `WITH_VORBIS`    | Build with Vorbis, FLAC, Ogg, Opus (default ON) |
 
 Note that disabling formats will remove exported symbols from the library and
-thus break binary compatibility. These options should therefore only be used
-if the library is built specifically for a certain project. The public header
-files still contain the full API, if you use TagLib with a reduced set of
-formats, you can include taglib_config.h and use its definitions (prefixed with
-`TAGLIB_`, e.g. `TAGLIB_WITH_APE`), as it is done in examples/framelist.cpp.
+thus break binary compatibility. These options should therefore only be used if
+the library is built specifically for a certain project. The public header files
+still contain the full API, if you use TagLib with a reduced set of formats, you
+can include taglib_config.h and use its definitions (prefixed with `TAGLIB_`,
+e.g. `TAGLIB_WITH_APE`), as it is done in examples/framelist.cpp.
 
 ## Dependencies
 
@@ -84,14 +83,15 @@ install the corresponding package (libutfcpp-dev on Ubuntu, utf8cpp in Homebrew,
 utfcpp in vcpkg) or fetch the Git submodule with `git submodule update --init`.
 
 Optional dependencies are
+
 - [zlib](https://www.zlib.net/): You can disable it with `-DWITH_ZLIB=OFF`,
   build and install it from the sources or use a package (zlib1g-dev on Ubuntu,
   zlib in vcpkg). It is needed for compressed ID3v2 frames.
 - [CppUnit](https://wiki.documentfoundation.org/Cppunit): Is required for unit
   tests, which are disabled by default. If you enable them with
   `-DBUILD_TESTING=ON`, you can build and install it from the sources or use a
-  package (libcppunit-dev on Ubuntu, cppunit in Homebrew, cppunit in vcpkg).
-  If the unit tests are enabled, you can run them with your build tool
+  package (libcppunit-dev on Ubuntu, cppunit in Homebrew, cppunit in vcpkg). If
+  the unit tests are enabled, you can run them with your build tool
   (`make check`, `ninja check`) or via CMake
   `cmake --build /path/to/build-dir --target check`.
 
@@ -124,8 +124,8 @@ LD_LIBRARY_PATH=$HOME/pkg/lib $HOME/pkg/bin/tagreader /path/to/audio-file
 #### Building a Project Using TagLib
 
 As an example for an external application using TagLib, we create a folder
-taglib-client and copy the file tagreader.cpp from the examples folder
-of the TagLib sources into it. We then add this simple CMakeLists.txt.
+taglib-client and copy the file tagreader.cpp from the examples folder of the
+TagLib sources into it. We then add this simple CMakeLists.txt.
 
 ```
 cmake_minimum_required(VERSION 3.5.0)
@@ -211,8 +211,8 @@ the `--define-prefix` feature.
 PKG_CONFIG_PATH=$HOME/pkg/lib/pkgconfig pkg-config --define-prefix --libs --cflags taglib
 ```
 
-You can use pkg-config from CMake, however, relocation with `--define-prefix`
-is not supported.
+You can use pkg-config from CMake, however, relocation with `--define-prefix` is
+not supported.
 
 ```
 cmake_minimum_required(VERSION 3.6.0)
@@ -225,10 +225,10 @@ target_link_libraries(tagreader PkgConfig::TAGLIB)
 
 #### Framework on macOS
 
-On macOS, you might want to build a framework that can be easily integrated
-into your application. If you set the BUILD_FRAMEWORK option on, it will compile
-TagLib as a framework. For example, the following command can be used to build
-a framework with macOS 10.10 as the deployment target:
+On macOS, you might want to build a framework that can be easily integrated into
+your application. If you set the BUILD_FRAMEWORK option on, it will compile
+TagLib as a framework. For example, the following command can be used to build a
+framework with macOS 10.10 as the deployment target:
 
     mkdir build; cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release \
@@ -316,8 +316,8 @@ static runtime library, rather than the DLL form of the runtime.
 #### Building a Project Using TagLib (MSVC)
 
 As an example for an external application using TagLib, we create a folder
-taglib-client and copy the file tagreader.cpp from the examples folder
-of the TagLib sources into it. We then add this simple CMakeLists.txt.
+taglib-client and copy the file tagreader.cpp from the examples folder of the
+TagLib sources into it. We then add this simple CMakeLists.txt.
 
 ```
 cmake_minimum_required(VERSION 3.5.0)
@@ -365,8 +365,8 @@ target_compile_definitions(tagreader_c PRIVATE TAGLIB_STATIC)
 
 To build TagLib using Clang from MSYS, install [msys2](https://www.msys2.org/),
 then start the MSYS CLANG64 shell and install the dependencies as they are
-specified in the [MSYS recipe for TagLib](
-https://packages.msys2.org/package/mingw-w64-clang-x86_64-taglib?repo=clang64).
+specified in the
+[MSYS recipe for TagLib](https://packages.msys2.org/package/mingw-w64-clang-x86_64-taglib?repo=clang64).
 
 ```
 pacman -Suy
@@ -397,8 +397,8 @@ cmake --install $TAGLIB_DST_DIR --config Release --prefix /pkg_msys --strip
 #### Building a Project Using TagLib (MSYS2)
 
 As an example for an external application using TagLib, we create a folder
-taglib-client and copy the file tagreader.cpp from the examples folder
-of the TagLib sources into it. We then add this simple CMakeLists.txt.
+taglib-client and copy the file tagreader.cpp from the examples folder of the
+TagLib sources into it. We then add this simple CMakeLists.txt.
 
 ```
 cmake_minimum_required(VERSION 3.5.0)
@@ -470,11 +470,11 @@ PATH=$PATH:$TAGLIB_PREFIX/bin
 
 ### Using vcpkg
 
-The bash script below can be used to build TagLib for Android using vcpkg.
-It must be started in the parent folder of the taglib source folder and will
-build in a folder _android_build_ and install into _android_pkg_.
-The package and the unit tests are then transferred to an Android device
-and the unit tests are run on the device.
+The bash script below can be used to build TagLib for Android using vcpkg. It
+must be started in the parent folder of the taglib source folder and will build
+in a folder _android_build_ and install into _android_pkg_. The package and the
+unit tests are then transferred to an Android device and the unit tests are run
+on the device.
 
 Note that `TESTS_TMPDIR` is set because there is no system-wide temporary folder
 on Android. `TESTS_DIR` is set to run the tests on the target.
