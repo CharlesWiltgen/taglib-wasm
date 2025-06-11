@@ -165,7 +165,7 @@ The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C
 ### Metadata Features
 
 - **Basic Tags**: Title, artist, album, year, genre, track, comment
-- **Advanced Metadata**: AcoustID fingerprints, MusicBrainz IDs
+- **Automatic Tag Mapping**: AcoustID fingerprints, MusicBrainz IDs
 - **Volume Normalization**: ReplayGain, Apple Sound Check
 - **Format-Agnostic**: Single API works across all audio formats
 
