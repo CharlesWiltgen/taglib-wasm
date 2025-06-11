@@ -83,10 +83,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Documentation & Examples
 
 - **`docs/`**: Comprehensive documentation
-  - `ADVANCED_METADATA.md` - Format-agnostic metadata guide
-  - `RUNTIME_COMPATIBILITY.md` - Runtime-specific information
-  - `IMPLEMENTATION.md` - Technical implementation details
-  - `PUBLISHING.md` - Package publishing guide
+  - `Automatic-Tag-Mapping.md` - Format-agnostic metadata guide
+  - `Runtime-Compatibility.md` - Runtime-specific information
+  - `Implementation.md` - Technical implementation details
+  - `Publishing.md` - Package publishing guide
 - **`examples/`**: Production-ready usage examples
   - `basic-usage.ts` - Core functionality demo
   - `advanced-metadata.ts` - Advanced features demo
