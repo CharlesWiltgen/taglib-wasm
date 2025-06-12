@@ -311,6 +311,7 @@ The `build-wasm.sh` script:
 - **Scope**: Include relevant scope when applicable
 - **Description**: Clear, concise action description
 - **Footer**: Include breaking changes and issue references
+- **IMPORTANT**: DO NOT include Claude Code credits in commit messages. The user will handle attribution separately
 
 ### Publishing Workflow
 
