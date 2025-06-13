@@ -36,7 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**✅ STATUS: PRODUCTION READY & PUBLISHED** - This is a complete WebAssembly port of TagLib v2.1 with TypeScript bindings for universal audio metadata handling across browsers, Node.js, Deno, Bun, and Cloudflare Workers. The project successfully compiles the C++ TagLib library to WASM and provides a modern TypeScript API wrapper.
+**✅ STATUS: PRODUCTION READY & PUBLISHED** - This is a complete WebAssembly port of TagLib v2.1 with TypeScript bindings for universal audio metadata handling across browsers, Node.js, Deno, Bun, and Cloudflare Workers. The project successfully compiles the C++ TagLib library to Wasm and provides a modern TypeScript API wrapper.
 
 **📦 Published Packages:**
 
@@ -68,14 +68,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `taglib.ts` - Core TagLib and AudioFile classes (NPM version)
   - `taglib-jsr.ts` - JSR-optimized TagLib implementation
   - `types.ts` - Complete TypeScript type definitions
-  - `wasm.ts` - Emscripten WASM module interface
-  - `wasm-jsr.ts` - JSR-compatible WASM loading
+  - `wasm.ts` - Emscripten Wasm module interface
   - `workers.ts` - Cloudflare Workers compatibility layer
-  - `enhanced-api.ts` - Advanced metadata features
+  - `simple.ts` - Simple API for easy tag reading/writing
 
 ### Build System
 
-- **`build/`**: WASM compilation and C++ wrapper (✅ PRODUCTION READY)
+- **`build/`**: Wasm compilation and C++ wrapper (✅ PRODUCTION READY)
   - `build-wasm.sh` - Complete build script with C++ wrapper implementation
   - `taglib.js` - Generated Emscripten JavaScript module
   - `taglib.wasm` - Compiled WebAssembly binary
@@ -105,7 +104,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **`lib/taglib/`**: Git subtree containing TagLib v2.1 C++ source code
 
-The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C++ wrapper that bridges TagLib's object-oriented API to C functions suitable for WASM exports. The TypeScript wrapper provides a modern async API that works across all JavaScript runtimes.
+The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C++ wrapper that bridges TagLib's object-oriented API to C functions suitable for Wasm exports. The TypeScript wrapper provides a modern async API that works across all JavaScript runtimes.
 
 ## Development Commands
 
@@ -152,7 +151,7 @@ The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C
 ### Build & Compatibility
 
 - **Target**: ES2020 with ESNext modules for broad compatibility
-- **Build Tool**: Emscripten SDK for WASM compilation
+- **Build Tool**: Emscripten SDK for Wasm compilation
 - **Runtime Management**: mise for Node.js/Deno version management
 - **Supported Runtimes**: Deno 2, Node.js, Bun, browsers, Cloudflare Workers
 
@@ -181,7 +180,7 @@ The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C
 ### Development Workflow
 
 1. **Setup**: Install Deno, Node.js, Emscripten SDK
-2. **Build**: `deno task build` (compiles WASM + TypeScript)
+2. **Build**: `deno task build` (compiles Wasm + TypeScript)
 3. **Test**: `deno task test` (runs comprehensive test suite)
 4. **Format**: `deno task fmt` (formats all code)
 5. **Lint**: `deno task lint` (checks code quality)
@@ -229,7 +228,7 @@ The `build-wasm.sh` script:
 - Compiles TagLib with all format support enabled
 - Includes a complete C++ wrapper implementation
 - Exports all necessary functions via Emscripten
-- Generates optimized WASM + JavaScript modules
+- Generates optimized Wasm + JavaScript modules
 - Supports both Emscripten JS and JSR-compatible builds
 
 ### ✅ Dual Distribution Strategy
@@ -244,7 +243,7 @@ The `build-wasm.sh` script:
 #### JSR Package (`@charleswiltgen/taglib-wasm`)
 
 - Entry: `mod.ts`
-- Uses: Direct WASM loading
+- Uses: Direct Wasm loading
 - Runtime: Deno (JSR requirements)
 - Excludes: Generated JavaScript (JSR restriction)
 
@@ -328,3 +327,19 @@ The `build-wasm.sh` script:
 - ALWAYS prefer editing an existing file to creating a new one.
 - NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
 - ALWAYS use Conventional Commits specification for commit messages.
+- **KISS Principle**: Keep It Simple, Stupid - maintain simplicity in all aspects of the project. Avoid unnecessary complexity that could impact developers, contributors, or reliability.
+
+## Simplification Status
+
+Following KISS principles, the following simplifications have been made:
+
+1. **Removed Enhanced API** - Only Core API and Simple API remain
+2. **Deleted 589-line Embind reimplementation** (`wasm-jsr.ts`) - Use standard Emscripten module
+3. **Pre-built Wasm artifacts** - `build/taglib.wasm` and `build/taglib.js` are committed to git
+4. **Kept Workers API** - Essential for Cloudflare Workers compatibility
+
+### Remaining Complexity Issues to Address:
+
+- **Dual distribution (NPM + JSR)** - Consider JSR-only with Node.js compatibility via `@jsr/` scope
+- **Duplicate code** between `taglib.ts` and `taglib-jsr.ts`
+- **Multiple test files** - Should consolidate into single comprehensive test suite
