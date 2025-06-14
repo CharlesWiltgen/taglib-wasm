@@ -38,10 +38,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **✅ STATUS: PRODUCTION READY & PUBLISHED** - This is a complete WebAssembly port of TagLib v2.1 with TypeScript bindings for universal audio metadata handling across browsers, Node.js, Deno, Bun, and Cloudflare Workers. The project successfully compiles the C++ TagLib library to Wasm and provides a modern TypeScript API wrapper.
 
-**📦 Published Packages:**
+**📦 Published Package:**
 
-- **JSR**: `jsr:@charleswiltgen/taglib-wasm` (Deno-optimized)
-- **NPM**: `taglib-wasm` (Node.js, Bun, browsers)
+- **NPM**: `taglib-wasm` (Node.js, Bun, browsers, Deno via npm:)
 
 **🎯 All major functionality is working:**
 
@@ -57,16 +56,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-### Entry Points (Ecosystem-Specific)
+### Entry Point
 
-- **`index.ts`**: NPM entry point (Node.js, Bun, browsers) - uses Emscripten JS
-- **`mod.ts`**: JSR entry point (Deno) - JSR-compatible WASM loading
+- **`index.ts`**: NPM entry point (Node.js, Bun, browsers, Deno via npm:) - uses Emscripten JS
 
 ### Core Implementation
 
 - **`src/`**: Complete TypeScript wrapper and API definitions (✅ IMPLEMENTED)
-  - `taglib.ts` - Core TagLib and AudioFile classes (NPM version)
-  - `taglib-jsr.ts` - JSR-optimized TagLib implementation
+  - `taglib.ts` - Core TagLib and AudioFile classes
   - `types.ts` - Complete TypeScript type definitions
   - `wasm.ts` - Emscripten Wasm module interface
   - `workers.ts` - Cloudflare Workers compatibility layer
@@ -229,23 +226,15 @@ The `build-wasm.sh` script:
 - Includes a complete C++ wrapper implementation
 - Exports all necessary functions via Emscripten
 - Generates optimized Wasm + JavaScript modules
-- Supports both Emscripten JS and JSR-compatible builds
 
-### ✅ Dual Distribution Strategy
+### ✅ Distribution Strategy
 
 #### NPM Package (`taglib-wasm`)
 
 - Entry: `index.ts`
 - Uses: Emscripten-generated `taglib.js`
-- Runtimes: Node.js, Bun, browsers
+- Runtimes: Node.js, Bun, browsers, Deno (via `npm:` specifier)
 - Includes: Generated JavaScript for full compatibility
-
-#### JSR Package (`@charleswiltgen/taglib-wasm`)
-
-- Entry: `mod.ts`
-- Uses: Direct Wasm loading
-- Runtime: Deno (JSR requirements)
-- Excludes: Generated JavaScript (JSR restriction)
 
 ## Current Status
 
@@ -276,9 +265,8 @@ The `build-wasm.sh` script:
 
 ### Distribution
 
-- ✅ Published to JSR (`@charleswiltgen/taglib-wasm`)
 - ✅ Published to NPM (`taglib-wasm`)
-- ✅ Ecosystem-appropriate entry points
+- ✅ Works across all JavaScript runtimes
 - ✅ ShowHN-ready repository structure
 
 ### Project Organization
@@ -302,7 +290,7 @@ The `build-wasm.sh` script:
 - **Tests**: All test-related files in `tests/` directory
 - **Documentation**: All `.md` files in `docs/` except README.md and CLAUDE.md
 - **Examples**: Runtime-specific examples in appropriate subdirectories
-- **Entry Points**: Ecosystem-specific (`index.ts` for NPM, `mod.ts` for JSR)
+- **Entry Point**: `index.ts` for NPM
 
 ### Commit Guidelines
 
@@ -314,10 +302,10 @@ The `build-wasm.sh` script:
 
 ### Publishing Workflow
 
-1. Update version in `package.json` and `deno.json`
-2. Run full test suite: `deno task test`
-3. Build all targets: `deno task build`
-4. Publish to registries: `npm run publish:all`
+1. Update version in `package.json`
+2. Run full test suite: `npm test`
+3. Build all targets: `npm run build`
+4. Publish to npm: `npm publish`
 5. Tag release with conventional commit format
 
 ## important-instruction-reminders
@@ -334,12 +322,10 @@ The `build-wasm.sh` script:
 Following KISS principles, the following simplifications have been made:
 
 1. **Removed Enhanced API** - Only Core API and Simple API remain
-2. **Deleted 589-line Embind reimplementation** (`wasm-jsr.ts`) - Use standard Emscripten module
+2. **Removed JSR distribution** - NPM-only, works everywhere via `npm:` specifier
 3. **Pre-built Wasm artifacts** - `build/taglib.wasm` and `build/taglib.js` are committed to git
 4. **Kept Workers API** - Essential for Cloudflare Workers compatibility
 
 ### Remaining Complexity Issues to Address:
 
-- **Dual distribution (NPM + JSR)** - Consider JSR-only with Node.js compatibility via `@jsr/` scope
-- **Duplicate code** between `taglib.ts` and `taglib-jsr.ts`
 - **Multiple test files** - Should consolidate into single comprehensive test suite
