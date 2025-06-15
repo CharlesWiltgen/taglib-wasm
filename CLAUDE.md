@@ -109,7 +109,7 @@ The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C
 
 - `deno task build:wasm` - Compile TagLib C++ to WebAssembly using Emscripten
 - `deno task build:ts` - Compile TypeScript wrapper to JavaScript
-- `deno task build` - Full build (WASM + TypeScript)
+- `deno task build` - Full build (Wasm + TypeScript)
 - `deno task test` - Run all tests in tests/ directory
 - `deno task test:watch` - Run tests in watch mode
 - `deno task test:systematic` - Run comprehensive format testing
@@ -122,7 +122,7 @@ The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C
 
 - `npm run build:wasm` - Compile TagLib C++ to WebAssembly using Emscripten
 - `npm run build:ts` - Compile TypeScript wrapper to JavaScript
-- `npm run build` - Full build (WASM + TypeScript)
+- `npm run build` - Full build (Wasm + TypeScript)
 - `npm run test` - Run systematic test with Deno
 - `npm run test:bun` - Run systematic test with Bun
 - `npm run test:node` - Run systematic test with Node.js
@@ -171,7 +171,7 @@ The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C
 
 - **Deno 2** (primary development runtime)
 - **Node.js** (latest LTS for NPM compatibility)
-- **Emscripten SDK** (for WASM compilation)
+- **Emscripten SDK** (for Wasm compilation)
 - **mise** (runtime version management via `mise.toml`)
 
 ### Development Workflow
