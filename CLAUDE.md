@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
 ## Commit Message Guidelines
 
-**Use [Conventional Commits](https://www.conventionalcommits.org/) specification for all commit messages:**
+**Use [Conventional Commits](https://www.conventionalcommits.org/) specification
+for all commit messages:**
 
 ```text
 <type>[optional scope]: <description>
@@ -19,7 +21,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `feat`: A new feature
 - `fix`: A bug fix
 - `docs`: Documentation only changes
-- `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc)
+- `style`: Changes that do not affect the meaning of the code (white-space,
+  formatting, etc)
 - `refactor`: A code change that neither fixes a bug nor adds a feature
 - `test`: Adding missing tests or correcting existing tests
 - `chore`: Changes to the build process or auxiliary tools and libraries
@@ -36,7 +39,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**✅ STATUS: PRODUCTION READY & PUBLISHED** - This is a complete WebAssembly port of TagLib v2.1 with TypeScript bindings for universal audio metadata handling across browsers, Node.js, Deno, Bun, and Cloudflare Workers. The project successfully compiles the C++ TagLib library to Wasm and provides a modern TypeScript API wrapper.
+**✅ STATUS: PRODUCTION READY & PUBLISHED** - This is a complete WebAssembly
+port of TagLib v2.1 with TypeScript bindings for universal audio metadata
+handling across browsers, Node.js, Deno, Bun, and Cloudflare Workers. The
+project successfully compiles the C++ TagLib library to Wasm and provides a
+modern TypeScript API wrapper.
 
 **📦 Published Package:**
 
@@ -58,7 +65,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Entry Point
 
-- **`index.ts`**: NPM entry point (Node.js, Bun, browsers, Deno via npm:) - uses Emscripten JS
+- **`index.ts`**: NPM entry point (Node.js, Bun, browsers, Deno via npm:) - uses
+  Emscripten JS
 
 ### Core Implementation
 
@@ -101,7 +109,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **`lib/taglib/`**: Git subtree containing TagLib v2.1 C++ source code
 
-The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C++ wrapper that bridges TagLib's object-oriented API to C functions suitable for Wasm exports. The TypeScript wrapper provides a modern async API that works across all JavaScript runtimes.
+The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom
+C++ wrapper that bridges TagLib's object-oriented API to C functions suitable
+for Wasm exports. The TypeScript wrapper provides a modern async API that works
+across all JavaScript runtimes.
 
 ## Development Commands
 
@@ -135,13 +146,15 @@ The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C
 
 ### TagLib Management
 
-- `./scripts/update-taglib.sh [version]` - Update TagLib subtree to new version (defaults to v2.1)
+- `./scripts/update-taglib.sh [version]` - Update TagLib subtree to new version
+  (defaults to v2.1)
 
 ## Key Technical Details
 
 ### Package Management
 
-- **Dual Distribution**: NPM (`taglib-wasm`) + JSR (`@charleswiltgen/taglib-wasm`)
+- **Dual Distribution**: NPM (`taglib-wasm`) + JSR
+  (`@charleswiltgen/taglib-wasm`)
 - **Ecosystem-Specific Entry Points**: `index.ts` (NPM) + `mod.ts` (JSR)
 - **Git Subtree**: TagLib dependency managed at `lib/taglib/`
 
@@ -192,7 +205,9 @@ The project uses Emscripten to compile TagLib C++ to WebAssembly with a custom C
 
 ### ✅ Memory Management Solution
 
-The most critical discovery was that **manual memory copying with `HEAPU8.set()` causes data corruption**. The solution is to use **Emscripten's `allocate()` function**:
+The most critical discovery was that **manual memory copying with `HEAPU8.set()`
+causes data corruption**. The solution is to use **Emscripten's `allocate()`
+function**:
 
 ```typescript
 // ❌ WRONG - causes data corruption
@@ -238,7 +253,8 @@ The `build-wasm.sh` script:
 
 ## Current Status
 
-**✅ PRODUCTION READY & PUBLISHED** – All major functionality is implemented, tested, and published:
+**✅ PRODUCTION READY & PUBLISHED** – All major functionality is implemented,
+tested, and published:
 
 ### Functionality
 
@@ -298,7 +314,8 @@ The `build-wasm.sh` script:
 - **Scope**: Include relevant scope when applicable
 - **Description**: Clear, concise action description
 - **Footer**: Include breaking changes and issue references
-- **IMPORTANT**: DO NOT include Claude Code credits in commit messages. The user will handle attribution separately
+- **IMPORTANT**: DO NOT include Claude Code credits in commit messages. The user
+  will handle attribution separately
 
 ### Publishing Workflow
 
@@ -311,21 +328,28 @@ The `build-wasm.sh` script:
 ## important-instruction-reminders
 
 - Do what has been asked; nothing more, nothing less.
-- NEVER create files unless they're absolutely necessary for achieving your goal.
+- NEVER create files unless they're absolutely necessary for achieving your
+  goal.
 - ALWAYS prefer editing an existing file to creating a new one.
-- NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+- NEVER proactively create documentation files (*.md) or README files. Only
+  create documentation files if explicitly requested by the User.
 - ALWAYS use Conventional Commits specification for commit messages.
-- **KISS Principle**: Keep It Simple, Stupid - maintain simplicity in all aspects of the project. Avoid unnecessary complexity that could impact developers, contributors, or reliability.
+- **KISS Principle**: Keep It Simple, Stupid - maintain simplicity in all
+  aspects of the project. Avoid unnecessary complexity that could impact
+  developers, contributors, or reliability.
 
 ## Simplification Status
 
 Following KISS principles, the following simplifications have been made:
 
 1. **Removed Enhanced API** - Only Core API and Simple API remain
-2. **Removed JSR distribution** - NPM-only, works everywhere via `npm:` specifier
-3. **Pre-built Wasm artifacts** - `build/taglib.wasm` and `build/taglib.js` are committed to git
+2. **Removed JSR distribution** - NPM-only, works everywhere via `npm:`
+   specifier
+3. **Pre-built Wasm artifacts** - `build/taglib.wasm` and `build/taglib.js` are
+   committed to git
 4. **Kept Workers API** - Essential for Cloudflare Workers compatibility
 
 ### Remaining Complexity Issues to Address:
 
-- **Multiple test files** - Should consolidate into single comprehensive test suite
+- **Multiple test files** - Should consolidate into single comprehensive test
+  suite
