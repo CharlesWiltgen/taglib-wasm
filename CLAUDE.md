@@ -81,8 +81,12 @@ modern TypeScript API wrapper.
 
 - **`build/`**: Wasm compilation and C++ wrapper (✅ PRODUCTION READY)
   - `build-wasm.sh` - Complete build script with C++ wrapper implementation
-  - `taglib.js` - Generated Emscripten JavaScript module
+  - `taglib-wrapper.js` - Generated Emscripten JavaScript wrapper module
   - `taglib.wasm` - Compiled WebAssembly binary
+
+- **`dist/`**: Runtime distribution files (generated, not in git)
+  - Contains all compiled JavaScript, declarations, and WASM runtime
+  - Created by `npm run build` for distribution
 
 ### Documentation & Examples
 
@@ -247,7 +251,7 @@ The `build-wasm.sh` script:
 #### NPM Package (`taglib-wasm`)
 
 - Entry: `index.ts`
-- Uses: Emscripten-generated `taglib.js`
+- Uses: Emscripten-generated `taglib-wrapper.js`
 - Runtimes: Node.js, Bun, browsers, Deno (via `npm:` specifier)
 - Includes: Generated JavaScript for full compatibility
 
@@ -345,9 +349,10 @@ Following KISS principles, the following simplifications have been made:
 1. **Removed Enhanced API** - Only Core API and Simple API remain
 2. **Removed JSR distribution** - NPM-only, works everywhere via `npm:`
    specifier
-3. **Pre-built Wasm artifacts** - `build/taglib.wasm` and `build/taglib.js` are
-   committed to git
-4. **Kept Workers API** - Essential for Cloudflare Workers compatibility
+3. **Pre-built Wasm artifacts** - `build/taglib.wasm` and `build/taglib-wrapper.js` are
+   committed to git for development convenience
+4. **Runtime files consolidated** - All runtime files are copied to `dist/` for clean distribution
+5. **Kept Workers API** - Essential for Cloudflare Workers compatibility
 
 ### Remaining Complexity Issues to Address:
 
