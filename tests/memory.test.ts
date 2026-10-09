@@ -2,8 +2,8 @@
  * @fileoverview Memory management tests for TagLib-Wasm
  */
 
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { stat } from "node:fs/promises";
 import { TagLib } from "../index.ts";
 import { TEST_FILES } from "./test-utils.ts";
 
@@ -42,11 +42,8 @@ describe("Memory Management", () => {
         `Heap growth after 10 open/dispose cycles: ${growthMB.toFixed(2)}MB`,
       );
 
-      assertEquals(
-        growthMB < 1,
-        true,
-        `Excessive heap growth: ${growthMB.toFixed(2)}MB`,
-      );
+      expect(growthMB < 1, `Excessive heap growth: ${growthMB.toFixed(2)}MB`)
+        .toStrictEqual(true);
     }
   });
 
@@ -91,7 +88,7 @@ describe("Memory Management", () => {
       const audioFile = await taglib.open(file);
       const afterOpen = getHeapSize();
 
-      const fileInfo = await Deno.stat(file);
+      const fileInfo = await stat(file);
       const fileSizeMB = fileInfo.size / 1024 / 1024;
 
       audioFile.dispose();

@@ -1,5 +1,9 @@
-import { assertEquals, assertExists } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { expectDefined } from "./_assert-helpers.ts";
 import {
   type AudioFileMetadata,
   exportFolderMetadata,
@@ -7,12 +11,19 @@ import {
   scanFolder,
 } from "../src/folder-api/index.ts";
 import { setBufferMode, writeTagsBatch } from "../src/simple/index.ts";
-import { fromFileUrl } from "@std/path";
 
 // Force Emscripten backend for Simple API calls
 setBufferMode(true);
 
-const TEST_FILES_DIR = fromFileUrl(new URL("./test-files", import.meta.url));
+const TEST_FILES_DIR = fileURLToPath(new URL("./test-files", import.meta.url));
+
+/** Node equivalent of `Deno.makeTempFile({ suffix })`. */
+async function makeTempFile(suffix = ""): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "taglib-"));
+  const path = join(dir, `tmp${suffix}`);
+  await writeFile(path, new Uint8Array(0));
+  return path;
+}
 
 describe("folder-api", () => {
   it("scanFolder - reads all audio files with metadata", async () => {
@@ -25,23 +36,25 @@ describe("folder-api", () => {
     });
 
     // Should find at least 5 test files
-    assertEquals(result.items.length >= 5, true);
-    assertEquals(result.items.every((item) => item.status === "ok"), true);
+    expect(result.items.length >= 5).toStrictEqual(true);
+    expect(result.items.every((item) => item.status === "ok")).toStrictEqual(
+      true,
+    );
 
     // Check that we got metadata for each file
     for (const item of result.items) {
       if (item.status !== "ok") continue;
-      assertExists(item.path);
-      assertExists(item.tags);
-      assertExists(item.properties);
-      assertEquals(typeof item.hasCoverArt, "boolean");
+      expectDefined(item.path);
+      expectDefined(item.tags);
+      expectDefined(item.properties);
+      expect(typeof item.hasCoverArt).toStrictEqual("boolean");
 
       // Verify properties
       if (item.properties) {
-        assertEquals(typeof item.properties.duration, "number");
-        assertEquals(typeof item.properties.bitrate, "number");
-        assertEquals(typeof item.properties.sampleRate, "number");
-        assertEquals(typeof item.properties.channels, "number");
+        expect(typeof item.properties.duration).toStrictEqual("number");
+        expect(typeof item.properties.bitrate).toStrictEqual("number");
+        expect(typeof item.properties.sampleRate).toStrictEqual("number");
+        expect(typeof item.properties.channels).toStrictEqual("number");
       }
     }
 
@@ -49,14 +62,14 @@ describe("folder-api", () => {
     const flacItem = result.items.find((i) =>
       i.status === "ok" && i.path.endsWith(".flac")
     );
-    assertExists(flacItem);
-    if (flacItem!.status === "ok") assertExists(flacItem!.tags);
+    expectDefined(flacItem);
+    if (flacItem!.status === "ok") expectDefined(flacItem!.tags);
 
     const mp3Item = result.items.find((i) =>
       i.status === "ok" && i.path.endsWith(".mp3")
     );
-    assertExists(mp3Item);
-    if (mp3Item!.status === "ok") assertExists(mp3Item!.tags);
+    expectDefined(mp3Item);
+    if (mp3Item!.status === "ok") expectDefined(mp3Item!.tags);
   });
 
   it("scanFolder - respects file extension filter", async () => {
@@ -67,7 +80,7 @@ describe("folder-api", () => {
 
     // Should only find MP3 files
     for (const item of result.items) {
-      assertEquals(item.path.endsWith(".mp3"), true);
+      expect(item.path.endsWith(".mp3")).toStrictEqual(true);
     }
   });
 
@@ -77,46 +90,48 @@ describe("folder-api", () => {
       recursive: true,
     });
 
-    assertEquals(result.items.length, 2);
-    assertEquals(result.items.every((i) => i.status === "ok"), true);
+    expect(result.items.length).toStrictEqual(2);
+    expect(result.items.every((i) => i.status === "ok")).toStrictEqual(true);
   });
 
   it("scanFolder - handles errors gracefully", async () => {
     // Create a temporary directory with an invalid file
-    const tempDir = await Deno.makeTempDir();
+    const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
     const invalidFile = `${tempDir}/invalid.mp3`;
-    await Deno.writeFile(invalidFile, new Uint8Array([0, 1, 2, 3])); // Too small
+    await writeFile(invalidFile, new Uint8Array([0, 1, 2, 3])); // Too small
 
     try {
       const result = await scanFolder(tempDir, {
         continueOnError: true,
       });
 
-      assertEquals(result.items.length, 1);
-      assertEquals(result.items[0].status, "error");
-      assertEquals(result.items[0].path, invalidFile);
+      expect(result.items.length).toStrictEqual(1);
+      expect(result.items[0].status).toStrictEqual("error");
+      expect(result.items[0].path).toStrictEqual(invalidFile);
       if (result.items[0].status === "error") {
-        assertExists(result.items[0].error);
+        expectDefined(result.items[0].error);
       }
     } finally {
-      await Deno.remove(tempDir, { recursive: true });
+      await rm(tempDir, { recursive: true });
     }
   });
 
   it("findDuplicates - finds files with same metadata", async () => {
     // Create temporary directory with duplicate metadata
-    const tempDir = await Deno.makeTempDir();
+    const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
     const file1 = `${tempDir}/dup1.mp3`;
     const file2 = `${tempDir}/dup2.mp3`;
     const file3 = `${tempDir}/unique.mp3`;
 
     // Copy test file
-    const mp3Data = await Deno.readFile(
-      `${TEST_FILES_DIR}/mp3/kiss-snippet.mp3`,
+    const mp3Data = new Uint8Array(
+      await readFile(
+        `${TEST_FILES_DIR}/mp3/kiss-snippet.mp3`,
+      ),
     );
-    await Deno.writeFile(file1, mp3Data);
-    await Deno.writeFile(file2, mp3Data);
-    await Deno.writeFile(file3, mp3Data);
+    await writeFile(file1, mp3Data);
+    await writeFile(file2, mp3Data);
+    await writeFile(file3, mp3Data);
 
     // Set up duplicate tags
     await writeTagsBatch([
@@ -135,26 +150,26 @@ describe("folder-api", () => {
       const duplicates = await findDuplicates(tempDir, {});
 
       // Should find one group of duplicates
-      assertEquals(duplicates.length, 1);
+      expect(duplicates.length).toStrictEqual(1);
 
       const dupGroup = duplicates[0];
-      assertExists(dupGroup.criteria);
-      assertEquals(typeof dupGroup.criteria.artist, "string");
-      assertEquals(typeof dupGroup.criteria.title, "string");
-      assertEquals(dupGroup.files.length, 2);
+      expectDefined(dupGroup.criteria);
+      expect(typeof dupGroup.criteria.artist).toStrictEqual("string");
+      expect(typeof dupGroup.criteria.title).toStrictEqual("string");
+      expect(dupGroup.files.length).toStrictEqual(2);
 
       // Check that both duplicate files are found
       const paths = dupGroup.files.map((f) => f.path);
-      assertEquals(paths.includes(file1), true);
-      assertEquals(paths.includes(file2), true);
-      assertEquals(paths.includes(file3), false);
+      expect(paths.includes(file1)).toStrictEqual(true);
+      expect(paths.includes(file2)).toStrictEqual(true);
+      expect(paths.includes(file3)).toStrictEqual(false);
     } finally {
-      await Deno.remove(tempDir, { recursive: true });
+      await rm(tempDir, { recursive: true });
     }
   });
 
   it("exportFolderMetadata - exports to JSON", async () => {
-    const tempFile = await Deno.makeTempFile({ suffix: ".json" });
+    const tempFile = await makeTempFile(".json");
 
     try {
       await exportFolderMetadata(TEST_FILES_DIR, tempFile, {
@@ -162,28 +177,28 @@ describe("folder-api", () => {
       });
 
       // Read and parse the exported JSON
-      const jsonData = await Deno.readTextFile(tempFile);
+      const jsonData = await readFile(tempFile, "utf8");
       const data = JSON.parse(jsonData);
 
-      assertExists(data.folder);
-      assertExists(data.scanDate);
-      assertExists(data.summary);
-      assertExists(data.files);
-      assertExists(data.errors);
+      expectDefined(data.folder);
+      expectDefined(data.scanDate);
+      expectDefined(data.summary);
+      expectDefined(data.files);
+      expectDefined(data.errors);
 
-      assertEquals(data.folder, TEST_FILES_DIR);
-      assertEquals(data.summary.totalFiles >= 5, true);
-      assertEquals(data.files.length, data.summary.processedFiles);
+      expect(data.folder).toStrictEqual(TEST_FILES_DIR);
+      expect(data.summary.totalFiles >= 5).toStrictEqual(true);
+      expect(data.files.length).toStrictEqual(data.summary.processedFiles);
 
       // Check file structure
       for (const file of data.files) {
-        assertExists(file.path);
-        assertExists(file.tags);
-        assertExists(file.properties);
-        assertEquals(typeof file.hasCoverArt, "boolean");
+        expectDefined(file.path);
+        expectDefined(file.tags);
+        expectDefined(file.properties);
+        expect(typeof file.hasCoverArt).toStrictEqual("boolean");
       }
     } finally {
-      await Deno.remove(tempFile);
+      await rm(tempFile);
     }
   });
 
@@ -192,9 +207,9 @@ describe("folder-api", () => {
       recursive: true,
     });
 
-    assertEquals(result.items.length > 0, true);
+    expect(result.items.length > 0).toStrictEqual(true);
     const okCount = result.items.filter((i) => i.status === "ok").length;
-    assertEquals(okCount > 0, true);
+    expect(okCount > 0).toStrictEqual(true);
   });
 
   it("scanFolder - detects cover art presence", async () => {
@@ -208,7 +223,7 @@ describe("folder-api", () => {
 
     for (const item of result.items) {
       if (item.status !== "ok") continue;
-      assertEquals(typeof item.hasCoverArt, "boolean");
+      expect(typeof item.hasCoverArt).toStrictEqual("boolean");
       if (item.hasCoverArt) {
         filesWithCoverArt++;
       } else {
@@ -221,7 +236,7 @@ describe("folder-api", () => {
     console.log(`Files without cover art: ${filesWithoutCoverArt}`);
 
     // At least some files should exist in each category
-    assertEquals(result.items.length > 0, true);
+    expect(result.items.length > 0).toStrictEqual(true);
   });
 
   it("scanFolder - extracts audio dynamics data", async () => {
@@ -256,16 +271,20 @@ describe("folder-api", () => {
 
         // Validate field formats if present
         if (item.dynamics.replayGainTrackGain) {
-          assertEquals(typeof item.dynamics.replayGainTrackGain, "string");
+          expect(typeof item.dynamics.replayGainTrackGain).toStrictEqual(
+            "string",
+          );
           console.log(`Track gain: ${item.dynamics.replayGainTrackGain}`);
         }
 
         if (item.dynamics.replayGainTrackPeak) {
-          assertEquals(typeof item.dynamics.replayGainTrackPeak, "string");
+          expect(typeof item.dynamics.replayGainTrackPeak).toStrictEqual(
+            "string",
+          );
         }
 
         if (item.dynamics.appleSoundCheck) {
-          assertEquals(typeof item.dynamics.appleSoundCheck, "string");
+          expect(typeof item.dynamics.appleSoundCheck).toStrictEqual("string");
           console.log(`Sound Check: ${item.dynamics.appleSoundCheck}`);
         }
       }
@@ -276,6 +295,6 @@ describe("folder-api", () => {
     console.log(`Files with Sound Check: ${filesWithSoundCheck}`);
 
     // All files should be processed
-    assertEquals(result.items.length > 0, true);
+    expect(result.items.length > 0).toStrictEqual(true);
   });
 });

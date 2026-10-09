@@ -1,5 +1,4 @@
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
 import {
   mapPropertiesToExtendedTag,
   normalizeTagInput,
@@ -13,7 +12,7 @@ describe(mapPropertiesToExtendedTag.name, () => {
       date: ["2025"],
       trackNumber: ["3"],
     });
-    assertEquals(result, {
+    expect(result).toStrictEqual({
       title: ["Hello"],
       artist: ["Artist"],
       year: 2025,
@@ -28,7 +27,7 @@ describe(mapPropertiesToExtendedTag.name, () => {
 
   it("should preserve a full ISO date string alongside the numeric year", () => {
     const result = mapPropertiesToExtendedTag({ date: ["1975-10-31"] });
-    assertEquals(result, { year: 1975, date: "1975-10-31" });
+    expect(result).toStrictEqual({ year: 1975, date: "1975-10-31" });
   });
 
   it("should map extended string fields", () => {
@@ -38,7 +37,7 @@ describe(mapPropertiesToExtendedTag.name, () => {
       musicbrainzTrackId: ["abc-123"],
       replayGainTrackGain: ["-6.54 dB"],
     });
-    assertEquals(result, {
+    expect(result).toStrictEqual({
       albumArtist: ["Various Artists"],
       composer: ["Bach", "Handel"],
       musicbrainzTrackId: ["abc-123"],
@@ -53,7 +52,7 @@ describe(mapPropertiesToExtendedTag.name, () => {
       totalDiscs: ["3"],
       bpm: ["128"],
     });
-    assertEquals(result, {
+    expect(result).toStrictEqual({
       discNumber: 2,
       totalTracks: 12,
       totalDiscs: 3,
@@ -62,25 +61,17 @@ describe(mapPropertiesToExtendedTag.name, () => {
   });
 
   it("should map compilation to boolean", () => {
-    assertEquals(
-      mapPropertiesToExtendedTag({ compilation: ["1"] }).compilation,
-      true,
-    );
-    assertEquals(
-      mapPropertiesToExtendedTag({ compilation: ["0"] }).compilation,
-      false,
-    );
+    expect(mapPropertiesToExtendedTag({ compilation: ["1"] }).compilation)
+      .toStrictEqual(true);
+    expect(mapPropertiesToExtendedTag({ compilation: ["0"] }).compilation)
+      .toStrictEqual(false);
     // Non-canonical disk values (literal "true" COMPILATION fields) must
     // read the same on both backends: WASI canonicalizes to "1", Emscripten
     // surfaces "true" verbatim (taglib-c9b).
-    assertEquals(
-      mapPropertiesToExtendedTag({ compilation: ["true"] }).compilation,
-      true,
-    );
-    assertEquals(
-      mapPropertiesToExtendedTag({ compilation: ["false"] }).compilation,
-      false,
-    );
+    expect(mapPropertiesToExtendedTag({ compilation: ["true"] }).compilation)
+      .toStrictEqual(true);
+    expect(mapPropertiesToExtendedTag({ compilation: ["false"] }).compilation)
+      .toStrictEqual(false);
   });
 
   it("should pass through unknown camelCase property keys", () => {
@@ -88,11 +79,10 @@ describe(mapPropertiesToExtendedTag.name, () => {
       title: ["X"],
       someUnknownKey: ["kept"],
     });
-    assertEquals(result.title, ["X"]);
-    assertEquals(
-      (result as Record<string, unknown>).someUnknownKey,
-      ["kept"],
-    );
+    expect(result.title).toStrictEqual(["X"]);
+    expect((result as Record<string, unknown>).someUnknownKey).toStrictEqual([
+      "kept",
+    ]);
   });
 
   it("should skip fields with empty values arrays", () => {
@@ -102,7 +92,7 @@ describe(mapPropertiesToExtendedTag.name, () => {
       discNumber: [],
       compilation: [],
     });
-    assertEquals(result, {});
+    expect(result).toStrictEqual({});
   });
 
   it("should drop non-numeric year/track but preserve both raw strings", () => {
@@ -112,7 +102,7 @@ describe(mapPropertiesToExtendedTag.name, () => {
     });
     // Numeric mirrors are dropped when they do not parse; the raw strings are
     // still the authoritative values and must survive.
-    assertEquals(result, { date: "not-a-number", trackNumber: "abc" });
+    expect(result).toStrictEqual({ date: "not-a-number", trackNumber: "abc" });
   });
 });
 
@@ -123,25 +113,25 @@ describe(normalizeTagInput.name, () => {
       artist: ["A", "B"],
       album: "Album",
     });
-    assertEquals(result.title, ["Hello"]);
-    assertEquals(result.artist, ["A", "B"]);
-    assertEquals(result.album, ["Album"]);
+    expect(result.title).toStrictEqual(["Hello"]);
+    expect(result.artist).toStrictEqual(["A", "B"]);
+    expect(result.album).toStrictEqual(["Album"]);
   });
 
   it("should map year and track as string arrays", () => {
     const result = normalizeTagInput({ year: 2025, track: 3 });
-    assertEquals(result.date, ["2025"]);
-    assertEquals(result.trackNumber, ["3"]);
+    expect(result.date).toStrictEqual(["2025"]);
+    expect(result.trackNumber).toStrictEqual(["3"]);
   });
 
   it("should map a full date string to the date PropertyMap key", () => {
     const result = normalizeTagInput({ date: "1975-10-31" });
-    assertEquals(result.date, ["1975-10-31"]);
+    expect(result.date).toStrictEqual(["1975-10-31"]);
   });
 
   it("should let date win over year when both are provided", () => {
     const result = normalizeTagInput({ year: 2024, date: "1975-10-31" });
-    assertEquals(result.date, ["1975-10-31"]);
+    expect(result.date).toStrictEqual(["1975-10-31"]);
   });
 
   it("should map extended string fields to camelCase PropertyMap keys", () => {
@@ -151,10 +141,10 @@ describe(normalizeTagInput.name, () => {
       conductor: "Karajan",
       lyricist: ["A", "B"],
     });
-    assertEquals(result.albumArtist, ["VA"]);
-    assertEquals(result.composer, ["Bach", "Handel"]);
-    assertEquals(result.conductor, ["Karajan"]);
-    assertEquals(result.lyricist, ["A", "B"]);
+    expect(result.albumArtist).toStrictEqual(["VA"]);
+    expect(result.composer).toStrictEqual(["Bach", "Handel"]);
+    expect(result.conductor).toStrictEqual(["Karajan"]);
+    expect(result.lyricist).toStrictEqual(["A", "B"]);
   });
 
   it("should map numeric extended fields as string arrays", () => {
@@ -164,16 +154,16 @@ describe(normalizeTagInput.name, () => {
       totalDiscs: 3,
       bpm: 128,
     });
-    assertEquals(result.discNumber, ["2"]);
-    assertEquals(result.totalTracks, ["12"]);
-    assertEquals(result.totalDiscs, ["3"]);
-    assertEquals(result.bpm, ["128"]);
+    expect(result.discNumber).toStrictEqual(["2"]);
+    expect(result.totalTracks).toStrictEqual(["12"]);
+    expect(result.totalDiscs).toStrictEqual(["3"]);
+    expect(result.bpm).toStrictEqual(["128"]);
   });
 
   it("should handle numeric 0 values", () => {
     const result = normalizeTagInput({ bpm: 0, discNumber: 0 });
-    assertEquals(result.bpm, ["0"]);
-    assertEquals(result.discNumber, ["0"]);
+    expect(result.bpm).toStrictEqual(["0"]);
+    expect(result.discNumber).toStrictEqual(["0"]);
   });
 
   it("should truncate fractional bpm to an integer (taglib-ory8)", () => {
@@ -183,31 +173,31 @@ describe(normalizeTagInput.name, () => {
     // canonicalizes with the read side's narrowing rule (parseLeadingInt),
     // so wire "120.5" reads back as 120 and a typed write of 120.5 writes
     // "120" everywhere (taglib-ory8).
-    assertEquals(normalizeTagInput({ bpm: 120.5 }).bpm, ["120"]);
-    assertEquals(normalizeTagInput({ bpm: 120.99 }).bpm, ["120"]);
-    assertEquals(normalizeTagInput({ bpm: -3.7 }).bpm, ["-3"]);
-    assertEquals(normalizeTagInput({ bpm: 120 }).bpm, ["120"]);
-    assertEquals(normalizeTagInput({ bpm: 0 }).bpm, ["0"]);
+    expect(normalizeTagInput({ bpm: 120.5 }).bpm).toStrictEqual(["120"]);
+    expect(normalizeTagInput({ bpm: 120.99 }).bpm).toStrictEqual(["120"]);
+    expect(normalizeTagInput({ bpm: -3.7 }).bpm).toStrictEqual(["-3"]);
+    expect(normalizeTagInput({ bpm: 120 }).bpm).toStrictEqual(["120"]);
+    expect(normalizeTagInput({ bpm: 0 }).bpm).toStrictEqual(["0"]);
   });
 
   it("should map compilation true to '1'", () => {
     const result = normalizeTagInput({ compilation: true });
-    assertEquals(result.compilation, ["1"]);
+    expect(result.compilation).toStrictEqual(["1"]);
   });
 
   it("should map compilation false to '0'", () => {
     const result = normalizeTagInput({ compilation: false });
-    assertEquals(result.compilation, ["0"]);
+    expect(result.compilation).toStrictEqual(["0"]);
   });
 
   it("should pass through empty arrays", () => {
     const result = normalizeTagInput({ albumArtist: [] });
-    assertEquals(result.albumArtist, []);
+    expect(result.albumArtist).toStrictEqual([]);
   });
 
   it("should skip undefined fields", () => {
     const result = normalizeTagInput({ title: "X" });
-    assertEquals(Object.keys(result), ["title"]);
+    expect(Object.keys(result)).toStrictEqual(["title"]);
   });
 
   it("should map MusicBrainz and ReplayGain fields", () => {
@@ -215,14 +205,14 @@ describe(normalizeTagInput.name, () => {
       musicbrainzTrackId: "abc-123",
       replayGainTrackGain: "-6.54 dB",
     });
-    assertEquals(result.musicbrainzTrackId, ["abc-123"]);
-    assertEquals(result.replayGainTrackGain, ["-6.54 dB"]);
+    expect(result.musicbrainzTrackId).toStrictEqual(["abc-123"]);
+    expect(result.replayGainTrackGain).toStrictEqual(["-6.54 dB"]);
   });
 
   it("should not duplicate basic fields handled by the initial loop", () => {
     const result = normalizeTagInput({ title: "T", artist: ["A", "B"] });
-    assertEquals(result.title, ["T"]);
-    assertEquals(result.artist, ["A", "B"]);
-    assertEquals(Object.keys(result).length, 2);
+    expect(result.title).toStrictEqual(["T"]);
+    expect(result.artist).toStrictEqual(["A", "B"]);
+    expect(Object.keys(result).length).toStrictEqual(2);
   });
 });

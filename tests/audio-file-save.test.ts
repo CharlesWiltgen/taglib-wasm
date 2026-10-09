@@ -1,6 +1,8 @@
-import { assert, assertEquals, assertRejects, assertThrows } from "@std/assert";
-import { assertInstanceOf } from "@std/assert/instance-of";
-import { beforeAll, describe, it } from "@std/testing/bdd";
+import { beforeAll, describe, expect, it } from "vite-plus/test";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { expectRejects, expectThrows } from "./_assert-helpers.ts";
 import { TagLib } from "../src/taglib.ts";
 import { FileOperationError } from "../src/errors.ts";
 import type { FileHandle, RawLyrics } from "../src/wasm.ts";
@@ -11,6 +13,14 @@ import { FIXTURE_PATH } from "./shared-fixtures.ts";
 import { TEST_PICTURES } from "./test-utils.ts";
 
 let taglib: TagLib;
+
+/** Node equivalent of `Deno.makeTempFile({ suffix })`. */
+async function makeTempFile(suffix = ""): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "taglib-"));
+  const path = join(dir, `tmp${suffix}`);
+  await writeFile(path, new Uint8Array(0));
+  return path;
+}
 
 beforeAll(async () => {
   taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
@@ -24,7 +34,7 @@ describe("AudioFileImpl.save()", () => {
       maxFooterSize: 1024,
     });
     try {
-      assertThrows(
+      expectThrows(
         () => file.save(),
         FileOperationError,
         "Cannot save partially loaded file",
@@ -35,10 +45,10 @@ describe("AudioFileImpl.save()", () => {
   });
 
   it("should save successfully on fully-loaded file", async () => {
-    const buffer = await Deno.readFile(FIXTURE_PATH.mp3);
+    const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const file = await taglib.open(new Uint8Array(buffer));
     try {
-      assertEquals(file.save(), true);
+      expect(file.save()).toStrictEqual(true);
     } finally {
       file.dispose();
     }
@@ -47,27 +57,27 @@ describe("AudioFileImpl.save()", () => {
 
 describe("AudioFileImpl.getFileBuffer()", () => {
   it("should return valid buffer after opening a file", async () => {
-    const originalBuffer = await Deno.readFile(FIXTURE_PATH.mp3);
+    const originalBuffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const file = await taglib.open(new Uint8Array(originalBuffer));
     try {
       const fileBuffer = file.getFileBuffer();
-      assertInstanceOf(fileBuffer, Uint8Array);
-      assert(fileBuffer.length > 0);
+      expect(fileBuffer).toBeInstanceOf(Uint8Array);
+      expect(fileBuffer.length > 0).toBeTruthy();
     } finally {
       file.dispose();
     }
   });
 
   it("should return modified buffer after tag changes", async () => {
-    const originalBuffer = await Deno.readFile(FIXTURE_PATH.flac);
+    const originalBuffer = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const file = await taglib.open(new Uint8Array(originalBuffer));
     try {
       const tag = file.tag();
       tag.setTitle("New Title");
       file.save();
       const modifiedBuffer = file.getFileBuffer();
-      assertInstanceOf(modifiedBuffer, Uint8Array);
-      assert(modifiedBuffer.length > 0);
+      expect(modifiedBuffer).toBeInstanceOf(Uint8Array);
+      expect(modifiedBuffer.length > 0).toBeTruthy();
     } finally {
       file.dispose();
     }
@@ -79,30 +89,31 @@ describe("AudioFileImpl.getFileBuffer()", () => {
   // must throw; Emscripten holds the bytes in memory, so deletion of the
   // source is irrelevant there. Same scenario on both backends (parity).
   it("surfaces disk-read failures instead of returning an empty buffer (taglib-0sv)", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const srcPath = await Deno.makeTempFile({ suffix: ".mp3" });
+      const srcPath = await makeTempFile(".mp3");
       try {
-        await Deno.writeFile(srcPath, original);
+        await writeFile(srcPath, original);
         const file = await tl.open(srcPath);
         try {
-          await Deno.remove(srcPath); // source vanishes after open
+          await rm(srcPath); // source vanishes after open
           if (backend === "wasi") {
-            assertThrows(
+            expectThrows(
               () => file.getFileBuffer(),
               FileOperationError,
               srcPath,
             );
           } else {
             const buf = file.getFileBuffer();
-            assert(buf.length > 0, "emscripten must serve in-memory bytes");
+            expect(buf.length > 0, "emscripten must serve in-memory bytes")
+              .toBeTruthy();
           }
         } finally {
           file.dispose();
         }
       } finally {
-        await Deno.remove(srcPath).catch(() => {});
+        await rm(srcPath).catch(() => {});
       }
     }
   });
@@ -113,12 +124,12 @@ describe("AudioFileImpl.getFileBuffer()", () => {
   // to disk silently reverted their just-saved edits. Emscripten serves live
   // in-memory bytes; both backends must reflect the edit after save().
   it("returns post-save bytes when getFileBuffer() was called before save() (taglib-a6c)", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const srcPath = await Deno.makeTempFile({ suffix: ".mp3" });
+      const srcPath = await makeTempFile(".mp3");
       try {
-        await Deno.writeFile(srcPath, original);
+        await writeFile(srcPath, original);
         const file = await tl.open(srcPath);
         try {
           file.getFileBuffer(); // primes the path-mode cache pre-save
@@ -127,11 +138,10 @@ describe("AudioFileImpl.getFileBuffer()", () => {
           const after = new Uint8Array(file.getFileBuffer());
           const reopened = await tl.open(after);
           try {
-            assertEquals(
+            expect(
               reopened.tag().title,
-              "A6C Fresh Title",
               `${backend}: post-save getFileBuffer() returned stale bytes`,
-            );
+            ).toStrictEqual("A6C Fresh Title");
           } finally {
             reopened.dispose();
           }
@@ -139,7 +149,7 @@ describe("AudioFileImpl.getFileBuffer()", () => {
           file.dispose();
         }
       } finally {
-        await Deno.remove(srcPath).catch(() => {});
+        await rm(srcPath).catch(() => {});
       }
     }
   });
@@ -147,10 +157,10 @@ describe("AudioFileImpl.getFileBuffer()", () => {
 
 describe("AudioFileImpl.saveToFile()", () => {
   it("should throw FileOperationError when no path is available", async () => {
-    const buffer = await Deno.readFile(FIXTURE_PATH.mp3);
+    const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const file = await taglib.open(new Uint8Array(buffer));
     try {
-      await assertRejects(
+      await expectRejects(
         () => file.saveToFile(),
         FileOperationError,
         "No file path available",
@@ -167,17 +177,17 @@ describe("AudioFileImpl.saveToFile()", () => {
       maxFooterSize: 1024,
     });
 
-    const tmpPath = await Deno.makeTempFile({ suffix: ".mp3" });
+    const tmpPath = await makeTempFile(".mp3");
     try {
       const tag = file.tag();
       tag.setTitle("Partial Save Test");
       await file.saveToFile(tmpPath);
 
-      const saved = await Deno.readFile(tmpPath);
-      assert(saved.length > 0);
+      const saved = new Uint8Array(await readFile(tmpPath));
+      expect(saved.length > 0).toBeTruthy();
     } finally {
       file.dispose();
-      await Deno.remove(tmpPath).catch(() => {});
+      await rm(tmpPath).catch(() => {});
     }
   });
 
@@ -185,36 +195,38 @@ describe("AudioFileImpl.saveToFile()", () => {
   // wrote in-place to the SOURCE and ignored the target (silent data corruption).
   it("[wasi] saveToFile(target) writes to target and leaves source intact (taglib-cd0)", async () => {
     const wasi = await TagLib.initialize({ forceWasmType: "wasi" });
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
-    const srcPath = await Deno.makeTempFile({ suffix: ".mp3" });
-    const targetPath = await Deno.makeTempFile({ suffix: ".mp3" });
-    await Deno.writeFile(srcPath, original);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
+    const srcPath = await makeTempFile(".mp3");
+    const targetPath = await makeTempFile(".mp3");
+    await writeFile(srcPath, original);
     try {
       const file = await wasi.open(srcPath); // WASI path-mode
       file.tag().setTitle("CD0 Target Test");
       await file.saveToFile(targetPath);
       file.dispose();
 
-      const reopened = await wasi.open(await Deno.readFile(targetPath));
+      const reopened = await wasi.open(
+        new Uint8Array(await readFile(targetPath)),
+      );
       try {
-        assertEquals(
-          reopened.tag().title,
+        expect(reopened.tag().title, "target missing edit").toStrictEqual(
           "CD0 Target Test",
-          "target missing edit",
         );
       } finally {
         reopened.dispose();
       }
 
-      const srcAfter = await Deno.readFile(srcPath);
-      assertEquals(srcAfter.length, original.length, "source size changed");
-      assert(
+      const srcAfter = new Uint8Array(await readFile(srcPath));
+      expect(srcAfter.length, "source size changed").toStrictEqual(
+        original.length,
+      );
+      expect(
         srcAfter.every((b, i) => b === original[i]),
         "source file was mutated by saveToFile(target)",
-      );
+      ).toBeTruthy();
     } finally {
-      await Deno.remove(srcPath).catch(() => {});
-      await Deno.remove(targetPath).catch(() => {});
+      await rm(srcPath).catch(() => {});
+      await rm(targetPath).catch(() => {});
     }
   });
 
@@ -234,7 +246,9 @@ describe("AudioFileImpl.saveToFile()", () => {
     const got: Record<string, RawLyrics[]> = {};
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const file = await tl.open(await Deno.readFile(FIXTURE_PATH.mp3));
+      const file = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.mp3)),
+      );
       (file as unknown as { handle: FileHandle }).handle.setLyrics(input);
       file.save();
       const buf = file.getFileBuffer();
@@ -245,8 +259,8 @@ describe("AudioFileImpl.saveToFile()", () => {
         .getLyrics();
       reopened.dispose();
     }
-    assertEquals(got.wasi, expected);
-    assertEquals(got.emscripten, expected);
+    expect(got.wasi).toStrictEqual(expected);
+    expect(got.emscripten).toStrictEqual(expected);
   });
 
   // Regression: taglib-eyp — lyrics are a structured field surfaced through the
@@ -259,23 +273,24 @@ describe("AudioFileImpl.saveToFile()", () => {
     const got: Record<string, UnsyncedLyrics[]> = {};
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const file = await tl.open(await Deno.readFile(FIXTURE_PATH.mp3));
+      const file = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.mp3)),
+      );
       file.setLyrics(input); // public accessor — no handle cast
       file.save();
       const reopened = await tl.open(file.getFileBuffer());
       file.dispose();
 
       got[backend] = reopened.getLyrics();
-      assertEquals(
+      expect(
         reopened.properties()["lyrics"],
-        undefined,
         `${backend}: properties() must not expose lyrics`,
-      );
+      ).toStrictEqual(undefined);
       reopened.dispose();
     }
     // Retrievable the SAME WAY and with the SAME result on both backends.
-    assertEquals(got.wasi, [{ text: "Verse one" }]);
-    assertEquals(got.emscripten, got.wasi);
+    expect(got.wasi).toStrictEqual([{ text: "Verse one" }]);
+    expect(got.emscripten).toStrictEqual(got.wasi);
   });
 
   // Regression GUARD: taglib-eyp — applyTags/updateFile do a text-only
@@ -287,7 +302,9 @@ describe("AudioFileImpl.saveToFile()", () => {
     const input: UnsyncedLyrics[] = [{ text: "Keep me" }];
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const seed = await tl.open(await Deno.readFile(FIXTURE_PATH.mp3));
+      const seed = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.mp3)),
+      );
       seed.setLyrics(input);
       seed.save();
       const withLyrics = seed.getFileBuffer();
@@ -304,15 +321,10 @@ describe("AudioFileImpl.saveToFile()", () => {
       const title = reopened.tag().title;
       reopened.dispose();
 
-      assertEquals(
-        lyrics,
-        input,
-        `${backend}: lyrics must survive a text-only tag edit`,
-      );
-      assertEquals(
-        title,
+      expect(lyrics, `${backend}: lyrics must survive a text-only tag edit`)
+        .toStrictEqual(input);
+      expect(title, `${backend}: the tag edit must still apply`).toStrictEqual(
         "Edited Title",
-        `${backend}: the tag edit must still apply`,
       );
     }
   });
@@ -324,7 +336,9 @@ describe("AudioFileImpl.saveToFile()", () => {
   it("clearTags() removes lyrics written by either backend (taglib-7eh)", async () => {
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const seed = await tl.open(await Deno.readFile(FIXTURE_PATH.mp3));
+      const seed = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.mp3)),
+      );
       seed.setLyrics([{ text: "remove me" }]);
       seed.save();
       const withLyrics = seed.getFileBuffer();
@@ -336,11 +350,8 @@ describe("AudioFileImpl.saveToFile()", () => {
       const lyrics = reopened.getLyrics();
       reopened.dispose();
 
-      assertEquals(
-        lyrics,
-        [],
-        `${backend}: clearTags() must remove lyrics`,
-      );
+      expect(lyrics, `${backend}: clearTags() must remove lyrics`)
+        .toStrictEqual([]);
     }
   });
 
@@ -353,7 +364,9 @@ describe("AudioFileImpl.saveToFile()", () => {
   it("clearTags() strips text, numeric, and structured metadata on both backends (taglib-nc5)", async () => {
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const seed = await tl.open(await Deno.readFile(FIXTURE_PATH.mp3));
+      const seed = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.mp3)),
+      );
       seed.tag()
         .setTitle("Title").setArtist("Artist").setAlbum("Album")
         .setComment("Comment").setGenre("Genre").setYear(1999).setTrack(7);
@@ -381,9 +394,8 @@ describe("AudioFileImpl.saveToFile()", () => {
       };
       f.dispose();
 
-      assertEquals(
-        result,
-        {
+      expect(result, `${backend}: clearTags() must strip every metadata field`)
+        .toStrictEqual({
           properties: {},
           title: "",
           year: 0,
@@ -392,9 +404,7 @@ describe("AudioFileImpl.saveToFile()", () => {
           ratings: [],
           chapters: [],
           pictures: [],
-        },
-        `${backend}: clearTags() must strip every metadata field`,
-      );
+        });
     }
   });
 
@@ -403,7 +413,9 @@ describe("AudioFileImpl.saveToFile()", () => {
   it("clearTags() strips bext and iXML chunks on both backends (taglib-nc5)", async () => {
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const seed = await tl.open(await Deno.readFile(FIXTURE_PATH.wav));
+      const seed = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.wav)),
+      );
       seed.setProperty("TITLE", "Title");
       seed.setBextData(new Uint8Array(602).fill(7));
       seed.setIxml("<BWFXML><TEST>1</TEST></BWFXML>");
@@ -421,11 +433,8 @@ describe("AudioFileImpl.saveToFile()", () => {
       };
       f.dispose();
 
-      assertEquals(
-        result,
-        { title: "", bext: undefined, ixml: undefined },
-        `${backend}: clearTags() must strip bext + iXML on WAV`,
-      );
+      expect(result, `${backend}: clearTags() must strip bext + iXML on WAV`)
+        .toStrictEqual({ title: "", bext: undefined, ixml: undefined });
     }
   });
 
@@ -433,9 +442,9 @@ describe("AudioFileImpl.saveToFile()", () => {
   // lyrics; the EXTRA_FIELDS registry copies them via get/setLyrics.
   it("[wasi] lyrics survive a save-as reconstruct (taglib-gq9)", async () => {
     const wasi = await TagLib.initialize({ forceWasmType: "wasi" });
-    const srcPath = await Deno.makeTempFile({ suffix: ".mp3" });
-    const out = await Deno.makeTempFile({ suffix: ".mp3" });
-    await Deno.writeFile(srcPath, await Deno.readFile(FIXTURE_PATH.mp3));
+    const srcPath = await makeTempFile(".mp3");
+    const out = await makeTempFile(".mp3");
+    await writeFile(srcPath, new Uint8Array(await readFile(FIXTURE_PATH.mp3)));
     const expected: RawLyrics[] = [
       { text: "Reconstructed", description: "", language: "" },
     ];
@@ -445,14 +454,14 @@ describe("AudioFileImpl.saveToFile()", () => {
       await file.saveToFile(out); // save-as → reconstruct
       file.dispose();
 
-      const reopened = await wasi.open(await Deno.readFile(out));
+      const reopened = await wasi.open(new Uint8Array(await readFile(out)));
       const got = (reopened as unknown as { handle: FileHandle }).handle
         .getLyrics();
       reopened.dispose();
-      assertEquals(got, expected);
+      expect(got).toStrictEqual(expected);
     } finally {
-      await Deno.remove(srcPath).catch(() => {});
-      await Deno.remove(out).catch(() => {});
+      await rm(srcPath).catch(() => {});
+      await rm(out).catch(() => {});
     }
   });
 
@@ -460,10 +469,10 @@ describe("AudioFileImpl.saveToFile()", () => {
   // partial source where an empty field may just be unread.
   it("[wasi] save-as honors an explicit clear of chapters (complete source)", async () => {
     const wasi = await TagLib.initialize({ forceWasmType: "wasi" });
-    const srcPath = await Deno.makeTempFile({ suffix: ".mp3" });
-    const withChapters = await Deno.makeTempFile({ suffix: ".mp3" });
-    const out = await Deno.makeTempFile({ suffix: ".mp3" });
-    await Deno.writeFile(srcPath, await Deno.readFile(FIXTURE_PATH.mp3));
+    const srcPath = await makeTempFile(".mp3");
+    const withChapters = await makeTempFile(".mp3");
+    const out = await makeTempFile(".mp3");
+    await writeFile(srcPath, new Uint8Array(await readFile(FIXTURE_PATH.mp3)));
     try {
       const seed = await wasi.open(srcPath);
       seed.setChapters([{ startTimeMs: 0, title: "Ch1" }]);
@@ -471,23 +480,21 @@ describe("AudioFileImpl.saveToFile()", () => {
       seed.dispose();
 
       const f = await wasi.open(withChapters);
-      assertEquals(f.getChapters().length, 1, "precondition: chapters present");
+      expect(f.getChapters().length, "precondition: chapters present")
+        .toStrictEqual(1);
       f.setChapters([]); // explicit clear
       await f.saveToFile(out);
       f.dispose();
 
-      const g = await wasi.open(await Deno.readFile(out));
+      const g = await wasi.open(new Uint8Array(await readFile(out)));
       const remaining = g.getChapters().length;
       g.dispose();
-      assertEquals(
-        remaining,
-        0,
-        "explicit chapter clear not honored on save-as",
-      );
+      expect(remaining, "explicit chapter clear not honored on save-as")
+        .toStrictEqual(0);
     } finally {
-      await Deno.remove(srcPath).catch(() => {});
-      await Deno.remove(withChapters).catch(() => {});
-      await Deno.remove(out).catch(() => {});
+      await rm(srcPath).catch(() => {});
+      await rm(withChapters).catch(() => {});
+      await rm(out).catch(() => {});
     }
   });
 
@@ -496,9 +503,9 @@ describe("AudioFileImpl.saveToFile()", () => {
   // than silently downgrading nero/both to quicktime.
   it("[wasi] save-as preserves MP4 chapters and their nero style", async () => {
     const wasi = await TagLib.initialize({ forceWasmType: "wasi" });
-    const srcPath = await Deno.makeTempFile({ suffix: ".m4a" });
-    const out = await Deno.makeTempFile({ suffix: ".m4a" });
-    await Deno.writeFile(srcPath, await Deno.readFile(FIXTURE_PATH.m4a));
+    const srcPath = await makeTempFile(".m4a");
+    const out = await makeTempFile(".m4a");
+    await writeFile(srcPath, new Uint8Array(await readFile(FIXTURE_PATH.m4a)));
     try {
       const file = await wasi.open(srcPath); // WASI path-mode
       file.setChapters([{ startTimeMs: 0, title: "Intro" }], {
@@ -507,26 +514,23 @@ describe("AudioFileImpl.saveToFile()", () => {
       await file.saveToFile(out); // save-as → reconstruct
       file.dispose();
 
-      const g = await wasi.open(await Deno.readFile(out));
+      const g = await wasi.open(new Uint8Array(await readFile(out)));
       const chapters = g.getChapters();
       g.dispose();
-      assertEquals(chapters.length, 1, "MP4 chapters lost on save-as");
-      assertEquals(chapters[0].title, "Intro");
-      assertEquals(
-        chapters[0].source,
-        "nero",
-        "nero style downgraded on save-as",
-      );
+      expect(chapters.length, "MP4 chapters lost on save-as").toStrictEqual(1);
+      expect(chapters[0].title).toStrictEqual("Intro");
+      expect(chapters[0].source, "nero style downgraded on save-as")
+        .toStrictEqual("nero");
     } finally {
-      await Deno.remove(srcPath).catch(() => {});
-      await Deno.remove(out).catch(() => {});
+      await rm(srcPath).catch(() => {});
+      await rm(out).catch(() => {});
     }
   });
 
   it("should save fully-loaded file to disk with roundtrip verification", async () => {
     const file = await taglib.open(FIXTURE_PATH.flac);
 
-    const tmpPath = await Deno.makeTempFile({ suffix: ".flac" });
+    const tmpPath = await makeTempFile(".flac");
     try {
       const tag = file.tag();
       tag.setArtist("Save Test Artist");
@@ -534,13 +538,13 @@ describe("AudioFileImpl.saveToFile()", () => {
 
       const verifyFile = await taglib.open(tmpPath);
       try {
-        assertEquals(verifyFile.tag().artist, "Save Test Artist");
+        expect(verifyFile.tag().artist).toStrictEqual("Save Test Artist");
       } finally {
         verifyFile.dispose();
       }
     } finally {
       file.dispose();
-      await Deno.remove(tmpPath).catch(() => {});
+      await rm(tmpPath).catch(() => {});
     }
   });
 });
@@ -551,20 +555,22 @@ describe("AudioFileImpl.saveToFile()", () => {
 describe("AudioFileImpl.saveToFile() full-load (taglib-0iq)", () => {
   it("[emscripten] writes a full-load edit to the target path", async () => {
     const emsc = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const out = await Deno.makeTempFile({ suffix: ".mp3" });
+    const out = await makeTempFile(".mp3");
     try {
       // Plain buffer open (no { partial: true }) => full load.
-      const file = await emsc.open(await Deno.readFile(FIXTURE_PATH.mp3));
+      const file = await emsc.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.mp3)),
+      );
       file.tag().setTitle("Full Load Save");
       await file.saveToFile(out);
       file.dispose();
 
-      const reopened = await emsc.open(await Deno.readFile(out));
+      const reopened = await emsc.open(new Uint8Array(await readFile(out)));
       const title = reopened.tag().title;
       reopened.dispose();
-      assertEquals(title, "Full Load Save");
+      expect(title).toStrictEqual("Full Load Save");
     } finally {
-      await Deno.remove(out).catch(() => {});
+      await rm(out).catch(() => {});
     }
   });
 });

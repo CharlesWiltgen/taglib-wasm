@@ -3,9 +3,8 @@
  * Verifies correct allocation, growth, reset, and cleanup behavior
  */
 
-import { beforeEach, describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { expect } from "@std/expect";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 
 // Mock arena implementation for testing the interface
 // In actual tests, this would call into the WASI module
@@ -91,12 +90,12 @@ describe("Arena Memory Management", () => {
   describe("Arena creation", () => {
     it("should create arena with specified initial size", () => {
       const arenaId = helper.create(1024);
-      assert(arenaId > 0);
+      expect(arenaId > 0).toBeTruthy();
 
       const stats = helper.getStats(arenaId);
-      assertEquals(stats?.size, 1024);
-      assertEquals(stats?.used, 0);
-      assertEquals(stats?.available, 1024);
+      expect(stats?.size).toStrictEqual(1024);
+      expect(stats?.used).toStrictEqual(0);
+      expect(stats?.available).toStrictEqual(1024);
     });
 
     it("should handle multiple arena creation", () => {
@@ -104,13 +103,13 @@ describe("Arena Memory Management", () => {
       const arena2 = helper.create(2048);
       const arena3 = helper.create(512);
 
-      assertNotEquals(arena1, arena2);
-      assertNotEquals(arena2, arena3);
-      assertNotEquals(arena1, arena3);
+      expect(arena1).not.toStrictEqual(arena2);
+      expect(arena2).not.toStrictEqual(arena3);
+      expect(arena1).not.toStrictEqual(arena3);
 
-      assertEquals(helper.getStats(arena1)?.size, 1024);
-      assertEquals(helper.getStats(arena2)?.size, 2048);
-      assertEquals(helper.getStats(arena3)?.size, 512);
+      expect(helper.getStats(arena1)?.size).toStrictEqual(1024);
+      expect(helper.getStats(arena2)?.size).toStrictEqual(2048);
+      expect(helper.getStats(arena3)?.size).toStrictEqual(512);
     });
   });
 
@@ -119,13 +118,13 @@ describe("Arena Memory Management", () => {
       const arenaId = helper.create(1024);
 
       const ptr1 = helper.alloc(arenaId, 100);
-      assertEquals(ptr1, 0); // First allocation at offset 0
+      expect(ptr1).toStrictEqual(0); // First allocation at offset 0
 
       const ptr2 = helper.alloc(arenaId, 200);
-      assertEquals(ptr2, 104); // Second allocation (aligned to 8 bytes: 100 → 104)
+      expect(ptr2).toStrictEqual(104); // Second allocation (aligned to 8 bytes: 100 → 104)
 
       const stats = helper.getStats(arenaId);
-      assertEquals(stats?.used, 304); // 104 + 200 (200 is already 8-byte aligned)
+      expect(stats?.used).toStrictEqual(304); // 104 + 200 (200 is already 8-byte aligned)
     });
 
     it("should align allocations to 8-byte boundaries", () => {
@@ -150,7 +149,7 @@ describe("Arena Memory Management", () => {
       const ptr2 = helper.alloc(arenaId, 60); // This should trigger growth
 
       expect(ptr1).toBe(0);
-      expect(ptr2).not.toBeNull();
+      expectDefined(ptr2);
 
       const stats = helper.getStats(arenaId);
       expect(stats?.size).toBeGreaterThan(100); // Arena should have grown
@@ -160,7 +159,7 @@ describe("Arena Memory Management", () => {
       const arenaId = helper.create(1024);
 
       const ptr = helper.alloc(arenaId, 10000); // Larger than arena
-      expect(ptr).not.toBeNull();
+      expectDefined(ptr);
 
       const stats = helper.getStats(arenaId);
       expect(stats?.size).toBeGreaterThanOrEqual(10008); // At least the allocation size
@@ -249,7 +248,7 @@ describe("Arena Memory Management", () => {
       expect(arenaId).toBeGreaterThan(0);
 
       const ptr = helper.alloc(arenaId, 1000);
-      expect(ptr).not.toBeNull(); // Should work even with tiny initial size
+      expectDefined(ptr); // Should work even with tiny initial size
     });
   });
 
@@ -263,10 +262,10 @@ describe("Arena Memory Management", () => {
       const artistPtr = helper.alloc(arenaId, 30); // Artist string
       const albumPtr = helper.alloc(arenaId, 40); // Album string
 
-      expect(tagDataPtr).not.toBeNull();
-      expect(titlePtr).not.toBeNull();
-      expect(artistPtr).not.toBeNull();
-      expect(albumPtr).not.toBeNull();
+      expectDefined(tagDataPtr);
+      expectDefined(titlePtr);
+      expectDefined(artistPtr);
+      expectDefined(albumPtr);
 
       const stats = helper.getStats(arenaId);
       expect(stats?.utilization).toBeLessThan(0.1); // Should use < 10% of arena

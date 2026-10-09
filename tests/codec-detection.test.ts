@@ -1,23 +1,21 @@
-/// <reference lib="deno.ns" />
-
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { TagLib } from "../src/taglib.ts";
-import { join } from "@std/path";
 
 describe("Codec Detection", () => {
   it("MP3 - both container and codec", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const mp3Path = join("tests", "test-files", "mp3", "kiss-snippet.mp3");
-    const mp3Buffer = await Deno.readFile(mp3Path);
+    const mp3Buffer = new Uint8Array(await readFile(mp3Path));
     const file = await taglib.open(mp3Buffer);
 
     try {
       const props = file.audioProperties();
-      assertEquals(props?.containerFormat, "MP3");
-      assertEquals(props?.codec, "MP3");
-      assertEquals(props?.isLossless, false);
-      assertEquals(props?.bitsPerSample, 0);
+      expect(props?.containerFormat).toStrictEqual("MP3");
+      expect(props?.codec).toStrictEqual("MP3");
+      expect(props?.isLossless).toStrictEqual(false);
+      expect(props?.bitsPerSample).toStrictEqual(0);
     } finally {
       file.save();
       file.dispose();
@@ -27,15 +25,15 @@ describe("Codec Detection", () => {
   it("FLAC - both container and codec", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const flacPath = join("tests", "test-files", "flac", "kiss-snippet.flac");
-    const flacBuffer = await Deno.readFile(flacPath);
+    const flacBuffer = new Uint8Array(await readFile(flacPath));
     const file = await taglib.open(flacBuffer);
 
     try {
       const props = file.audioProperties();
-      assertEquals(props?.containerFormat, "FLAC");
-      assertEquals(props?.codec, "FLAC");
-      assertEquals(props?.isLossless, true);
-      assertEquals(props?.bitsPerSample, 16);
+      expect(props?.containerFormat).toStrictEqual("FLAC");
+      expect(props?.codec).toStrictEqual("FLAC");
+      expect(props?.isLossless).toStrictEqual(true);
+      expect(props?.bitsPerSample).toStrictEqual(16);
     } finally {
       file.save();
       file.dispose();
@@ -45,15 +43,15 @@ describe("Codec Detection", () => {
   it("WAV container - uncompressed PCM codec", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const wavPath = join("tests", "test-files", "wav", "kiss-snippet.wav");
-    const wavBuffer = await Deno.readFile(wavPath);
+    const wavBuffer = new Uint8Array(await readFile(wavPath));
     const file = await taglib.open(wavBuffer);
 
     try {
       const props = file.audioProperties();
-      assertEquals(props?.containerFormat, "WAV");
-      assertEquals(props?.codec, "PCM");
-      assertEquals(props?.isLossless, true);
-      assertEquals(props?.bitsPerSample, 16);
+      expect(props?.containerFormat).toStrictEqual("WAV");
+      expect(props?.codec).toStrictEqual("PCM");
+      expect(props?.isLossless).toStrictEqual(true);
+      expect(props?.bitsPerSample).toStrictEqual(16);
     } finally {
       file.save();
       file.dispose();
@@ -63,15 +61,15 @@ describe("Codec Detection", () => {
   it("OGG container - Vorbis codec", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const oggPath = join("tests", "test-files", "ogg", "kiss-snippet.ogg");
-    const oggBuffer = await Deno.readFile(oggPath);
+    const oggBuffer = new Uint8Array(await readFile(oggPath));
     const file = await taglib.open(oggBuffer);
 
     try {
       const props = file.audioProperties();
-      assertEquals(props?.containerFormat, "OGG");
-      assertEquals(props?.codec, "Vorbis");
-      assertEquals(props?.isLossless, false);
-      assertEquals(props?.bitsPerSample, 0);
+      expect(props?.containerFormat).toStrictEqual("OGG");
+      expect(props?.codec).toStrictEqual("Vorbis");
+      expect(props?.isLossless).toStrictEqual(false);
+      expect(props?.bitsPerSample).toStrictEqual(0);
     } finally {
       file.save();
       file.dispose();
@@ -81,14 +79,14 @@ describe("Codec Detection", () => {
   it("MP4 container (M4A file) - AAC codec", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const m4aPath = join("tests", "test-files", "mp4", "kiss-snippet.m4a");
-    const m4aBuffer = await Deno.readFile(m4aPath);
+    const m4aBuffer = new Uint8Array(await readFile(m4aPath));
     const file = await taglib.open(m4aBuffer);
 
     try {
       const props = file.audioProperties();
-      assertEquals(props?.containerFormat, "MP4");
-      assertEquals(props?.codec, "AAC");
-      assertEquals(props?.isLossless, false);
+      expect(props?.containerFormat).toStrictEqual("MP4");
+      expect(props?.codec).toStrictEqual("AAC");
+      expect(props?.isLossless).toStrictEqual(false);
       console.log(`M4A bits per sample: ${props?.bitsPerSample}`);
     } finally {
       file.save();

@@ -9,8 +9,8 @@
  * attributes and reports unsupported ones on read.
  */
 
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
 
@@ -27,7 +27,7 @@ async function roundTrip(
   readBack: Record<string, string[]>;
   sameHandle: Record<string, string[]>;
 }> {
-  const src = await Deno.readFile(FIXTURE_PATH.wma);
+  const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
   const tl = await TagLib.initialize({ forceWasmType: writeBackend });
   const file = await tl.open(new Uint8Array(src));
   file.setProperties({ ...props });
@@ -54,24 +54,24 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       const { readBack, sameHandle } = await roundTrip(backend, props);
 
       // Disk truth (read by the OTHER backend): nothing dropped.
-      assertEquals(readBack.replayGainTrackGain, ["-3.00 dB"]);
-      assertEquals(readBack["X-CUSTOM-TAG"], ["1"]);
-      assertEquals(readBack["X-CUSTOM-ATTRIBUTE"], ["custom-value"]);
+      expect(readBack.replayGainTrackGain).toStrictEqual(["-3.00 dB"]);
+      expect(readBack["X-CUSTOM-TAG"]).toStrictEqual(["1"]);
+      expect(readBack["X-CUSTOM-ATTRIBUTE"]).toStrictEqual(["custom-value"]);
 
       // Same-handle read (WASI cache echo) must agree with disk.
-      assertEquals(sameHandle.replayGainTrackGain, ["-3.00 dB"]);
-      assertEquals(sameHandle["X-CUSTOM-TAG"], ["1"]);
+      expect(sameHandle.replayGainTrackGain).toStrictEqual(["-3.00 dB"]);
+      expect(sameHandle["X-CUSTOM-TAG"]).toStrictEqual(["1"]);
     });
 
     it(`[${backend}] multi-value unknown attribute keeps order across a save`, async () => {
       const { readBack } = await roundTrip(backend, {
         "X-CUSTOM-TAG": ["a", "b", "c"],
       });
-      assertEquals(readBack["X-CUSTOM-TAG"], ["a", "b", "c"]);
+      expect(readBack["X-CUSTOM-TAG"]).toStrictEqual(["a", "b", "c"]);
     });
 
     it(`[${backend}] unknown attribute removal via empty list`, async () => {
-      const src = await Deno.readFile(FIXTURE_PATH.wma);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ "X-CUSTOM-TAG": ["1"] });
@@ -90,11 +90,11 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       const file3 = await tl3.open(cleared);
       const props = file3.properties() as Record<string, string[]>;
       file3.dispose();
-      assertEquals(props["X-CUSTOM-TAG"], undefined);
+      expect(props["X-CUSTOM-TAG"]).toStrictEqual(undefined);
     });
 
     it(`[${backend}] unknown attributes survive a no-op save`, async () => {
-      const src = await Deno.readFile(FIXTURE_PATH.wma);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ "X-CUSTOM-TAG": ["1"] });
@@ -112,7 +112,7 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       const file3 = await tl3.open(twice);
       const props = file3.properties() as Record<string, string[]>;
       file3.dispose();
-      assertEquals(props["X-CUSTOM-TAG"], ["1"]);
+      expect(props["X-CUSTOM-TAG"]).toStrictEqual(["1"]);
     });
 
     it(`[${backend}] lowercase-named attributes survive saves (name case normalizes)`, async () => {
@@ -123,7 +123,7 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       // wire keys, so a no-op save DELETED the attribute (taglib-984r
       // review). The value must survive any number of saves, identically on
       // both backends.
-      const src = await Deno.readFile(FIXTURE_PATH.wma);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ "replaygain_track_gain": ["-3.00 dB"] });
@@ -137,7 +137,7 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       const props2 = file2.properties() as Record<string, string[]>;
       const surviving = props2["replayGainTrackGain"] ??
         props2["replaygain_track_gain"];
-      assertEquals(surviving, ["-3.00 dB"]);
+      expect(surviving).toStrictEqual(["-3.00 dB"]);
       file2.save(); // no-op: must not strip the attribute
       const twice = file2.getFileBuffer();
       file2.dispose();
@@ -148,17 +148,17 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       file3.dispose();
       const survived = props["replayGainTrackGain"] ??
         props["replaygain_track_gain"];
-      assertEquals(survived, ["-3.00 dB"]);
+      expect(survived).toStrictEqual(["-3.00 dB"]);
     });
 
     it(`[${backend}] read surfaces mixed-case attribute names verbatim`, async () => {
       // The fixture carries a capital-"A" "Author" attribute; the read merge
       // reports it exactly as stored, not normalized.
-      const src = await Deno.readFile(FIXTURE_PATH.wma);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       const props = file.properties() as Record<string, string[]>;
-      assertEquals(props.AUTHOR, ["Prince and The Revolution"]);
+      expect(props.AUTHOR).toStrictEqual(["Prince and The Revolution"]);
       file.dispose();
     });
 
@@ -177,8 +177,10 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       // deduped set: a deduped set also passes when both spellings are
       // present, which is exactly the stale-duplicate regression this test
       // exists for (measured: a correct write leaves exactly one occurrence).
-      const src = await Deno.readFile(
-        "tests/test-files/wma/wma-lowercase-attr.wma",
+      const src = new Uint8Array(
+        await readFile(
+          "tests/test-files/wma/wma-lowercase-attr.wma",
+        ),
       );
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(src);
@@ -193,12 +195,12 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       const text = new TextDecoder("utf-16le").decode(buf);
       const names = [...text.matchAll(/[A-Za-z_]*replaygain[A-Za-z_]*/gi)]
         .map((m) => m[0]);
-      assertEquals(names, ["replaygain_track_gain"]);
+      expect(names).toStrictEqual(["replaygain_track_gain"]);
 
       const tlR = await TagLib.initialize({ forceWasmType: OTHER[backend] });
       const reopened = await tlR.open(buf);
       const props = reopened.properties() as Record<string, string[]>;
-      assertEquals(props.replayGainTrackGain, ["-9.99 dB"]);
+      expect(props.replayGainTrackGain).toStrictEqual(["-9.99 dB"]);
       reopened.dispose();
     });
   }

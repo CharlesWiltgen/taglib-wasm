@@ -5,8 +5,9 @@
  * are rejected at compile time. Runtime tests verify isFormat() behavior.
  */
 
-import { assert, assertEquals } from "@std/assert";
-import { afterAll, beforeAll, describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
+import { expectDefined } from "./_assert-helpers.ts";
 import type { TypedAudioFile } from "../src/taglib/audio-file-interface.ts";
 import type { FormatPropertyKey } from "../src/types/format-property-keys.ts";
 import type { TypedAudioProperties } from "../src/types/audio-formats.ts";
@@ -155,34 +156,34 @@ describe("isFormat runtime behavior", () => {
 
   it("returns true for matching format", async () => {
     if (!fileExists(FIXTURE_PATH.mp3)) return;
-    const buffer = await Deno.readFile(FIXTURE_PATH.mp3);
+    const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     using file = await taglib.open(buffer);
-    assertEquals(file.isFormat("MP3"), true);
+    expect(file.isFormat("MP3")).toStrictEqual(true);
   });
 
   it("returns false for non-matching format", async () => {
     if (!fileExists(FIXTURE_PATH.mp3)) return;
-    const buffer = await Deno.readFile(FIXTURE_PATH.mp3);
+    const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     using file = await taglib.open(buffer);
-    assertEquals(file.isFormat("FLAC"), false);
+    expect(file.isFormat("FLAC")).toStrictEqual(false);
   });
 
   it("narrows type for property access after isFormat check", async () => {
     if (!fileExists(FIXTURE_PATH.mp3)) return;
-    const buffer = await Deno.readFile(FIXTURE_PATH.mp3);
+    const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     using file = await taglib.open(buffer);
     if (file.isFormat("MP3")) {
       const title = file.getProperty("title")?.[0];
-      assert(title === undefined || typeof title === "string");
+      expect(title === undefined || typeof title === "string").toBeTruthy();
     }
   });
 
   it("returns true for FLAC format", async () => {
     if (!fileExists(FIXTURE_PATH.flac)) return;
-    const buffer = await Deno.readFile(FIXTURE_PATH.flac);
+    const buffer = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     using file = await taglib.open(buffer);
-    assertEquals(file.isFormat("FLAC"), true);
-    assertEquals(file.isFormat("MP3"), false);
+    expect(file.isFormat("FLAC")).toStrictEqual(true);
+    expect(file.isFormat("MP3")).toStrictEqual(false);
   });
 });
 
@@ -281,66 +282,66 @@ describe("TypedAudioProperties narrowing", () => {
 
       it("MP3 audioProperties has mpegVersion=1 and mpegLayer=3", async () => {
         if (!fileExists(FIXTURE_PATH.mp3)) return;
-        const buffer = await Deno.readFile(FIXTURE_PATH.mp3);
+        const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
         using file = await taglib.open(buffer);
         if (file.isFormat("MP3")) {
           const props = file.audioProperties();
-          assert(props !== undefined);
-          assertEquals(props.mpegVersion, 1);
-          assertEquals(props.mpegLayer, 3);
+          expectDefined(props);
+          expect(props.mpegVersion).toStrictEqual(1);
+          expect(props.mpegLayer).toStrictEqual(3);
         }
       });
 
       it("MP4 audioProperties has isEncrypted=false", async () => {
         if (!fileExists(FIXTURE_PATH.m4a)) return;
-        const buffer = await Deno.readFile(FIXTURE_PATH.m4a);
+        const buffer = new Uint8Array(await readFile(FIXTURE_PATH.m4a));
         using file = await taglib.open(buffer);
         if (file.isFormat("MP4")) {
           const props = file.audioProperties();
-          assert(props !== undefined);
-          assertEquals(props.isEncrypted, false);
+          expectDefined(props);
+          expect(props.isEncrypted).toStrictEqual(false);
         }
       });
 
       it("WV audioProperties has formatVersion", async () => {
         if (!fileExists(FIXTURE_PATH.wv)) return;
-        const buffer = await Deno.readFile(FIXTURE_PATH.wv);
+        const buffer = new Uint8Array(await readFile(FIXTURE_PATH.wv));
         using file = await taglib.open(buffer);
         const props = file.audioProperties();
-        assert(props !== undefined);
-        assertEquals(typeof props.formatVersion, "number");
-        assert(props.formatVersion! > 0);
+        expectDefined(props);
+        expect(typeof props.formatVersion).toStrictEqual("number");
+        expect(props.formatVersion! > 0).toBeTruthy();
       });
 
       it("TTA audioProperties has formatVersion=1", async () => {
         if (!fileExists(FIXTURE_PATH.tta)) return;
-        const buffer = await Deno.readFile(FIXTURE_PATH.tta);
+        const buffer = new Uint8Array(await readFile(FIXTURE_PATH.tta));
         using file = await taglib.open(buffer);
         const props = file.audioProperties();
-        assert(props !== undefined);
-        assertEquals(props.formatVersion, 1);
+        expectDefined(props);
+        expect(props.formatVersion).toStrictEqual(1);
       });
 
       it("MPC audioProperties has formatVersion", async () => {
         const mpcPath = "lib/taglib/tests/data/sv8_header.mpc";
         if (!fileExists(mpcPath)) return;
-        const buffer = await Deno.readFile(mpcPath);
+        const buffer = new Uint8Array(await readFile(mpcPath));
         using file = await taglib.open(buffer);
         const props = file.audioProperties();
-        assert(props !== undefined);
-        assertEquals(typeof props.formatVersion, "number");
-        assert(props.formatVersion! > 0);
+        expectDefined(props);
+        expect(typeof props.formatVersion).toStrictEqual("number");
+        expect(props.formatVersion! > 0).toBeTruthy();
       });
 
       it("SHN audioProperties has formatVersion", async () => {
         const shnPath = "lib/taglib/tests/data/2sec-silence.shn";
         if (!fileExists(shnPath)) return;
-        const buffer = await Deno.readFile(shnPath);
+        const buffer = new Uint8Array(await readFile(shnPath));
         using file = await taglib.open(buffer);
         const props = file.audioProperties();
-        assert(props !== undefined);
-        assertEquals(typeof props.formatVersion, "number");
-        assert(props.formatVersion! > 0);
+        expectDefined(props);
+        expect(typeof props.formatVersion).toStrictEqual("number");
+        expect(props.formatVersion! > 0).toBeTruthy();
       });
     });
   }

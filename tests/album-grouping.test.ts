@@ -7,8 +7,11 @@
  * compilation, error paths.
  */
 
-import { assert, assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { expectDefined } from "./_assert-helpers.ts";
 import type {
   AlbumDisc,
   AlbumGroup,
@@ -74,7 +77,7 @@ function albumByTitle(
   title: string,
 ): AlbumGroup {
   const found = result.albums.find((a) => a.album === title);
-  assert(
+  expectDefined(
     found,
     `no album "${title}" in ${
       JSON.stringify(result.albums.map((a) => a.album))
@@ -85,7 +88,7 @@ function albumByTitle(
 
 function discOf(album: AlbumGroup, n: number | undefined): AlbumDisc {
   const found = album.discs.find((d) => d.discNumber === n);
-  assert(
+  expectDefined(
     found,
     `no disc ${n} in ${JSON.stringify(album.discs.map((d) => d.discNumber))}`,
   );
@@ -100,7 +103,7 @@ const R = (dir: string) => `${ROOT}/${dir}`;
 
 describe("discFolderInfo (standalone recognizer)", () => {
   it("classifies the grammar forms with base confidence", () => {
-    assertEquals(discFolderInfo("CD1"), {
+    expect(discFolderInfo("CD1")).toStrictEqual({
       kind: "exact",
       gated: false,
       number: 1,
@@ -109,7 +112,7 @@ describe("discFolderInfo (standalone recognizer)", () => {
       discTitle: undefined,
       confidence: "high",
     });
-    assertEquals(discFolderInfo("Disc One"), {
+    expect(discFolderInfo("Disc One")).toStrictEqual({
       kind: "exact",
       gated: false,
       number: 1,
@@ -118,7 +121,7 @@ describe("discFolderInfo (standalone recognizer)", () => {
       discTitle: undefined,
       confidence: "low",
     });
-    assertEquals(discFolderInfo("Album (Disc 1)"), {
+    expect(discFolderInfo("Album (Disc 1)")).toStrictEqual({
       kind: "embedded",
       gated: false,
       number: 1,
@@ -127,7 +130,7 @@ describe("discFolderInfo (standalone recognizer)", () => {
       discTitle: undefined,
       confidence: "medium",
     });
-    assertEquals(discFolderInfo("Vol 2"), {
+    expect(discFolderInfo("Vol 2")).toStrictEqual({
       kind: "volume",
       gated: false,
       number: 2,
@@ -140,19 +143,19 @@ describe("discFolderInfo (standalone recognizer)", () => {
 
   it("gates title-word markers and side letters", () => {
     const tape = discFolderInfo("Tape 4")!;
-    assertEquals(tape.gated, true);
-    assertEquals(tape.number, 4);
-    assertEquals(tape.confidence, "low");
+    expect(tape.gated).toStrictEqual(true);
+    expect(tape.number).toStrictEqual(4);
+    expect(tape.confidence).toStrictEqual("low");
 
     const side = discFolderInfo("Album (CD D)")!;
-    assertEquals(side.gated, true);
-    assertEquals(side.number, undefined);
-    assertEquals(side.kind, "embedded");
-    assertEquals(side.title, "Album");
+    expect(side.gated).toStrictEqual(true);
+    expect(side.number).toStrictEqual(undefined);
+    expect(side.kind).toStrictEqual("embedded");
+    expect(side.title).toStrictEqual("Album");
 
     const sideA = discFolderInfo("CD A")!;
-    assertEquals(sideA.gated, true);
-    assertEquals(sideA.number, undefined);
+    expect(sideA.gated).toStrictEqual(true);
+    expect(sideA.number).toStrictEqual(undefined);
   });
 
   it("returns undefined for non-disc names", () => {
@@ -168,7 +171,7 @@ describe("discFolderInfo (standalone recognizer)", () => {
         "Bonus",
       ]
     ) {
-      assertEquals(discFolderInfo(name), undefined, name);
+      expect(discFolderInfo(name), name).toStrictEqual(undefined);
     }
   });
 
@@ -204,14 +207,14 @@ describe("discFolderInfo (standalone recognizer)", () => {
         "CD Mix 1",
       ]
     ) {
-      assertEquals(discFolderInfo(name), undefined, name);
+      expect(discFolderInfo(name), name).toStrictEqual(undefined);
     }
   });
 
   it("roman numerals stay discs within a plausible bound", () => {
-    assertEquals(discFolderInfo("Disc IV")!.number, 4);
-    assertEquals(discFolderInfo("Disc XII")!.number, 12);
-    assertEquals(discFolderInfo("Disc L")!.gated, true); // single char: side label
+    expect(discFolderInfo("Disc IV")!.number).toStrictEqual(4);
+    expect(discFolderInfo("Disc XII")!.number).toStrictEqual(12);
+    expect(discFolderInfo("Disc L")!.gated).toStrictEqual(true); // single char: side label
   });
 
   it("record-marker siblings must not fold to the parent (anthology regression)", () => {
@@ -223,9 +226,9 @@ describe("discFolderInfo (standalone recognizer)", () => {
       [`${root}/Bukka White - The Vintage Recordings 1930 - 1940/track2.flac`],
     ]);
     // Each folder is its own album; nothing folds to the anthology root.
-    assertEquals(result.albums.length, 2);
+    expect(result.albums.length).toStrictEqual(2);
     for (const album of result.albums) {
-      assertEquals(album.directory, `${root}/${album.album}`);
+      expect(album.directory).toStrictEqual(`${root}/${album.album}`);
     }
   });
 
@@ -236,10 +239,10 @@ describe("discFolderInfo (standalone recognizer)", () => {
     // marker, disc 4 — the library resolves it to the parent inside
     // groupAlbums, the standalone recognizer just reports the parse.
     const info = discFolderInfo("Felbm - Tape 4")!;
-    assertEquals(info.kind, "embedded");
-    assertEquals(info.title, "Felbm");
-    assertEquals(info.gated, true);
-    assertEquals(info.number, 4);
+    expect(info.kind).toStrictEqual("embedded");
+    expect(info.title).toStrictEqual("Felbm");
+    expect(info.gated).toStrictEqual(true);
+    expect(info.number).toStrictEqual(4);
   });
 });
 
@@ -270,7 +273,7 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
         [R(`Album/${dir}/track2.flac`), { title: "B" }],
       ]);
       const album = albumByTitle(result, "Album");
-      assertEquals(discOf(album, discNumber).items.length, 2);
+      expect(discOf(album, discNumber).items.length).toStrictEqual(2);
     });
   }
 
@@ -281,7 +284,7 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
     ]);
     const album = albumByTitle(result, "Album");
     const disc2 = discOf(album, 2);
-    assertEquals(disc2.folderDiscTitle, "Remastered");
+    expect(disc2.folderDiscTitle).toStrictEqual("Remastered");
   });
 
   it("negatives are not disc folders: Greatest Hits, 2001 A Space Odyssey, CD, Help 1, Abcd1, Scalp 1, Extras, Bonus", () => {
@@ -303,13 +306,10 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
       ]);
       const album = albumByTitle(result, "X");
       // No disc evidence: the files sit in one undefined-number disc.
-      assertEquals(
-        album.discs.length,
-        1,
-        `${dir} must not create disc evidence`,
-      );
-      assertEquals(album.discs[0].discNumber, undefined);
-      assertEquals(album.discs[0].folderDiscNumber, undefined);
+      expect(album.discs.length, `${dir} must not create disc evidence`)
+        .toStrictEqual(1);
+      expect(album.discs[0].discNumber).toStrictEqual(undefined);
+      expect(album.discs[0].folderDiscNumber).toStrictEqual(undefined);
     }
   });
 
@@ -319,7 +319,7 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
       [R("Album/CD 2 of 2/track1.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(discOf(album, 1).totalDiscs, 2);
+    expect(discOf(album, 1).totalDiscs).toStrictEqual(2);
   });
 
   it("title-word markers are gated: lone 'Tape 4' is an album title, not a disc", () => {
@@ -330,9 +330,9 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
       [R("Artist/Felbm - Tape 4/track2.flac")],
     ]);
     const album = albumByTitle(result, "Felbm - Tape 4");
-    assertEquals(album.directory, R("Artist/Felbm - Tape 4"));
-    assertEquals(album.discs.length, 1);
-    assertEquals(album.discs[0].discNumber, undefined);
+    expect(album.directory).toStrictEqual(R("Artist/Felbm - Tape 4"));
+    expect(album.discs.length).toStrictEqual(1);
+    expect(album.discs[0].discNumber).toStrictEqual(undefined);
   });
 
   it("gated marker siblings still fold: Tape 1 + Tape 2", () => {
@@ -341,8 +341,8 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
       [R("Album/Tape 2/track1.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.length, 2);
-    assertEquals(discOf(album, 1).confidence, "low");
+    expect(album.discs.length).toStrictEqual(2);
+    expect(discOf(album, 1).confidence).toStrictEqual("low");
   });
 
   it("gated vinyl and LP siblings fold; lone vinyl does not", () => {
@@ -350,19 +350,19 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
       [R("Artist/Vinyl 1/track1.flac")],
       [R("Artist/Vinyl 1/track2.flac")],
     ]);
-    assertEquals(albumByTitle(lone, "Vinyl 1").discs.length, 1);
+    expect(albumByTitle(lone, "Vinyl 1").discs.length).toStrictEqual(1);
 
     const pair = group([
       [R("Album/Vinyl 1/track1.flac")],
       [R("Album/Vinyl 2/track1.flac")],
     ]);
-    assertEquals(albumByTitle(pair, "Album").discs.length, 2);
+    expect(albumByTitle(pair, "Album").discs.length).toStrictEqual(2);
 
     const lpPair = group([
       [R("Album/LP 1/track1.flac")],
       [R("Album/LP 2/track1.flac")],
     ]);
-    assertEquals(albumByTitle(lpPair, "Album").discs.length, 2);
+    expect(albumByTitle(lpPair, "Album").discs.length).toStrictEqual(2);
   });
 
   it("single-letter tokens are gated: lone 'Album (CD D)' is not a disc", () => {
@@ -374,9 +374,9 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
       [R("Artist/Album (CD D)/track2.flac")],
     ]);
     const album = albumByTitle(result, "Album (CD D)");
-    assertEquals(album.discs.length, 1);
-    assertEquals(album.discs[0].discNumber, undefined);
-    assertEquals(album.directory, R("Artist/Album (CD D)"));
+    expect(album.discs.length).toStrictEqual(1);
+    expect(album.discs[0].discNumber).toStrictEqual(undefined);
+    expect(album.directory).toStrictEqual(R("Artist/Album (CD D)"));
   });
 
   it("side-letter siblings corroborate each other: (CD D) + (CD E) fold", () => {
@@ -385,9 +385,9 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
       [R("Artist/Album (CD E)/track1.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.length, 2);
-    assertEquals(album.discs[0].discNumber, undefined);
-    assertEquals(album.discs[1].discNumber, undefined);
+    expect(album.discs.length).toStrictEqual(2);
+    expect(album.discs[0].discNumber).toStrictEqual(undefined);
+    expect(album.discs[1].discNumber).toStrictEqual(undefined);
   });
 
   it("multi-letter roman numerals stay unconditional: Disc II is disc 2", () => {
@@ -396,7 +396,7 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
       [R("Album/Disc III/track1.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.map((d) => d.discNumber), [2, 3]);
+    expect(album.discs.map((d) => d.discNumber)).toStrictEqual([2, 3]);
   });
 });
 
@@ -411,7 +411,7 @@ describe("sibling corroboration", () => {
       [R("Album (Disc 1)/track2.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(discOf(album, 1).confidence, "medium");
+    expect(discOf(album, 1).confidence).toStrictEqual("medium");
   });
 
   it("embedded pair with a common prefix corroborates to high", () => {
@@ -420,8 +420,8 @@ describe("sibling corroboration", () => {
       [R("Album (Disc 2)/track1.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(discOf(album, 1).confidence, "high");
-    assertEquals(discOf(album, 2).confidence, "high");
+    expect(discOf(album, 1).confidence).toStrictEqual("high");
+    expect(discOf(album, 2).confidence).toStrictEqual("high");
   });
 
   it("embedded folders with divergent prefixes do not collapse", () => {
@@ -431,7 +431,7 @@ describe("sibling corroboration", () => {
       [R("Other (Disc 2)/track1.flac")],
       [R("Other (Disc 2)/track2.flac")],
     ]);
-    assertEquals(result.albums.length, 2);
+    expect(result.albums.length).toStrictEqual(2);
   });
 
   it("a lone bare number is not a disc folder (cannot confirm itself)", () => {
@@ -441,8 +441,8 @@ describe("sibling corroboration", () => {
     ]);
     // "1" at medium-less confidence is not confirmed: files stay in one disc.
     const album = albumByTitle(result, "X");
-    assertEquals(album.discs.length, 1);
-    assertEquals(album.discs[0].folderDiscNumber, undefined);
+    expect(album.discs.length).toStrictEqual(1);
+    expect(album.discs[0].folderDiscNumber).toStrictEqual(undefined);
   });
 
   it("bare numbers 1 and 2 as a set confirm each other", () => {
@@ -451,8 +451,8 @@ describe("sibling corroboration", () => {
       [R("Album/2/track1.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.length, 2);
-    assertEquals(album.discs.map((d) => d.discNumber), [1, 2]);
+    expect(album.discs.length).toStrictEqual(2);
+    expect(album.discs.map((d) => d.discNumber)).toStrictEqual([1, 2]);
   });
 
   it("Bonus Disc alone is not a disc; with numbered siblings it is", () => {
@@ -460,7 +460,7 @@ describe("sibling corroboration", () => {
       [R("Album/Bonus Disc/track1.flac"), { album: "X" }],
       [R("Album/Bonus Disc/track2.flac"), { album: "X" }],
     ]);
-    assertEquals(albumByTitle(alone, "X").discs.length, 1);
+    expect(albumByTitle(alone, "X").discs.length).toStrictEqual(1);
 
     const withSiblings = group([
       [R("Album/Disc 1/track1.flac")],
@@ -468,8 +468,8 @@ describe("sibling corroboration", () => {
       [R("Album/Bonus Disc/track1.flac")],
     ]);
     const album = albumByTitle(withSiblings, "Album");
-    assertEquals(album.discs.length, 3);
-    assertEquals(discOf(album, 1).items.length, 1);
+    expect(album.discs.length).toStrictEqual(3);
+    expect(discOf(album, 1).items.length).toStrictEqual(1);
   });
 
   it("Volume 1 + Volume 2 confirm each other by sibling numbering", () => {
@@ -478,7 +478,7 @@ describe("sibling corroboration", () => {
       [R("Album/Volume 2/track1.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.map((d) => d.discNumber), [1, 2]);
+    expect(album.discs.map((d) => d.discNumber)).toStrictEqual([1, 2]);
   });
 });
 
@@ -492,9 +492,9 @@ describe("folder fallback walk (untagged)", () => {
       [[R("CD1/track1.flac")]],
       { scanRoot: ROOT },
     );
-    assertEquals(result.albums.length, 0);
-    assertEquals(result.unmatched.length, 1);
-    assertEquals(result.unmatched[0].path, R("CD1/track1.flac"));
+    expect(result.albums.length).toStrictEqual(0);
+    expect(result.unmatched.length).toStrictEqual(1);
+    expect(result.unmatched[0].path).toStrictEqual(R("CD1/track1.flac"));
   });
 
   it("Artist/Album/CD1/ resolves to album Artist's 'Album', disc 1", () => {
@@ -503,10 +503,10 @@ describe("folder fallback walk (untagged)", () => {
       [R("Artist/Album/CD1/track2.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.source, "folder");
-    assertEquals(album.directory, R("Artist/Album"));
-    assertEquals(discOf(album, 1).items.length, 2);
-    assertEquals(discOf(album, 1).items[0].albumDir, R("Artist/Album"));
+    expect(album.source).toStrictEqual("folder");
+    expect(album.directory).toStrictEqual(R("Artist/Album"));
+    expect(discOf(album, 1).items.length).toStrictEqual(2);
+    expect(discOf(album, 1).items[0].albumDir).toStrictEqual(R("Artist/Album"));
   });
 
   it("Album (Disc 1)/ yields album 'Album'", () => {
@@ -515,7 +515,7 @@ describe("folder fallback walk (untagged)", () => {
       [R("Artist/Album (Disc 1)/track2.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.directory, R("Artist"));
+    expect(album.directory).toStrictEqual(R("Artist"));
   });
 
   it("sibling embedded folders under one parent collapse into one album", () => {
@@ -523,8 +523,8 @@ describe("folder fallback walk (untagged)", () => {
       [R("Artist/Album (Disc 1)/track1.flac")],
       [R("Artist/Album (Disc 2)/track1.flac")],
     ]);
-    assertEquals(result.albums.length, 1);
-    assertEquals(albumByTitle(result, "Album").discs.length, 2);
+    expect(result.albums.length).toStrictEqual(1);
+    expect(albumByTitle(result, "Album").discs.length).toStrictEqual(2);
   });
 
   it("embedded folders under different parents stay separate", () => {
@@ -534,7 +534,7 @@ describe("folder fallback walk (untagged)", () => {
       [R("Artist B/Album (Disc 1)/track1.flac")],
       [R("Artist B/Album (Disc 1)/track2.flac")],
     ]);
-    assertEquals(result.albums.length, 2);
+    expect(result.albums.length).toStrictEqual(2);
   });
 
   it("single album folder names the group after the root folder (beets)", () => {
@@ -543,13 +543,13 @@ describe("folder fallback walk (untagged)", () => {
       [R("Greatest Hits/track2.flac")],
     ]);
     const album = albumByTitle(result, "Greatest Hits");
-    assertEquals(album.source, "folder");
+    expect(album.source).toStrictEqual("folder");
   });
 
   it("folderFallback: false leaves untagged files unmatched", () => {
     const result = group([[R("Album/track1.flac")]], { folderFallback: false });
-    assertEquals(result.albums.length, 0);
-    assertEquals(result.unmatched.length, 1);
+    expect(result.albums.length).toStrictEqual(0);
+    expect(result.unmatched.length).toStrictEqual(1);
   });
 
   it("mixed tagged/untagged Album (Disc 1)/ merges into the tag-keyed group", () => {
@@ -558,8 +558,8 @@ describe("folder fallback walk (untagged)", () => {
       [R("Album (Disc 1)/track2.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.source, "tags");
-    assertEquals(album.items.length, 2);
+    expect(album.source).toStrictEqual("tags");
+    expect(album.items.length).toStrictEqual(2);
   });
 });
 
@@ -574,7 +574,7 @@ describe("flat filename prefixes", () => {
       [R("Album/2-01 B.flac"), { album: "Album" }],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.map((d) => d.discNumber), [1, 2]);
+    expect(album.discs.map((d) => d.discNumber)).toStrictEqual([1, 2]);
   });
 
   it("101 / 201 split; 101 + 102 stay one disc", () => {
@@ -582,13 +582,13 @@ describe("flat filename prefixes", () => {
       [R("Album/101 A.flac"), { album: "Album" }],
       [R("Album/201 B.flac"), { album: "Album" }],
     ]);
-    assertEquals(albumByTitle(split, "Album").discs.length, 2);
+    expect(albumByTitle(split, "Album").discs.length).toStrictEqual(2);
 
     const one = group([
       [R("Album/101 A.flac"), { album: "Album" }],
       [R("Album/102 B.flac"), { album: "Album" }],
     ]);
-    assertEquals(albumByTitle(one, "Album").discs.length, 1);
+    expect(albumByTitle(one, "Album").discs.length).toStrictEqual(1);
   });
 
   it("10-01 / 11-01 split (separated forms are explicit)", () => {
@@ -597,7 +597,7 @@ describe("flat filename prefixes", () => {
       [R("Album/11-01 B.flac"), { album: "Album" }],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.map((d) => d.discNumber), [10, 11]);
+    expect(album.discs.map((d) => d.discNumber)).toStrictEqual([10, 11]);
   });
 
   it("01-01 and 1-01 are the same disc", () => {
@@ -605,7 +605,7 @@ describe("flat filename prefixes", () => {
       [R("Album/01-01 A.flac"), { album: "Album" }],
       [R("Album/1-02 B.flac"), { album: "Album" }],
     ]);
-    assertEquals(albumByTitle(result, "Album").discs.length, 1);
+    expect(albumByTitle(result, "Album").discs.length).toStrictEqual(1);
   });
 
   it("a prefix-less file in a subdivided folder joins the lowest disc", () => {
@@ -615,8 +615,8 @@ describe("flat filename prefixes", () => {
       [R("Album/00 - Intro.flac"), { album: "Album" }],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(discOf(album, 1).items.length, 2);
-    assertEquals(discOf(album, 2).items.length, 1);
+    expect(discOf(album, 1).items.length).toStrictEqual(2);
+    expect(discOf(album, 2).items.length).toStrictEqual(1);
   });
 
   it("a single-prefix folder stays one disc", () => {
@@ -624,7 +624,7 @@ describe("flat filename prefixes", () => {
       [R("Album/1-01 A.flac"), { album: "Album" }],
       [R("Album/1-02 B.flac"), { album: "Album" }],
     ]);
-    assertEquals(albumByTitle(result, "Album").discs.length, 1);
+    expect(albumByTitle(result, "Album").discs.length).toStrictEqual(1);
   });
 
   it("flatDiscPrefixes: false disables subdivision", () => {
@@ -635,7 +635,7 @@ describe("flat filename prefixes", () => {
       ],
       { flatDiscPrefixes: false },
     );
-    assertEquals(albumByTitle(result, "Album").discs.length, 1);
+    expect(albumByTitle(result, "Album").discs.length).toStrictEqual(1);
   });
 });
 
@@ -651,10 +651,10 @@ describe("disc assembly", () => {
     ]);
     const album = albumByTitle(result, "Album");
     const disc = discOf(album, 3);
-    assertEquals(disc.tagDiscNumber, 3);
-    assertEquals(disc.folderDiscNumber, 2);
-    assertEquals(disc.items[0].discNumber, 3);
-    assertEquals(disc.items[0].albumDir, R("Album"));
+    expect(disc.tagDiscNumber).toStrictEqual(3);
+    expect(disc.folderDiscNumber).toStrictEqual(2);
+    expect(disc.items[0].discNumber).toStrictEqual(3);
+    expect(disc.items[0].albumDir).toStrictEqual(R("Album"));
   });
 
   it("folder number is the fallback when tags are absent", () => {
@@ -663,8 +663,8 @@ describe("disc assembly", () => {
       [R("Album/Disc 2/track2.flac")],
     ]);
     const disc = discOf(albumByTitle(result, "Album"), 2);
-    assertEquals(disc.tagDiscNumber, undefined);
-    assertEquals(disc.folderDiscNumber, 2);
+    expect(disc.tagDiscNumber).toStrictEqual(undefined);
+    expect(disc.folderDiscNumber).toStrictEqual(2);
   });
 
   it("conflicting tag disc numbers fall back to the folder", () => {
@@ -673,7 +673,7 @@ describe("disc assembly", () => {
       [R("Album/Disc 2/track2.flac"), { album: "Album", discNumber: 3 }],
     ]);
     const disc = discOf(albumByTitle(result, "Album"), 2);
-    assertEquals(disc.tagDiscNumber, undefined);
+    expect(disc.tagDiscNumber).toStrictEqual(undefined);
   });
 
   it("folders with matching tag disc numbers merge even when folder numbers differ", () => {
@@ -682,8 +682,8 @@ describe("disc assembly", () => {
       [R("Box/Disc 3/track1.flac"), { album: "X", discNumber: 1 }],
     ]);
     const album = albumByTitle(result, "X");
-    assertEquals(album.discs.length, 1);
-    assertEquals(discOf(album, 1).items.length, 2);
+    expect(album.discs.length).toStrictEqual(1);
+    expect(discOf(album, 1).items.length).toStrictEqual(2);
   });
 
   it("Disc 1 and Disc 1 (Bonus) merge into one disc", () => {
@@ -692,8 +692,8 @@ describe("disc assembly", () => {
       [R("Album/Disc 1 (Bonus)/track2.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.length, 1);
-    assertEquals(discOf(album, 1).items.length, 2);
+    expect(album.discs.length).toStrictEqual(1);
+    expect(discOf(album, 1).items.length).toStrictEqual(2);
   });
 
   it("minFolderConfidence: high drops a lone embedded disc folder", () => {
@@ -705,7 +705,7 @@ describe("disc assembly", () => {
     });
     // The folder is no longer a disc: it becomes a plain folder album.
     const album = albumByTitle(result, "Album (Disc 1)");
-    assertEquals(album.discs[0].discNumber, undefined);
+    expect(album.discs[0].discNumber).toStrictEqual(undefined);
   });
 
   it("totalDiscs chain: tag total wins, then of-N, then max sibling", () => {
@@ -713,19 +713,22 @@ describe("disc assembly", () => {
       [R("Album/Disc 1/track1.flac"), { album: "Album", totalDiscs: 2 }],
       [R("Album/Disc 2/track1.flac"), { album: "Album", totalDiscs: 2 }],
     ]);
-    assertEquals(discOf(albumByTitle(tagged, "Album"), 1).totalDiscs, 2);
+    expect(discOf(albumByTitle(tagged, "Album"), 1).totalDiscs).toStrictEqual(
+      2,
+    );
 
     const ofN = group([
       [R("Album/CD 1 of 3/track1.flac")],
       [R("Album/CD 2 of 3/track1.flac")],
     ]);
-    assertEquals(discOf(albumByTitle(ofN, "Album"), 1).totalDiscs, 3);
+    expect(discOf(albumByTitle(ofN, "Album"), 1).totalDiscs).toStrictEqual(3);
 
     const maxSibling = group([
       [R("Album/Disc 1/track1.flac")],
       [R("Album/Disc 3/track1.flac")],
     ]);
-    assertEquals(discOf(albumByTitle(maxSibling, "Album"), 1).totalDiscs, 3);
+    expect(discOf(albumByTitle(maxSibling, "Album"), 1).totalDiscs)
+      .toStrictEqual(3);
   });
 
   it("files without disc evidence join the lowest-numbered disc", () => {
@@ -735,7 +738,7 @@ describe("disc assembly", () => {
       [R("Album/loose.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(discOf(album, 2).items.length, 2);
+    expect(discOf(album, 2).items.length).toStrictEqual(2);
   });
 });
 
@@ -750,8 +753,8 @@ describe("nested and flattened triggers", () => {
       [R("Artist/Album/CD2/track1.flac")],
     ]);
     const album = albumByTitle(result, "Album");
-    assertEquals(album.discs.length, 2);
-    assertEquals(album.directory, R("Artist/Album"));
+    expect(album.discs.length).toStrictEqual(2);
+    expect(album.directory).toStrictEqual(R("Artist/Album"));
   });
 
   it("a directory whose own name parses as a disc folder carries evidence into its parent context", () => {
@@ -761,7 +764,7 @@ describe("nested and flattened triggers", () => {
     ]);
     const album = albumByTitle(result, "Album");
     // track1 disc 1; track2 has no evidence -> joins disc 1.
-    assertEquals(discOf(album, 1).items.length, 2);
+    expect(discOf(album, 1).items.length).toStrictEqual(2);
   });
 });
 
@@ -777,13 +780,13 @@ describe("mixed albums", () => {
       [R("Box/Disc 1/track3.flac"), { album: "Album B" }],
       [R("Box/Disc 1/track4.flac"), { album: "Album B" }],
     ]);
-    assertEquals(result.albums.length, 2);
+    expect(result.albums.length).toStrictEqual(2);
     const a = albumByTitle(result, "Album A");
     const b = albumByTitle(result, "Album B");
-    assertEquals(discOf(a, 1).items.length, 2);
-    assertEquals(discOf(b, 1).items.length, 2);
-    assertEquals(a.items[0].albumDir, R("Box"));
-    assertEquals(b.items[0].albumDir, R("Box"));
+    expect(discOf(a, 1).items.length).toStrictEqual(2);
+    expect(discOf(b, 1).items.length).toStrictEqual(2);
+    expect(a.items[0].albumDir).toStrictEqual(R("Box"));
+    expect(b.items[0].albumDir).toStrictEqual(R("Box"));
   });
 
   it("generic album artist folds into an album-only key", () => {
@@ -791,10 +794,10 @@ describe("mixed albums", () => {
       [R("Comp/1-01.flac"), { album: "Hits", albumArtist: "Various Artists" }],
       [R("Comp/1-02.flac"), { album: "hits", albumArtist: "VA" }],
     ]);
-    assertEquals(result.albums.length, 1);
+    expect(result.albums.length).toStrictEqual(1);
     const album = albumByTitle(result, "Hits");
-    assertEquals(album.albumArtist, undefined);
-    assertEquals(album.items.length, 2);
+    expect(album.albumArtist).toStrictEqual(undefined);
+    expect(album.items.length).toStrictEqual(2);
   });
 
   it("tagged and untagged files across sibling disc folders collapse into one album", () => {
@@ -804,11 +807,11 @@ describe("mixed albums", () => {
       [R("Psychocandy/CD2/06 - C.flac"), { album: "Psychocandy" }],
       [R("Psychocandy/CD2/07 - D.flac"), { album: "Psychocandy" }],
     ]);
-    assertEquals(result.albums.length, 1);
+    expect(result.albums.length).toStrictEqual(1);
     const album = albumByTitle(result, "Psychocandy");
-    assertEquals(album.source, "tags");
-    assertEquals(album.items.length, 4);
-    assertEquals(album.discs.length, 2);
+    expect(album.source).toStrictEqual("tags");
+    expect(album.items.length).toStrictEqual(4);
+    expect(album.discs.length).toStrictEqual(2);
   });
 });
 
@@ -857,45 +860,42 @@ describe("invariants", () => {
       const seen = new Set<string>();
       for (const album of result.albums) {
         for (const item of album.items) {
-          assert(
-            okPaths.has(item.path),
-            `album item ${item.path} not in input`,
-          );
-          assert(!seen.has(item.path), `duplicate ${item.path} in albums`);
+          expect(okPaths.has(item.path), `album item ${item.path} not in input`)
+            .toBeTruthy();
+          expect(!seen.has(item.path), `duplicate ${item.path} in albums`)
+            .toBeTruthy();
           seen.add(item.path);
         }
-        assert(album.discs.length >= 1, `${name}: discs >= 1`);
+        expect(album.discs.length >= 1, `${name}: discs >= 1`).toBeTruthy();
         for (const disc of album.discs) {
-          assert(disc.items.length >= 1, `${name}: items >= 1`);
+          expect(disc.items.length >= 1, `${name}: items >= 1`).toBeTruthy();
           for (const item of disc.items) {
-            assertEquals(
+            expect(
               item.discNumber,
-              disc.discNumber,
               `${name}: item.discNumber must match its disc`,
-            );
-            assertEquals(
+            ).toStrictEqual(disc.discNumber);
+            expect(
               item.albumDir,
-              disc.items[0].albumDir,
               `${name}: item.albumDir must be consistent within a disc`,
-            );
+            ).toStrictEqual(disc.items[0].albumDir);
           }
         }
       }
       for (const item of result.singles) {
-        assert(!seen.has(item.path), `duplicate ${item.path} in singles`);
+        expect(!seen.has(item.path), `duplicate ${item.path} in singles`)
+          .toBeTruthy();
         seen.add(item.path);
       }
       for (const item of result.unmatched) {
-        assert(!seen.has(item.path), `duplicate ${item.path} in unmatched`);
+        expect(!seen.has(item.path), `duplicate ${item.path} in unmatched`)
+          .toBeTruthy();
         seen.add(item.path);
       }
-      assertEquals(
-        seen.size,
+      expect(seen.size, `${name}: partition covers all ok items`).toStrictEqual(
         okPaths.size,
-        `${name}: partition covers all ok items`,
       );
       for (const err of result.errors) {
-        assertEquals(err.path, "/music/broken.flac");
+        expect(err.path).toStrictEqual("/music/broken.flac");
       }
     });
   }
@@ -908,8 +908,7 @@ describe("invariants", () => {
     ];
     const a = group(files);
     const b = group(files);
-    assertEquals(
-      a.albums.map((x) => x.key),
+    expect(a.albums.map((x) => x.key)).toStrictEqual(
       b.albums.map((x) => x.key),
     );
   });
@@ -921,18 +920,18 @@ describe("invariants", () => {
       [R("Album/track2.flac"), { album: "Album" }],
     ]);
     for (const album of result.albums) {
-      assert(album.items.length >= 2);
+      expect(album.items.length >= 2).toBeTruthy();
     }
-    assertEquals(result.singles.length, 1);
-    assertEquals(result.singles[0].path, R("Single/track1.flac"));
+    expect(result.singles.length).toStrictEqual(1);
+    expect(result.singles[0].path).toStrictEqual(R("Single/track1.flac"));
   });
 
   it("empty input returns empty collections", () => {
     const result = group([]);
-    assertEquals(result.albums.length, 0);
-    assertEquals(result.singles.length, 0);
-    assertEquals(result.unmatched.length, 0);
-    assertEquals(result.errors.length, 0);
+    expect(result.albums.length).toStrictEqual(0);
+    expect(result.singles.length).toStrictEqual(0);
+    expect(result.unmatched.length).toStrictEqual(0);
+    expect(result.errors.length).toStrictEqual(0);
   });
 });
 
@@ -949,10 +948,10 @@ describe("error paths", () => {
         errorFile(R("Album/broken.flac")),
       ],
     } as never, { scanRoot: ROOT });
-    assertEquals(result.errors.length, 1);
-    assertEquals(result.errors[0].path, R("Album/broken.flac"));
-    assertEquals(result.errors[0].error.message, "boom");
-    assertEquals(albumByTitle(result, "Album").items.length, 2);
+    expect(result.errors.length).toStrictEqual(1);
+    expect(result.errors[0].path).toStrictEqual(R("Album/broken.flac"));
+    expect(result.errors[0].error.message).toStrictEqual("boom");
+    expect(albumByTitle(result, "Album").items.length).toStrictEqual(2);
   });
 });
 
@@ -962,20 +961,22 @@ describe("error paths", () => {
 
 describe("scanForAlbums integration", () => {
   it("scans a disc-folder tree into one album with two discs", async () => {
-    const tempDir = await Deno.makeTempDir();
+    const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
     try {
       // Pass the URL, not .pathname: on Windows the URL pathname is
-      // "/D:/a/..." — a root-relative path that Deno.readFile cannot resolve
-      // (os error 3). Deno's fs APIs accept file:// URLs on all platforms.
-      const mp3Data = await Deno.readFile(
-        new URL("test-files/mp3/kiss-snippet.mp3", import.meta.url),
+      // "/D:/a/..." — a root-relative path that readFile cannot resolve
+      // (os error 3). Node's fs APIs accept file:// URL objects on all platforms.
+      const mp3Data = new Uint8Array(
+        await readFile(
+          new URL("test-files/mp3/kiss-snippet.mp3", import.meta.url),
+        ),
       );
       const mk = async (rel: string) => {
         const full = `${tempDir}/${rel}`;
-        await Deno.mkdir(`${tempDir}/${rel.slice(0, rel.lastIndexOf("/"))}`, {
+        await mkdir(`${tempDir}/${rel.slice(0, rel.lastIndexOf("/"))}`, {
           recursive: true,
         });
-        await Deno.writeFile(full, mp3Data);
+        await writeFile(full, mp3Data);
         return full;
       };
       const disc1 = await mk("Artist/Album/Disc 1/01 - A.mp3");
@@ -984,31 +985,28 @@ describe("scanForAlbums integration", () => {
 
       const result = await scanForAlbums(tempDir, { recursive: true });
 
-      assertEquals(result.errors.length, 0, JSON.stringify(result.errors));
-      assertEquals(result.albums.length, 1);
+      expect(result.errors.length, JSON.stringify(result.errors)).toStrictEqual(
+        0,
+      );
+      expect(result.albums.length).toStrictEqual(1);
       const album = result.albums[0];
       // The fixture's tag is "Parade - ..." — tags are authority, so all
       // three copies group under it despite the folder name.
-      assertEquals(album.items.length, 3);
-      assertEquals(album.discs.length, 2);
+      expect(album.items.length).toStrictEqual(3);
+      expect(album.discs.length).toStrictEqual(2);
       const disc1Files = album.discs.find((d) => d.discNumber === 1)!.items;
       const disc2Files = album.discs.find((d) => d.discNumber === 2)!.items;
-      assertEquals(disc1Files.length, 2); // disc 1 file + loose file joins lowest
-      assertEquals(disc2Files.length, 1);
-      assertEquals(
-        disc1Files.find((i) => i.path === disc1)?.albumDir,
+      expect(disc1Files.length).toStrictEqual(2); // disc 1 file + loose file joins lowest
+      expect(disc2Files.length).toStrictEqual(1);
+      expect(disc1Files.find((i) => i.path === disc1)?.albumDir).toStrictEqual(
         `${tempDir}/Artist/Album`,
       );
-      assertEquals(
-        disc2Files[0].albumDir,
-        `${tempDir}/Artist/Album`,
-      );
-      assertEquals(
-        disc1Files.find((i) => i.path === loose)?.albumDir,
+      expect(disc2Files[0].albumDir).toStrictEqual(`${tempDir}/Artist/Album`);
+      expect(disc1Files.find((i) => i.path === loose)?.albumDir).toStrictEqual(
         `${tempDir}/Artist/Album`,
       );
     } finally {
-      await Deno.remove(tempDir, { recursive: true });
+      await rm(tempDir, { recursive: true });
     }
   });
 });
@@ -1016,8 +1014,8 @@ describe("scanForAlbums integration", () => {
 describe("singles", () => {
   it("a 1-file tag-keyed group is a single, not an album", () => {
     const result = group([[R("Solo/track1.flac"), { album: "Solo" }]]);
-    assertEquals(result.albums.length, 0);
-    assertEquals(result.singles.length, 1);
+    expect(result.albums.length).toStrictEqual(0);
+    expect(result.singles.length).toStrictEqual(1);
   });
 
   it("a 2-file group never splits into singles", () => {
@@ -1025,14 +1023,14 @@ describe("singles", () => {
       [R("Album/track1.flac"), { album: "Album" }],
       [R("Album/track2.flac"), { album: "Album" }],
     ]);
-    assertEquals(result.albums.length, 1);
-    assertEquals(result.singles.length, 0);
+    expect(result.albums.length).toStrictEqual(1);
+    expect(result.singles.length).toStrictEqual(0);
   });
 
   it("untagged single-file directory is a single", () => {
     const result = group([[R("Solo/track1.flac")]]);
-    assertEquals(result.albums.length, 0);
-    assertEquals(result.singles.length, 1);
+    expect(result.albums.length).toStrictEqual(0);
+    expect(result.singles.length).toStrictEqual(1);
   });
 });
 
@@ -1046,24 +1044,24 @@ describe("compilation flag", () => {
       [R("Album/track1.flac"), { album: "Album", compilation: true }],
       [R("Album/track2.flac"), { album: "Album", compilation: true }],
     ]);
-    assertEquals(albumByTitle(yes, "Album").compilation, true);
+    expect(albumByTitle(yes, "Album").compilation).toStrictEqual(true);
 
     const no = group([
       [R("Album/track1.flac"), { album: "Album", compilation: false }],
       [R("Album/track2.flac"), { album: "Album", compilation: false }],
     ]);
-    assertEquals(albumByTitle(no, "Album").compilation, false);
+    expect(albumByTitle(no, "Album").compilation).toStrictEqual(false);
 
     const mixed = group([
       [R("Album/track1.flac"), { album: "Album", compilation: true }],
       [R("Album/track2.flac"), { album: "Album", compilation: false }],
     ]);
-    assertEquals(albumByTitle(mixed, "Album").compilation, undefined);
+    expect(albumByTitle(mixed, "Album").compilation).toStrictEqual(undefined);
 
     const absent = group([
       [R("Album/track1.flac"), { album: "Album" }],
       [R("Album/track2.flac"), { album: "Album" }],
     ]);
-    assertEquals(albumByTitle(absent, "Album").compilation, undefined);
+    expect(albumByTitle(absent, "Album").compilation).toStrictEqual(undefined);
   });
 });

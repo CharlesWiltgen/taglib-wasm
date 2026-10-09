@@ -1,11 +1,9 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview Tests for API realignment: renamed functions, edit(), fluent setters
  */
 
-import { assert, assertEquals, assertExists, assertRejects } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { expectDefined, expectRejects } from "./_assert-helpers.ts";
 import { TagLib } from "../src/taglib.ts";
 import { TEST_FILES, withTempFile } from "./test-utils.ts";
 import { readFileData } from "../src/utils/file.ts";
@@ -20,9 +18,9 @@ describe("API Realignment", () => {
     it("readFormat detects audio formats", async () => {
       const { readFormat } = await import("../src/simple/index.ts");
 
-      assertEquals(await readFormat(TEST_FILES.mp3), "MP3");
-      assertEquals(await readFormat(TEST_FILES.flac), "FLAC");
-      assertEquals(await readFormat(TEST_FILES.ogg), "OGG");
+      expect(await readFormat(TEST_FILES.mp3)).toStrictEqual("MP3");
+      expect(await readFormat(TEST_FILES.flac)).toStrictEqual("FLAC");
+      expect(await readFormat(TEST_FILES.ogg)).toStrictEqual("OGG");
     });
 
     it("readCoverArt reads primary cover art", async () => {
@@ -34,12 +32,12 @@ describe("API Realignment", () => {
       const buffer = await readFileData(TEST_FILES.mp3);
 
       const noCover = await readCoverArt(buffer);
-      assertEquals(noCover, undefined);
+      expect(noCover).toStrictEqual(undefined);
 
       const withArt = await applyCoverArt(buffer, RED_PNG, "image/png");
       const cover = await readCoverArt(withArt);
-      assertExists(cover);
-      assertEquals(cover!.length, RED_PNG.length);
+      expectDefined(cover);
+      expect(cover!.length).toStrictEqual(RED_PNG.length);
     });
 
     it("applyCoverArt sets primary cover art", async () => {
@@ -50,10 +48,10 @@ describe("API Realignment", () => {
 
       const buffer = await readFileData(TEST_FILES.mp3);
       const result = await applyCoverArt(buffer, RED_PNG, "image/png");
-      assert(result.length > buffer.length);
+      expect(result.length > buffer.length).toBeTruthy();
 
       const cover = await readCoverArt(result);
-      assertExists(cover);
+      expectDefined(cover);
     });
 
     it("readPictureMetadata returns metadata without data", async () => {
@@ -73,9 +71,9 @@ describe("API Realignment", () => {
       ]);
 
       const metadata = await readPictureMetadata(withPic);
-      assertEquals(metadata.length, 1);
-      assertEquals(metadata[0].mimeType, "image/png");
-      assertEquals(metadata[0].size, RED_PNG.length);
+      expect(metadata.length).toStrictEqual(1);
+      expect(metadata[0].mimeType).toStrictEqual("image/png");
+      expect(metadata[0].size).toStrictEqual(RED_PNG.length);
     });
   });
 
@@ -91,8 +89,8 @@ describe("API Realignment", () => {
       // With overload signatures, result is typed as Uint8Array (not void | Uint8Array)
       const verifyFile = await taglib.open(result);
       const tags = verifyFile.tag();
-      assertEquals(tags.title, "Edited Title");
-      assertEquals(tags.artist, "Edited Artist");
+      expect(tags.title).toStrictEqual("Edited Title");
+      expect(tags.artist).toStrictEqual("Edited Artist");
       verifyFile.dispose();
     });
 
@@ -105,12 +103,14 @@ describe("API Realignment", () => {
           file.tag().setTitle("Disk Edit").setYear(2026);
         });
 
-        assertEquals(result, undefined, "Should return void for path input");
+        expect(result, "Should return void for path input").toStrictEqual(
+          undefined,
+        );
 
         const verifyFile = await taglib.open(path);
         const tags = verifyFile.tag();
-        assertEquals(tags.title, "Disk Edit");
-        assertEquals(tags.year, 2026);
+        expect(tags.title).toStrictEqual("Disk Edit");
+        expect(tags.year).toStrictEqual(2026);
         verifyFile.dispose();
       });
     });
@@ -125,7 +125,7 @@ describe("API Realignment", () => {
       });
 
       const verifyFile = await taglib.open(result);
-      assertEquals(verifyFile.tag().title, "Async Edit");
+      expect(verifyFile.tag().title).toStrictEqual("Async Edit");
       verifyFile.dispose();
     });
 
@@ -133,7 +133,7 @@ describe("API Realignment", () => {
       const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
       const buffer = await readFileData(TEST_FILES.mp3);
 
-      await assertRejects(
+      await expectRejects(
         () =>
           taglib.edit(buffer, () => {
             throw new Error("Callback error");
@@ -144,7 +144,7 @@ describe("API Realignment", () => {
 
       // Should not leak — verify we can still open files
       const file = await taglib.open(buffer);
-      assert(file.isValid());
+      expect(file.isValid()).toBeTruthy();
       file.dispose();
     });
   });
@@ -165,16 +165,16 @@ describe("API Realignment", () => {
         .setGenre("Electronic")
         .setComment("Fluent comment");
 
-      assertEquals(result, tag);
+      expect(result).toStrictEqual(tag);
 
       const updated = file.tag();
-      assertEquals(updated.title, "Fluent Title");
-      assertEquals(updated.artist, "Fluent Artist");
-      assertEquals(updated.album, "Fluent Album");
-      assertEquals(updated.year, 2026);
-      assertEquals(updated.track, 7);
-      assertEquals(updated.genre, "Electronic");
-      assertEquals(updated.comment, "Fluent comment");
+      expect(updated.title).toStrictEqual("Fluent Title");
+      expect(updated.artist).toStrictEqual("Fluent Artist");
+      expect(updated.album).toStrictEqual("Fluent Album");
+      expect(updated.year).toStrictEqual(2026);
+      expect(updated.track).toStrictEqual(7);
+      expect(updated.genre).toStrictEqual("Electronic");
+      expect(updated.comment).toStrictEqual("Fluent comment");
 
       file.dispose();
     });
@@ -192,9 +192,9 @@ describe("API Realignment", () => {
 
       const verifyFile = await taglib.open(result);
       const tags = verifyFile.tag();
-      assertEquals(tags.title, "Chained in Edit");
-      assertEquals(tags.artist, "Chain Artist");
-      assertEquals(tags.year, 2026);
+      expect(tags.title).toStrictEqual("Chained in Edit");
+      expect(tags.artist).toStrictEqual("Chain Artist");
+      expect(tags.year).toStrictEqual(2026);
       verifyFile.dispose();
     });
   });

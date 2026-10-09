@@ -4,13 +4,9 @@
  * Unicode tests live in unicode-comprehensive.test.ts (forEachBackend).
  */
 
-import { describe, it } from "@std/testing/bdd";
-import {
-  assert,
-  type assertEquals,
-  assertRejects,
-  type assertThrows,
-} from "@std/assert";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
+import { expectDefined, expectRejects } from "./_assert-helpers.ts";
 import { TagLib } from "../src/taglib.ts";
 import type { AudioFile } from "../src/taglib.ts";
 import {
@@ -43,11 +39,10 @@ describe("EdgeCases", () => {
     for (const size of sizes) {
       const smallBuffer = new Uint8Array(size);
 
-      await assertRejects(
+      await expectRejects(
         async () => await taglib.open(smallBuffer.buffer),
         InvalidFormatError,
         `${size} bytes`,
-        `Should reject ${size} byte buffer with helpful message`,
       );
     }
   });
@@ -56,33 +51,29 @@ describe("EdgeCases", () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
 
     // Test Full API
-    await assertRejects(
+    await expectRejects(
       async () => await taglib.open(null as any),
       Error,
       "[object Null]",
-      "Full API should reject null input",
     );
 
-    await assertRejects(
+    await expectRejects(
       async () => await taglib.open(undefined as any),
       Error,
       "[object Undefined]",
-      "Full API should reject undefined input",
     );
 
     // Test Simple API
-    await assertRejects(
+    await expectRejects(
       async () => await readTags(null as any),
       FileOperationError,
       "Invalid file input",
-      "Simple API should reject null input",
     );
 
-    await assertRejects(
+    await expectRejects(
       async () => await readTags(undefined as any),
       FileOperationError,
       "Invalid file input",
-      "Simple API should reject undefined input",
     );
   });
 
@@ -98,18 +89,16 @@ describe("EdgeCases", () => {
 
     for (const { value, type } of wrongInputs) {
       if (type === "String") {
-        await assertRejects(
+        await expectRejects(
           async () => await readTags(value as any),
           FileOperationError,
           undefined,
-          `Should reject ${type} input with descriptive error`,
         );
       } else {
-        await assertRejects(
+        await expectRejects(
           async () => await readTags(value as any),
           FileOperationError,
           "Invalid file input",
-          `Should reject ${type} input with descriptive error`,
         );
       }
     }
@@ -121,21 +110,19 @@ describe("EdgeCases", () => {
     // Test completely empty buffer
     const emptyBuffer = new Uint8Array(0);
 
-    await assertRejects(
+    await expectRejects(
       async () => await taglib.open(emptyBuffer.buffer),
       InvalidFormatError,
       "0 bytes",
-      "Should reject empty buffer with size info",
     );
 
     // Test empty ArrayBuffer
     const emptyArrayBuffer = new ArrayBuffer(0);
 
-    await assertRejects(
+    await expectRejects(
       async () => await taglib.open(emptyArrayBuffer),
       InvalidFormatError,
       "0 bytes",
-      "Should reject empty ArrayBuffer",
     );
   });
 
@@ -147,11 +134,10 @@ describe("EdgeCases", () => {
     const paddedText = new Uint8Array(2048);
     paddedText.set(textData);
 
-    await assertRejects(
+    await expectRejects(
       async () => await taglib.open(paddedText.buffer),
       InvalidFormatError,
       "Invalid audio",
-      "Should reject text data as invalid audio",
     );
 
     // Test with definitely non-audio data (avoid random chance of matching audio signatures)
@@ -162,22 +148,20 @@ describe("EdgeCases", () => {
       nonAudioData[i] = 0xAB; // Use a specific non-audio byte pattern
     }
 
-    await assertRejects(
+    await expectRejects(
       async () => await taglib.open(nonAudioData.buffer),
       InvalidFormatError,
       "Invalid audio",
-      "Should reject non-audio data as invalid audio",
     );
 
     // Test with PNG signature
     const pngData = new Uint8Array(2048);
     pngData.set([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]); // PNG header
 
-    await assertRejects(
+    await expectRejects(
       async () => await taglib.open(pngData.buffer),
       InvalidFormatError,
       "Invalid audio",
-      "Should reject image data as invalid audio",
     );
   });
 
@@ -189,28 +173,34 @@ describe("EdgeCases", () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
 
     // We'll use a valid file and check that properties are reasonable
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
     const file = await taglib.open(audioData.buffer);
 
     try {
       const props = file.audioProperties();
 
       // Verify properties are valid numbers
-      assert(props !== undefined, "Properties should not be undefined");
-      assert(Number.isFinite(props.duration), "Duration should be finite");
-      assert(props.duration >= 0, "Duration should not be negative");
+      expectDefined(props, "Properties should not be undefined");
+      expect(Number.isFinite(props.duration), "Duration should be finite")
+        .toBeTruthy();
+      expect(props.duration >= 0, "Duration should not be negative")
+        .toBeTruthy();
 
-      assert(Number.isFinite(props.bitrate), "Bitrate should be finite");
-      assert(props.bitrate > 0, "Bitrate should be positive");
+      expect(Number.isFinite(props.bitrate), "Bitrate should be finite")
+        .toBeTruthy();
+      expect(props.bitrate > 0, "Bitrate should be positive").toBeTruthy();
 
-      assert(Number.isFinite(props.sampleRate), "Sample rate should be finite");
-      assert(props.sampleRate > 0, "Sample rate should be positive");
+      expect(Number.isFinite(props.sampleRate), "Sample rate should be finite")
+        .toBeTruthy();
+      expect(props.sampleRate > 0, "Sample rate should be positive")
+        .toBeTruthy();
 
-      assert(Number.isInteger(props.channels), "Channels should be integer");
-      assert(
+      expect(Number.isInteger(props.channels), "Channels should be integer")
+        .toBeTruthy();
+      expect(
         props.channels > 0 && props.channels <= 8,
         "Channels should be 1-8",
-      );
+      ).toBeTruthy();
     } finally {
       file.dispose();
     }
@@ -225,21 +215,21 @@ describe("EdgeCases", () => {
     ];
 
     for (const { path, format } of formats) {
-      const audioData = await Deno.readFile(path);
+      const audioData = new Uint8Array(await readFile(path));
       const props = await readProperties(audioData);
 
       // Common validations
-      assert(
+      expect(
         props.duration > 0 && props.duration < 3600,
         `${format}: Duration should be reasonable (0-3600s)`,
-      );
+      ).toBeTruthy();
 
-      assert(
+      expect(
         props.bitrate > 0 && props.bitrate < 10000,
         `${format}: Bitrate should be reasonable (0-10Mbps)`,
-      );
+      ).toBeTruthy();
 
-      assert(
+      expect(
         [
           8000,
           11025,
@@ -255,12 +245,12 @@ describe("EdgeCases", () => {
         ]
           .includes(props.sampleRate) || props.sampleRate > 0,
         `${format}: Sample rate should be standard or at least positive`,
-      );
+      ).toBeTruthy();
 
-      assert(
+      expect(
         [1, 2, 3, 4, 5, 6, 7, 8].includes(props.channels),
         `${format}: Channels should be 1-8`,
-      );
+      ).toBeTruthy();
     }
   });
 
@@ -300,20 +290,23 @@ describe("EdgeCases", () => {
       const props = file.audioProperties();
 
       // If we get here, properties should at least be safe values
-      assert(props !== undefined, "Properties should not be undefined");
-      assert(Number.isFinite(props.duration), "Should not return NaN duration");
-      assert(Number.isFinite(props.bitrate), "Should not return NaN bitrate");
-      assert(props.duration >= 0, "Duration should not be negative");
-      assert(props.bitrate >= 0, "Bitrate should not be negative");
+      expectDefined(props, "Properties should not be undefined");
+      expect(Number.isFinite(props.duration), "Should not return NaN duration")
+        .toBeTruthy();
+      expect(Number.isFinite(props.bitrate), "Should not return NaN bitrate")
+        .toBeTruthy();
+      expect(props.duration >= 0, "Duration should not be negative")
+        .toBeTruthy();
+      expect(props.bitrate >= 0, "Bitrate should not be negative").toBeTruthy();
 
       file.dispose();
     } catch (error) {
       // Either opening failed or properties failed - both are acceptable
-      assert(
+      expect(
         error instanceof InvalidFormatError ||
           error instanceof Error,
         "Should throw an error for corrupted data",
-      );
+      ).toBeTruthy();
     }
 
     // The test passes if either:
@@ -356,10 +349,8 @@ describe("EdgeCases", () => {
       try {
         opened = await taglib.open(DEGENERATE_MP3);
       } catch (error) {
-        assert(
-          error instanceof Error,
-          "a rejection must be a catchable Error",
-        );
+        expect(error instanceof Error, "a rejection must be a catchable Error")
+          .toBeTruthy();
         return;
       }
       opened.properties();

@@ -1,5 +1,5 @@
-import { assertEquals, assertThrows } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { expectThrows } from "../../tests/_assert-helpers.ts";
 import { assertFrameId, assertMp3, toPublicFrame } from "./id3v2-frames.ts";
 import { MetadataError, UnsupportedFormatError } from "../errors/classes.ts";
 
@@ -12,7 +12,7 @@ describe("assertFrameId", () => {
 
   it("rejects malformed IDs", () => {
     for (const id of ["", "TIT", "TIT22", "tit2", "TI 2", "TI-2", "ТIT2"]) {
-      assertThrows(() => assertFrameId(id, "write"), MetadataError);
+      expectThrows(() => assertFrameId(id, "write"), MetadataError);
     }
   });
 });
@@ -20,23 +20,26 @@ describe("assertFrameId", () => {
 describe("assertMp3", () => {
   it("passes for MP3 and throws UnsupportedFormatError otherwise", () => {
     assertMp3("MP3");
-    assertThrows(() => assertMp3("FLAC"), UnsupportedFormatError);
-    assertThrows(() => assertMp3("WAV"), UnsupportedFormatError);
+    expectThrows(() => assertMp3("FLAC"), UnsupportedFormatError);
+    expectThrows(() => assertMp3("WAV"), UnsupportedFormatError);
   });
 });
 
 describe("toPublicFrame", () => {
   it("drops zero flags and preserves non-zero flags", () => {
     const data = new Uint8Array([1]);
-    assertEquals(toPublicFrame({ id: "RGAD", data, flags: 0 }), {
+    expect(toPublicFrame({ id: "RGAD", data, flags: 0 })).toStrictEqual({
       id: "RGAD",
       data,
     });
-    assertEquals(toPublicFrame({ id: "RGAD", data, flags: 0x4000 }), {
+    expect(toPublicFrame({ id: "RGAD", data, flags: 0x4000 })).toStrictEqual({
       id: "RGAD",
       data,
       flags: 0x4000,
     });
-    assertEquals(toPublicFrame({ id: "RGAD", data }), { id: "RGAD", data });
+    expect(toPublicFrame({ id: "RGAD", data })).toStrictEqual({
+      id: "RGAD",
+      data,
+    });
   });
 });

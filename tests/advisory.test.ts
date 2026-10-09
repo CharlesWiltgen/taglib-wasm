@@ -11,8 +11,8 @@
  * taglib-984r).
  */
 
-import { assert, assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import { applyTags, readTags } from "../src/simple/index.ts";
 import {
@@ -123,41 +123,35 @@ function addFreeformITunesAdvisory(buf: Uint8Array, value: number): Uint8Array {
 
 describe("advisory tri-state mapping (taglib-an30)", () => {
   it("read: ITUNESADVISORY values narrow to the tri-state", () => {
-    assertEquals(
-      mapPropertiesToExtendedTag({ itunesAdvisory: ["1"] }).advisory,
-      "explicit",
-    );
-    assertEquals(
-      mapPropertiesToExtendedTag({ itunesAdvisory: ["2"] }).advisory,
-      "clean",
-    );
-    assertEquals(
-      mapPropertiesToExtendedTag({ itunesAdvisory: ["0"] }).advisory,
-      "unspecified",
-    );
+    expect(mapPropertiesToExtendedTag({ itunesAdvisory: ["1"] }).advisory)
+      .toStrictEqual("explicit");
+    expect(mapPropertiesToExtendedTag({ itunesAdvisory: ["2"] }).advisory)
+      .toStrictEqual("clean");
+    expect(mapPropertiesToExtendedTag({ itunesAdvisory: ["0"] }).advisory)
+      .toStrictEqual("unspecified");
   });
 
   it("read: absent or unknown values leave advisory unset but keep the raw field", () => {
     const absent = mapPropertiesToExtendedTag({ TITLE: ["Kiss"] });
-    assertEquals(absent.advisory, undefined);
+    expect(absent.advisory).toStrictEqual(undefined);
     const unknown = mapPropertiesToExtendedTag({ itunesAdvisory: ["3"] });
-    assertEquals(unknown.advisory, undefined);
-    assertEquals(unknown.itunesAdvisory, ["3"]);
+    expect(unknown.advisory).toStrictEqual(undefined);
+    expect(unknown.itunesAdvisory).toStrictEqual(["3"]);
   });
 
   it("write: explicit/clean become '1'/'2', unspecified clears", () => {
-    assertEquals(normalizeTagInput({ advisory: "explicit" }).itunesAdvisory, [
-      "1",
-    ]);
-    assertEquals(normalizeTagInput({ advisory: "clean" }).itunesAdvisory, [
-      "2",
-    ]);
+    expect(normalizeTagInput({ advisory: "explicit" }).itunesAdvisory)
+      .toStrictEqual([
+        "1",
+      ]);
+    expect(normalizeTagInput({ advisory: "clean" }).itunesAdvisory)
+      .toStrictEqual([
+        "2",
+      ]);
     // Unspecified is an explicit clear (the empty-list semantics WASI's
     // merge model requires, taglib-nc5), not an "unchanged".
-    assertEquals(
-      normalizeTagInput({ advisory: "unspecified" }).itunesAdvisory,
-      [],
-    );
+    expect(normalizeTagInput({ advisory: "unspecified" }).itunesAdvisory)
+      .toStrictEqual([]);
   });
 });
 
@@ -165,7 +159,7 @@ async function mp4RoundTrip(
   backend: "wasi" | "emscripten",
   value: string,
 ): Promise<{ readBack: Record<string, string[]>; buffer: Uint8Array }> {
-  const src = await Deno.readFile(FIXTURE_PATH.m4a);
+  const src = new Uint8Array(await readFile(FIXTURE_PATH.m4a));
   const tl = await TagLib.initialize({ forceWasmType: backend });
   const file = await tl.open(new Uint8Array(src));
   file.setProperties({ ITUNESADVISORY: [value] });
@@ -186,37 +180,32 @@ describe("MP4 native rtng atom (taglib-an30)", () => {
       const { readBack, buffer } = await mp4RoundTrip(backend, "1");
       // The byte-level truth: an rtng item exists with value 1, and no
       // freeform ITUNESADVISORY atom was written.
-      assertEquals(rtngByte(buffer), 1);
-      assert(!new TextDecoder().decode(buffer).includes("ITUNESADVISORY"));
+      expect(rtngByte(buffer)).toStrictEqual(1);
+      expect(!new TextDecoder().decode(buffer).includes("ITUNESADVISORY"))
+        .toBeTruthy();
       // Read back on the other backend through the native atom.
-      assertEquals(readBack.itunesAdvisory, ["1"]);
-      assertEquals(
-        mapPropertiesToExtendedTag(readBack as never).advisory,
-        "explicit",
-      );
+      expect(readBack.itunesAdvisory).toStrictEqual(["1"]);
+      expect(mapPropertiesToExtendedTag(readBack as never).advisory)
+        .toStrictEqual("explicit");
     });
 
     it(`[${backend}] rtng=2 reads as clean`, async () => {
       const { readBack, buffer } = await mp4RoundTrip(backend, "2");
-      assertEquals(rtngByte(buffer), 2);
-      assertEquals(
-        mapPropertiesToExtendedTag(readBack as never).advisory,
-        "clean",
-      );
+      expect(rtngByte(buffer)).toStrictEqual(2);
+      expect(mapPropertiesToExtendedTag(readBack as never).advisory)
+        .toStrictEqual("clean");
     });
 
     it(`[${backend}] rtng=0 reads as unspecified (pinned contract)`, async () => {
       const { readBack, buffer } = await mp4RoundTrip(backend, "0");
-      assertEquals(rtngByte(buffer), 0);
-      assertEquals(readBack.itunesAdvisory, ["0"]);
-      assertEquals(
-        mapPropertiesToExtendedTag(readBack as never).advisory,
-        "unspecified",
-      );
+      expect(rtngByte(buffer)).toStrictEqual(0);
+      expect(readBack.itunesAdvisory).toStrictEqual(["0"]);
+      expect(mapPropertiesToExtendedTag(readBack as never).advisory)
+        .toStrictEqual("unspecified");
     });
 
     it(`[${backend}] clearing removes the rtng item`, async () => {
-      const src = await Deno.readFile(FIXTURE_PATH.m4a);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.m4a));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ ITUNESADVISORY: ["1"] });
@@ -225,23 +214,24 @@ describe("MP4 native rtng atom (taglib-an30)", () => {
       file.save();
       const buf = file.getFileBuffer();
       file.dispose();
-      assertEquals(rtngByte(buf), undefined);
+      expect(rtngByte(buf)).toStrictEqual(undefined);
 
       const tlR = await TagLib.initialize({ forceWasmType: OTHER[backend] });
       const reopened = await tlR.open(buf);
       const props = reopened.properties() as Record<string, string[]>;
-      assertEquals(props.itunesAdvisory, undefined);
+      expect(props.itunesAdvisory).toStrictEqual(undefined);
       reopened.dispose();
     });
 
     it(`[${backend}] clearing removes a third-party freeform ITUNESADVISORY atom too`, async () => {
-      const src = await Deno.readFile(FIXTURE_PATH.m4a);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.m4a));
       // A file written by another tool may carry the freeform atom
       // (----:com.apple.iTunes:ITUNESADVISORY); the clear must remove it
       // alongside rtng (freeform items are keyed by their FULL name in the
       // item map — taglib-an30 review).
       const patched = addFreeformITunesAdvisory(src, 2);
-      assert(new TextDecoder().decode(patched).includes("ITUNESADVISORY"));
+      expect(new TextDecoder().decode(patched).includes("ITUNESADVISORY"))
+        .toBeTruthy();
 
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(patched);
@@ -250,11 +240,12 @@ describe("MP4 native rtng atom (taglib-an30)", () => {
       const buf = file.getFileBuffer();
       file.dispose();
 
-      assert(!new TextDecoder().decode(buf).includes("ITUNESADVISORY"));
+      expect(!new TextDecoder().decode(buf).includes("ITUNESADVISORY"))
+        .toBeTruthy();
       const tlR = await TagLib.initialize({ forceWasmType: OTHER[backend] });
       const reopened = await tlR.open(buf);
       const props = reopened.properties() as Record<string, string[]>;
-      assertEquals(props.itunesAdvisory, undefined);
+      expect(props.itunesAdvisory).toStrictEqual(undefined);
       reopened.dispose();
     });
   }
@@ -262,38 +253,40 @@ describe("MP4 native rtng atom (taglib-an30)", () => {
 
 describe("advisory typed simple-API round-trips (taglib-an30)", () => {
   it("mp3: TXXX ITUNESADVISORY round-trips explicit", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.mp3);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const modified = await applyTags(src, { advisory: "explicit" });
     const tags = await readTags(modified);
-    assertEquals(tags.advisory, "explicit");
-    assertEquals(tags.itunesAdvisory, ["1"]);
+    expect(tags.advisory).toStrictEqual("explicit");
+    expect(tags.itunesAdvisory).toStrictEqual(["1"]);
     // The typed round-trip preserves the state.
     const back = await applyTags(modified, tags);
-    assertEquals((await readTags(back)).advisory, "explicit");
+    expect((await readTags(back)).advisory).toStrictEqual("explicit");
   });
 
   it("opus: Vorbis comment carries clean", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.opus);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.opus));
     const modified = await applyTags(src, { advisory: "clean" });
     const tags = await readTags(modified);
-    assertEquals(tags.advisory, "clean");
-    assert(new TextDecoder().decode(modified).includes("ITUNESADVISORY=2"));
+    expect(tags.advisory).toStrictEqual("clean");
+    expect(new TextDecoder().decode(modified).includes("ITUNESADVISORY=2"))
+      .toBeTruthy();
   });
 
   it("wma: ASF attribute path carries explicit (taglib-984r)", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.wma);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
     const modified = await applyTags(src, { advisory: "explicit" });
     const tags = await readTags(modified);
-    assertEquals(tags.advisory, "explicit");
+    expect(tags.advisory).toStrictEqual("explicit");
   });
 
   it("unspecified clears the representation", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.mp3);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const flagged = await applyTags(src, { advisory: "explicit" });
     const cleared = await applyTags(flagged, { advisory: "unspecified" });
     const tags = await readTags(cleared);
-    assertEquals(tags.advisory, undefined);
-    assertEquals(tags.itunesAdvisory, undefined);
-    assert(!new TextDecoder().decode(cleared).includes("ITUNESADVISORY"));
+    expect(tags.advisory).toStrictEqual(undefined);
+    expect(tags.itunesAdvisory).toStrictEqual(undefined);
+    expect(!new TextDecoder().decode(cleared).includes("ITUNESADVISORY"))
+      .toBeTruthy();
   });
 });

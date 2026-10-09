@@ -1,5 +1,4 @@
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
 import { WasmAlloc, WasmArena } from "../src/runtime/wasi-memory.ts";
 import type { WasmExports } from "../src/runtime/wasi-memory.ts";
 
@@ -35,11 +34,11 @@ describe("WasmAlloc RAII", () => {
       alloc.write(testData);
 
       const result = alloc.read();
-      assertEquals(result[0], 1);
-      assertEquals(result[4], 5);
-      assertEquals(alloc.size, testData.length);
+      expect(result[0]).toStrictEqual(1);
+      expect(result[4]).toStrictEqual(5);
+      expect(alloc.size).toStrictEqual(testData.length);
     }
-    assertEquals(exports.getAllocatedPointers().size, 0);
+    expect(exports.getAllocatedPointers().size).toStrictEqual(0);
   });
 
   it("writeCString and readCString round-trip", () => {
@@ -52,9 +51,9 @@ describe("WasmAlloc RAII", () => {
       alloc.writeCString(testString);
 
       const result = alloc.readCString();
-      assertEquals(result, testString);
+      expect(result).toStrictEqual(testString);
     }
-    assertEquals(exports.getAllocatedPointers().size, 0);
+    expect(exports.getAllocatedPointers().size).toStrictEqual(0);
   });
 
   it("handles multi-byte UTF-8 (emoji, CJK)", () => {
@@ -71,10 +70,10 @@ describe("WasmAlloc RAII", () => {
       {
         using alloc = new WasmAlloc(exports, encoded.length + 1);
         alloc.writeCString(encoded);
-        assertEquals(alloc.readCString(), str);
+        expect(alloc.readCString()).toStrictEqual(str);
       }
     }
-    assertEquals(exports.getAllocatedPointers().size, 0);
+    expect(exports.getAllocatedPointers().size).toStrictEqual(0);
   });
 });
 
@@ -87,10 +86,10 @@ describe("WasmArena RAII", () => {
       const titleAlloc = arena.allocString("My Title");
       const artistAlloc = arena.allocString("My Artist");
 
-      assertEquals(titleAlloc.readCString(), "My Title");
-      assertEquals(artistAlloc.readCString(), "My Artist");
-      assertEquals(exports.getAllocatedPointers().size, 2);
+      expect(titleAlloc.readCString()).toStrictEqual("My Title");
+      expect(artistAlloc.readCString()).toStrictEqual("My Artist");
+      expect(exports.getAllocatedPointers().size).toStrictEqual(2);
     }
-    assertEquals(exports.getAllocatedPointers().size, 0);
+    expect(exports.getAllocatedPointers().size).toStrictEqual(0);
   });
 });

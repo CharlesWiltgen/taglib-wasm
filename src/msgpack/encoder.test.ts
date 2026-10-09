@@ -1,6 +1,5 @@
-import { assert, assertEquals, assertThrows } from "@std/assert";
-import { assertInstanceOf } from "@std/assert/instance-of";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { expectThrows } from "../../tests/_assert-helpers.ts";
 import { decode } from "@msgpack/msgpack";
 import {
   canEncodeToMessagePack,
@@ -28,8 +27,8 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["ACOUSTID_FINGERPRINT"], "AQADtNQYhYkYRcg");
-    assertEquals("acoustidFingerprint" in encoded, false);
+    expect(encoded["ACOUSTID_FINGERPRINT"]).toStrictEqual("AQADtNQYhYkYRcg");
+    expect("acoustidFingerprint" in encoded).toStrictEqual(false);
   });
 
   it("should encode discNumber as DISCNUMBER", () => {
@@ -37,8 +36,8 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["DISCNUMBER"], 2);
-    assertEquals("discNumber" in encoded, false);
+    expect(encoded["DISCNUMBER"]).toStrictEqual(2);
+    expect("discNumber" in encoded).toStrictEqual(false);
   });
 
   it("should encode basic fields to UPPERCASE", () => {
@@ -52,11 +51,11 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["TITLE"], "Test");
-    assertEquals(encoded["ARTIST"], "Artist");
-    assertEquals(encoded["ALBUM"], "Album");
-    assertEquals(encoded["DATE"], 2025);
-    assertEquals(encoded["TRACKNUMBER"], 3);
+    expect(encoded["TITLE"]).toStrictEqual("Test");
+    expect(encoded["ARTIST"]).toStrictEqual("Artist");
+    expect(encoded["ALBUM"]).toStrictEqual("Album");
+    expect(encoded["DATE"]).toStrictEqual(2025);
+    expect(encoded["TRACKNUMBER"]).toStrictEqual(3);
   });
 
   it("should preserve pictures and ratings keys as-is", () => {
@@ -72,8 +71,8 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals("pictures" in encoded, true);
-    assertEquals("ratings" in encoded, true);
+    expect("pictures" in encoded).toStrictEqual(true);
+    expect("ratings" in encoded).toStrictEqual(true);
   });
 
   it("should encode MusicBrainz fields to UPPERCASE", () => {
@@ -84,8 +83,8 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["MUSICBRAINZ_TRACKID"], "abc-123");
-    assertEquals(encoded["MUSICBRAINZ_ALBUMID"], "def-456");
+    expect(encoded["MUSICBRAINZ_TRACKID"]).toStrictEqual("abc-123");
+    expect(encoded["MUSICBRAINZ_ALBUMID"]).toStrictEqual("def-456");
   });
 
   it("should encode ReplayGain fields to UPPERCASE", () => {
@@ -96,8 +95,8 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["REPLAYGAIN_TRACK_GAIN"], "-6.54 dB");
-    assertEquals(encoded["REPLAYGAIN_TRACK_PEAK"], "0.98765");
+    expect(encoded["REPLAYGAIN_TRACK_GAIN"]).toStrictEqual("-6.54 dB");
+    expect(encoded["REPLAYGAIN_TRACK_PEAK"]).toStrictEqual("0.98765");
   });
 
   it("should encode sort fields to UPPERCASE", () => {
@@ -109,9 +108,9 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["TITLESORT"], "Title, The");
-    assertEquals(encoded["ARTISTSORT"], "Beatles, The");
-    assertEquals(encoded["ALBUMSORT"], "Abbey Road");
+    expect(encoded["TITLESORT"]).toStrictEqual("Title, The");
+    expect(encoded["ARTISTSORT"]).toStrictEqual("Beatles, The");
+    expect(encoded["ALBUMSORT"]).toStrictEqual("Abbey Road");
   });
 
   it("should pass through unknown keys as-is", () => {
@@ -122,7 +121,7 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["CUSTOM_FIELD"], "value");
+    expect(encoded["CUSTOM_FIELD"]).toStrictEqual("value");
   });
 
   it("should omit empty string values via cleanObject", () => {
@@ -133,9 +132,9 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["TITLE"], "Keep");
-    assertEquals(encoded["ALBUM"], "Also Keep");
-    assertEquals("ARTIST" in encoded, false);
+    expect(encoded["TITLE"]).toStrictEqual("Keep");
+    expect(encoded["ALBUM"]).toStrictEqual("Also Keep");
+    expect("ARTIST" in encoded).toStrictEqual(false);
   });
 
   it("should preserve null values in cleanObject", () => {
@@ -143,8 +142,8 @@ describe("encodeTagData key transformation", () => {
     const encoded = decode(
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
-    assertEquals(encoded["TITLE"], "Keep");
-    assertEquals(encoded["ARTIST"], null);
+    expect(encoded["TITLE"]).toStrictEqual("Keep");
+    expect(encoded["ARTIST"]).toStrictEqual(null);
   });
 
   it("should handle nested objects in cleanObject", () => {
@@ -156,9 +155,9 @@ describe("encodeTagData key transformation", () => {
       encodeTagData(tag as unknown as ExtendedTag),
     ) as Record<string, unknown>;
     const nested = encoded["nested"] as Record<string, unknown>;
-    assertEquals(nested["inner"], "value");
-    assertEquals("empty" in nested, false);
-    assertEquals("gone" in nested, false);
+    expect(nested["inner"]).toStrictEqual("value");
+    expect("empty" in nested).toStrictEqual(false);
+    expect("gone" in nested).toStrictEqual(false);
   });
 });
 
@@ -177,12 +176,12 @@ describe("encodeAudioProperties", () => {
     const result = encodeAudioProperties(
       props as unknown as Parameters<typeof encodeAudioProperties>[0],
     );
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
     const decoded = decode(result) as Record<string, unknown>;
-    assertEquals(decoded["duration"], 180);
-    assertEquals(decoded["bitrate"], 320);
-    assertEquals(decoded["sampleRate"], 44100);
-    assertEquals(decoded["channels"], 2);
+    expect(decoded["duration"]).toStrictEqual(180);
+    expect(decoded["bitrate"]).toStrictEqual(320);
+    expect(decoded["sampleRate"]).toStrictEqual(44100);
+    expect(decoded["channels"]).toStrictEqual(2);
   });
 });
 
@@ -190,16 +189,16 @@ describe("encodePropertyMap", () => {
   it("should encode a property map to MessagePack", () => {
     const map = { TITLE: ["Test Song"], ARTIST: ["Test Artist"] };
     const result = encodePropertyMap(map);
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
     const decoded = decode(result) as Record<string, unknown>;
-    assertEquals(decoded["TITLE"], ["Test Song"]);
-    assertEquals(decoded["ARTIST"], ["Test Artist"]);
+    expect(decoded["TITLE"]).toStrictEqual(["Test Song"]);
+    expect(decoded["ARTIST"]).toStrictEqual(["Test Artist"]);
   });
 
   it("should handle empty property map", () => {
     const result = encodePropertyMap({});
-    assertInstanceOf(result, Uint8Array);
-    assertEquals(decode(result), {});
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(decode(result)).toStrictEqual({});
   });
 });
 
@@ -211,10 +210,10 @@ describe("encodePicture", () => {
       type: "FrontCover",
     };
     const result = encodePicture(pic);
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
     const decoded = decode(result) as Record<string, unknown>;
-    assertEquals(decoded["mimeType"], "image/jpeg");
-    assertEquals(decoded["type"], "FrontCover");
+    expect(decoded["mimeType"]).toStrictEqual("image/jpeg");
+    expect(decoded["type"]).toStrictEqual("FrontCover");
   });
 
   it("should convert ArrayBuffer data to Uint8Array", () => {
@@ -226,13 +225,13 @@ describe("encodePicture", () => {
     } as unknown as Picture;
     const result = encodePicture(pic);
     const decoded = decode(result) as Record<string, unknown>;
-    assertEquals(decoded["mimeType"], "image/png");
-    assertInstanceOf(decoded["data"], Uint8Array);
+    expect(decoded["mimeType"]).toStrictEqual("image/png");
+    expect(decoded["data"]).toBeInstanceOf(Uint8Array);
   });
 
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () => encodePicture(unencodable as unknown as Picture),
       Error,
       "Failed to encode picture",
@@ -255,11 +254,11 @@ describe("encodePictureArray", () => {
       },
     ];
     const result = encodePictureArray(pics);
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
     const decoded = decode(result) as Array<Record<string, unknown>>;
-    assertEquals(decoded.length, 2);
-    assertEquals(decoded[0]["mimeType"], "image/jpeg");
-    assertEquals(decoded[1]["mimeType"], "image/png");
+    expect(decoded.length).toStrictEqual(2);
+    expect(decoded[0]["mimeType"]).toStrictEqual("image/jpeg");
+    expect(decoded[1]["mimeType"]).toStrictEqual("image/png");
   });
 
   it("should convert ArrayBuffer data to Uint8Array", () => {
@@ -269,13 +268,13 @@ describe("encodePictureArray", () => {
     ] as unknown as Picture[];
     const result = encodePictureArray(pics);
     const decoded = decode(result) as Array<Record<string, unknown>>;
-    assertEquals(decoded.length, 1);
-    assertInstanceOf(decoded[0]["data"], Uint8Array);
+    expect(decoded.length).toStrictEqual(1);
+    expect(decoded[0]["data"]).toBeInstanceOf(Uint8Array);
   });
 
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () => encodePictureArray([unencodable] as unknown as Picture[]),
       Error,
       "Failed to encode picture array",
@@ -287,25 +286,25 @@ describe("encodeMessagePack", () => {
   it("should encode arbitrary data with default options", () => {
     const data = { key: "value", num: 42 };
     const result = encodeMessagePack(data);
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
     const decoded = decode(result) as Record<string, unknown>;
-    assertEquals(decoded["key"], "value");
-    assertEquals(decoded["num"], 42);
+    expect(decoded["key"]).toStrictEqual("value");
+    expect(decoded["num"]).toStrictEqual(42);
   });
 
   it("should accept custom options", () => {
     const result = encodeMessagePack({ key: "value" }, { sortKeys: true });
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
   });
 });
 
 describe("encodeMessagePackCompact", () => {
   it("should encode data in compact format", () => {
     const result = encodeMessagePackCompact({ z: 1, a: 2, m: 3 });
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
     const decoded = decode(result) as Record<string, unknown>;
-    assertEquals(decoded["a"], 2);
-    assertEquals(decoded["z"], 1);
+    expect(decoded["a"]).toStrictEqual(2);
+    expect(decoded["z"]).toStrictEqual(1);
   });
 });
 
@@ -316,12 +315,12 @@ describe("encodeBatchTagData", () => {
       { title: "Song 2", artist: "Artist 2" },
     ] as unknown as ExtendedTag[];
     const result = encodeBatchTagData(tags);
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
     const decoded = decode(result) as Record<string, unknown>[];
-    assertEquals(decoded.length, 2);
+    expect(decoded.length).toStrictEqual(2);
     // encodeBatchTagData uses cleanObject, not encodeTagData — no key remapping
-    assertEquals(decoded[0]["title"], "Song 1");
-    assertEquals(decoded[1]["artist"], "Artist 2");
+    expect(decoded[0]["title"]).toStrictEqual("Song 1");
+    expect(decoded[1]["artist"]).toStrictEqual("Artist 2");
   });
 });
 
@@ -329,27 +328,28 @@ describe("encodeMessagePackStream", () => {
   it("should yield encoded chunks for each item", () => {
     const items = [{ a: 1 }, { b: 2 }, { c: 3 }];
     const chunks = [...encodeMessagePackStream(items)];
-    assertEquals(
-      chunks.map((c) => decode(c)),
-      [{ a: 1 }, { b: 2 }, { c: 3 }],
-    );
+    expect(chunks.map((c) => decode(c))).toStrictEqual([{ a: 1 }, { b: 2 }, {
+      c: 3,
+    }]);
   });
 
   it("should handle empty iterable", () => {
     const chunks = [...encodeMessagePackStream([])];
-    assertEquals(chunks.length, 0);
+    expect(chunks.length).toStrictEqual(0);
   });
 });
 
 describe("estimateMessagePackSize", () => {
   it("should return a positive size for valid data", () => {
     const size = estimateMessagePackSize({ title: "Test", artist: "Artist" });
-    assert(size > 0);
+    expect(size > 0).toBeTruthy();
   });
 
   it("should return a consistent size for the same data", () => {
     const data = { title: "Test", artist: "Artist", year: 2025 };
-    assertEquals(estimateMessagePackSize(data), estimateMessagePackSize(data));
+    expect(estimateMessagePackSize(data)).toStrictEqual(
+      estimateMessagePackSize(data),
+    );
   });
 });
 
@@ -362,29 +362,29 @@ describe("encodeFastTagData", () => {
       year: 2025,
       track: 1,
     });
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
     const decoded = decode(result) as Record<string, unknown>;
-    assertEquals(decoded["title"], ["Fast"]);
-    assertEquals(decoded["year"], 2025);
+    expect(decoded["title"]).toStrictEqual(["Fast"]);
+    expect(decoded["year"]).toStrictEqual(2025);
   });
 });
 
 describe("canEncodeToMessagePack", () => {
   it("should return true for encodable data", () => {
-    assertEquals(canEncodeToMessagePack({ a: 1 }), true);
-    assertEquals(canEncodeToMessagePack("hello"), true);
-    assertEquals(canEncodeToMessagePack(42), true);
-    assertEquals(canEncodeToMessagePack(null), true);
-    assertEquals(canEncodeToMessagePack([1, 2, 3]), true);
-    assertEquals(canEncodeToMessagePack(undefined), true);
-    assertEquals(canEncodeToMessagePack(true), true);
-    assertEquals(canEncodeToMessagePack(0), true);
+    expect(canEncodeToMessagePack({ a: 1 })).toStrictEqual(true);
+    expect(canEncodeToMessagePack("hello")).toStrictEqual(true);
+    expect(canEncodeToMessagePack(42)).toStrictEqual(true);
+    expect(canEncodeToMessagePack(null)).toStrictEqual(true);
+    expect(canEncodeToMessagePack([1, 2, 3])).toStrictEqual(true);
+    expect(canEncodeToMessagePack(undefined)).toStrictEqual(true);
+    expect(canEncodeToMessagePack(true)).toStrictEqual(true);
+    expect(canEncodeToMessagePack(0)).toStrictEqual(true);
   });
 
   it("should return false for circular references", () => {
     const circular: Record<string, unknown> = { a: 1 };
     circular["self"] = circular;
-    assertEquals(canEncodeToMessagePack(circular), false);
+    expect(canEncodeToMessagePack(circular)).toStrictEqual(false);
   });
 });
 
@@ -392,16 +392,16 @@ describe("compareEncodingEfficiency", () => {
   it("should return size comparison metrics", () => {
     const data = { title: "Test Song", artist: "Test Artist", year: 2025 };
     const result = compareEncodingEfficiency(data);
-    assert(result.messagePackSize > 0);
-    assert(result.jsonSize > 0);
-    assert(result.sizeReduction >= 0);
-    assertEquals(result.speedImprovement, 10);
+    expect(result.messagePackSize > 0).toBeTruthy();
+    expect(result.jsonSize > 0).toBeTruthy();
+    expect(result.sizeReduction >= 0).toBeTruthy();
+    expect(result.speedImprovement).toStrictEqual(10);
   });
 
   it("should clamp sizeReduction to 0 when msgpack is larger", () => {
     // Very small data where msgpack overhead > JSON
     const result = compareEncodingEfficiency(1);
-    assertEquals(result.sizeReduction, 0);
+    expect(result.sizeReduction).toStrictEqual(0);
   });
 });
 
@@ -419,7 +419,7 @@ function makeDeepNested(): Record<string, unknown> {
 describe("encodeTagData error path", () => {
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () => encodeTagData(unencodable as unknown as ExtendedTag),
       Error,
       "Failed to encode tag data",
@@ -430,7 +430,7 @@ describe("encodeTagData error path", () => {
 describe("encodeAudioProperties error path", () => {
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () =>
         encodeAudioProperties(
           unencodable as unknown as Parameters<typeof encodeAudioProperties>[0],
@@ -444,7 +444,7 @@ describe("encodeAudioProperties error path", () => {
 describe("encodePropertyMap error path", () => {
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () =>
         encodePropertyMap(
           unencodable as unknown as Parameters<typeof encodePropertyMap>[0],
@@ -458,7 +458,7 @@ describe("encodePropertyMap error path", () => {
 describe("encodeMessagePack error path", () => {
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () => encodeMessagePack(unencodable),
       Error,
       "Failed to encode data",
@@ -469,7 +469,7 @@ describe("encodeMessagePack error path", () => {
 describe("encodeMessagePackCompact error path", () => {
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () => encodeMessagePackCompact(unencodable),
       Error,
       "Failed to encode compact data",
@@ -480,7 +480,7 @@ describe("encodeMessagePackCompact error path", () => {
 describe("encodeBatchTagData error path", () => {
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () => encodeBatchTagData([unencodable] as unknown as ExtendedTag[]),
       Error,
       "Failed to encode batch tag data",
@@ -491,7 +491,7 @@ describe("encodeBatchTagData error path", () => {
 describe("encodeMessagePackStream error path", () => {
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () => [...encodeMessagePackStream([unencodable])],
       Error,
       "Failed to encode streaming data",
@@ -505,14 +505,14 @@ describe("estimateMessagePackSize fallback", () => {
     // the catch path which falls back to JSON.stringify length estimation
     const deep = makeDeepNested();
     const size = estimateMessagePackSize(deep);
-    assert(size > 0);
+    expect(size > 0).toBeTruthy();
   });
 });
 
 describe("encodeFastTagData error path", () => {
   it("should throw MetadataError on unencodable data", () => {
     const unencodable = makeDeepNested();
-    assertThrows(
+    expectThrows(
       () =>
         encodeFastTagData(
           unencodable as unknown as Parameters<typeof encodeFastTagData>[0],
@@ -528,30 +528,30 @@ describe("cleanObject edge cases via encodeMessagePack", () => {
     const date = new Date("2025-01-01T00:00:00Z");
     const result = encodeMessagePack({ date });
     const decoded = decode(result) as Record<string, unknown>;
-    assertInstanceOf(decoded["date"], Date);
+    expect(decoded["date"]).toBeInstanceOf(Date);
   });
 
   it("should pass through Uint8Array values", () => {
     const bytes = new Uint8Array([1, 2, 3]);
     const result = encodeMessagePack({ data: bytes });
     const decoded = decode(result) as Record<string, unknown>;
-    assertInstanceOf(decoded["data"], Uint8Array);
+    expect(decoded["data"]).toBeInstanceOf(Uint8Array);
   });
 
   it("should pass through arrays", () => {
     const arr = [1, "two", 3];
     const result = encodeMessagePack({ items: arr });
     const decoded = decode(result) as Record<string, unknown>;
-    assertEquals(decoded["items"], [1, "two", 3]);
+    expect(decoded["items"]).toStrictEqual([1, "two", 3]);
   });
 
   it("should handle null at top level", () => {
     const result = encodeMessagePack(null);
-    assertEquals(decode(result), null);
+    expect(decode(result)).toStrictEqual(null);
   });
 
   it("should handle primitive at top level", () => {
     const result = encodeMessagePack(42);
-    assertEquals(decode(result), 42);
+    expect(decode(result)).toStrictEqual(42);
   });
 });

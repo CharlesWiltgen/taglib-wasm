@@ -10,8 +10,7 @@
  * Looped over both backends per the parity convention.
  */
 
-import { describe, it } from "@std/testing/bdd";
-import { assertEquals } from "@std/assert";
+import { describe, expect, it } from "vite-plus/test";
 import { TagLib } from "../src/taglib.ts";
 
 const INITIAL_HEAP_BYTES = 16 * 1024 * 1024; // Emscripten default, no INITIAL_MEMORY override in build-wasm.sh
@@ -58,11 +57,10 @@ describe("wasm heap growth", () => {
 
       const reopened = await tl.open(roundTripped);
       try {
-        assertEquals(
+        expect(
           { title: reopened.tag().title, artist: reopened.tag().artist },
-          { title: MULTIBYTE_TITLE, artist: MULTIBYTE_ARTIST },
           `${backend}: multibyte tags corrupted after heap growth`,
-        );
+        ).toStrictEqual({ title: MULTIBYTE_TITLE, artist: MULTIBYTE_ARTIST });
       } finally {
         reopened.dispose();
       }

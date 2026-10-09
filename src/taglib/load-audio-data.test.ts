@@ -1,9 +1,12 @@
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
-import { resolve } from "@std/path";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile, stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import { loadAudioData } from "./load-audio-data.ts";
 
-const TEST_MP3 = resolve(Deno.cwd(), "tests/test-files/mp3/kiss-snippet.mp3");
+const TEST_MP3 = resolve(
+  process.cwd(),
+  "tests/test-files/mp3/kiss-snippet.mp3",
+);
 
 describe("loadAudioData", () => {
   const defaultOpts = {
@@ -16,8 +19,8 @@ describe("loadAudioData", () => {
     it("should return the buffer directly without partial loading", async () => {
       const data = new Uint8Array([1, 2, 3, 4, 5]);
       const result = await loadAudioData(data, defaultOpts);
-      assertEquals(result.data, data);
-      assertEquals(result.isPartiallyLoaded, false);
+      expect(result.data).toStrictEqual(data);
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
     });
   });
 
@@ -25,8 +28,8 @@ describe("loadAudioData", () => {
     it("should convert ArrayBuffer to Uint8Array", async () => {
       const buf = new Uint8Array([10, 20, 30]).buffer;
       const result = await loadAudioData(buf, defaultOpts);
-      assertEquals(result.data, new Uint8Array([10, 20, 30]));
-      assertEquals(result.isPartiallyLoaded, false);
+      expect(result.data).toStrictEqual(new Uint8Array([10, 20, 30]));
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
     });
   });
 
@@ -39,8 +42,8 @@ describe("loadAudioData", () => {
         maxHeaderSize: 10,
         maxFooterSize: 10,
       });
-      assertEquals(result.data, content);
-      assertEquals(result.isPartiallyLoaded, false);
+      expect(result.data).toStrictEqual(content);
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
     });
 
     /**
@@ -82,14 +85,12 @@ describe("loadAudioData", () => {
         maxFooterSize: footerSize,
       });
 
-      assertEquals(result.isPartiallyLoaded, true);
-      assertEquals(result.data.length, headerSize + footerSize);
-      assertEquals(
-        result.data.slice(0, headerSize),
+      expect(result.isPartiallyLoaded).toStrictEqual(true);
+      expect(result.data.length).toStrictEqual(headerSize + footerSize);
+      expect(result.data.slice(0, headerSize)).toStrictEqual(
         content.slice(0, headerSize),
       );
-      assertEquals(
-        result.data.slice(headerSize),
+      expect(result.data.slice(headerSize)).toStrictEqual(
         content.slice(size - footerSize),
       );
     });
@@ -107,8 +108,8 @@ describe("loadAudioData", () => {
         maxFooterSize: 10,
       });
 
-      assertEquals(result.isPartiallyLoaded, false);
-      assertEquals(result.data, content);
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
+      expect(result.data).toStrictEqual(content);
     });
 
     it("should fully load a File whose container it cannot bound", async () => {
@@ -123,8 +124,8 @@ describe("loadAudioData", () => {
         maxFooterSize: 10,
       });
 
-      assertEquals(result.isPartiallyLoaded, false);
-      assertEquals(result.data, content);
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
+      expect(result.data).toStrictEqual(content);
     });
 
     it("should fully load File when partial is false", async () => {
@@ -135,8 +136,8 @@ describe("loadAudioData", () => {
         maxHeaderSize: 10,
         maxFooterSize: 10,
       });
-      assertEquals(result.data, content);
-      assertEquals(result.isPartiallyLoaded, false);
+      expect(result.data).toStrictEqual(content);
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
     });
 
     it("should clamp header and footer sizes to file size", async () => {
@@ -149,54 +150,52 @@ describe("loadAudioData", () => {
         maxHeaderSize: 100,
         maxFooterSize: 100,
       });
-      assertEquals(result.isPartiallyLoaded, false);
-      assertEquals(result.data, content);
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
+      expect(result.data).toStrictEqual(content);
     });
   });
 
   describe("string path input with partial loading", () => {
     it("should fully load file when size <= header + footer", async () => {
-      const fileSize = (await Deno.stat(TEST_MP3)).size;
+      const fileSize = (await stat(TEST_MP3)).size;
       const result = await loadAudioData(TEST_MP3, {
         partial: true,
         maxHeaderSize: fileSize,
         maxFooterSize: fileSize,
       });
-      assertEquals(result.isPartiallyLoaded, false);
-      assertEquals(result.data.length, fileSize);
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
+      expect(result.data.length).toStrictEqual(fileSize);
     });
 
     it("should partially load file when size > header + footer", async () => {
       const headerSize = 1024;
       const footerSize = 512;
-      const fullData = await Deno.readFile(TEST_MP3);
+      const fullData = new Uint8Array(await readFile(TEST_MP3));
 
       const result = await loadAudioData(TEST_MP3, {
         partial: true,
         maxHeaderSize: headerSize,
         maxFooterSize: footerSize,
       });
-      assertEquals(result.isPartiallyLoaded, true);
-      assertEquals(result.data.length, headerSize + footerSize);
-      assertEquals(
-        result.data.slice(0, headerSize),
+      expect(result.isPartiallyLoaded).toStrictEqual(true);
+      expect(result.data.length).toStrictEqual(headerSize + footerSize);
+      expect(result.data.slice(0, headerSize)).toStrictEqual(
         fullData.slice(0, headerSize),
       );
-      assertEquals(
-        result.data.slice(headerSize),
+      expect(result.data.slice(headerSize)).toStrictEqual(
         fullData.slice(fullData.length - footerSize),
       );
     });
 
     it("should fully load file when partial is false", async () => {
-      const fileSize = (await Deno.stat(TEST_MP3)).size;
+      const fileSize = (await stat(TEST_MP3)).size;
       const result = await loadAudioData(TEST_MP3, {
         partial: false,
         maxHeaderSize: 64,
         maxFooterSize: 64,
       });
-      assertEquals(result.isPartiallyLoaded, false);
-      assertEquals(result.data.length, fileSize);
+      expect(result.isPartiallyLoaded).toStrictEqual(false);
+      expect(result.data.length).toStrictEqual(fileSize);
     });
   });
 });

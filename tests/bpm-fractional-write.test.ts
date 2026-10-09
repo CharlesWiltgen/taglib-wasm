@@ -21,8 +21,8 @@
  * could not fail on the original defect.
  */
 
-import { assertEquals } from "@std/assert";
-import { beforeAll, describe, it } from "@std/testing/bdd";
+import { beforeAll, describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import { applyTags, readTags } from "../src/simple/tag-operations.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
@@ -59,20 +59,19 @@ async function readBpmValues(
 describe("typed fractional bpm write (taglib-ory8)", () => {
   for (const format of ["mp3", "m4a"] as const) {
     it(`canonicalizes 120.5 to integer BPM on both backends [${format}]`, async () => {
-      const original = await Deno.readFile(FIXTURE_PATH[format]);
+      const original = new Uint8Array(await readFile(FIXTURE_PATH[format]));
       const modified = await applyTags(original, { bpm: 120.5 });
 
       for (const backend of BACKENDS) {
-        assertEquals(
+        expect(
           await readBpmValues(backend, modified),
-          ["120"],
           `${backend} read a fractional BPM from a typed 120.5 write on ${format}`,
-        );
+        ).toStrictEqual(["120"]);
       }
       // Typed surface agrees everywhere (read-side narrowing of the wire
       // value — passes pre-fix too, since 120.5 narrows to 120).
       const tags = await readTags(modified);
-      assertEquals(tags.bpm, 120);
+      expect(tags.bpm).toStrictEqual(120);
     });
   }
 });

@@ -1,5 +1,4 @@
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
 import { encode } from "@msgpack/msgpack";
 import { decodeTagData } from "./decoder.ts";
 
@@ -10,11 +9,8 @@ describe("decodeTagData key normalization", () => {
       string,
       unknown
     >;
-    assertEquals(decoded.acoustidFingerprint, "AQADtNQYhYkYRcg");
-    assertEquals(
-      "ACOUSTID_FINGERPRINT" in decoded,
-      false,
-    );
+    expect(decoded.acoustidFingerprint).toStrictEqual("AQADtNQYhYkYRcg");
+    expect("ACOUSTID_FINGERPRINT" in decoded).toStrictEqual(false);
   });
 
   it("should decode disc to discNumber", () => {
@@ -23,8 +19,8 @@ describe("decodeTagData key normalization", () => {
       string,
       unknown
     >;
-    assertEquals(decoded.discNumber, 2);
-    assertEquals("disc" in decoded, false);
+    expect(decoded.discNumber).toStrictEqual(2);
+    expect("disc" in decoded).toStrictEqual(false);
   });
 
   it("should decode DISCNUMBER to discNumber", () => {
@@ -33,7 +29,7 @@ describe("decodeTagData key normalization", () => {
       string,
       unknown
     >;
-    assertEquals(decoded.discNumber, 3);
+    expect(decoded.discNumber).toStrictEqual(3);
   });
 
   it("should decode basic UPPERCASE keys to camelCase", () => {
@@ -48,11 +44,11 @@ describe("decodeTagData key normalization", () => {
       string,
       unknown
     >;
-    assertEquals(decoded.title, "Test");
-    assertEquals(decoded.artist, "Artist");
-    assertEquals(decoded.album, "Album");
-    assertEquals(decoded.date, 2025);
-    assertEquals(decoded.trackNumber, 3);
+    expect(decoded.title).toStrictEqual("Test");
+    expect(decoded.artist).toStrictEqual("Artist");
+    expect(decoded.album).toStrictEqual("Album");
+    expect(decoded.date).toStrictEqual(2025);
+    expect(decoded.trackNumber).toStrictEqual(3);
   });
 
   it("should decode MusicBrainz fields to camelCase", () => {
@@ -64,8 +60,8 @@ describe("decodeTagData key normalization", () => {
       string,
       unknown
     >;
-    assertEquals(decoded.musicbrainzTrackId, "abc-123");
-    assertEquals(decoded.musicbrainzReleaseId, "def-456");
+    expect(decoded.musicbrainzTrackId).toStrictEqual("abc-123");
+    expect(decoded.musicbrainzReleaseId).toStrictEqual("def-456");
   });
 
   it("should decode ReplayGain fields to camelCase", () => {
@@ -77,8 +73,8 @@ describe("decodeTagData key normalization", () => {
       string,
       unknown
     >;
-    assertEquals(decoded.replayGainTrackGain, "-6.54 dB");
-    assertEquals(decoded.replayGainTrackPeak, "0.98765");
+    expect(decoded.replayGainTrackGain).toStrictEqual("-6.54 dB");
+    expect(decoded.replayGainTrackPeak).toStrictEqual("0.98765");
   });
 
   it("should leave already-camelCase keys as-is", () => {
@@ -91,9 +87,9 @@ describe("decodeTagData key normalization", () => {
       string,
       unknown
     >;
-    assertEquals(decoded.title, "Test");
-    assertEquals(decoded.artist, "Artist");
-    assertEquals(decoded.albumArtist, "VA");
+    expect(decoded.title).toStrictEqual("Test");
+    expect(decoded.artist).toStrictEqual("Artist");
+    expect(decoded.albumArtist).toStrictEqual("VA");
   });
 
   it("should pass through unknown keys as-is", () => {
@@ -102,6 +98,6 @@ describe("decodeTagData key normalization", () => {
       string,
       unknown
     >;
-    assertEquals(decoded["CUSTOM_UNKNOWN"], "value");
+    expect(decoded["CUSTOM_UNKNOWN"]).toStrictEqual("value");
   });
 });

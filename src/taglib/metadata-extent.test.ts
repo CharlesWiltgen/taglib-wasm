@@ -1,5 +1,4 @@
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
 import {
   metadataFitsInHeader,
   trailerFitsInFooter,
@@ -77,13 +76,13 @@ describe("metadataFitsInHeader", () => {
 
   it("accepts an ID3v2 tag that ends inside the window", () => {
     // 10-byte header + 100 declared = 110 bytes, well inside LIMIT.
-    assertEquals(metadataFitsInHeader(id3v2Tag(100), LIMIT), true);
+    expect(metadataFitsInHeader(id3v2Tag(100), LIMIT)).toStrictEqual(true);
   });
 
   it("rejects an ID3v2 tag that ends past the window", () => {
     // The reported defect: a tag larger than the header window gets spliced
     // mid-frame, so the caller must fall back to a full read.
-    assertEquals(metadataFitsInHeader(id3v2Tag(LIMIT), LIMIT), false);
+    expect(metadataFitsInHeader(id3v2Tag(LIMIT), LIMIT)).toStrictEqual(false);
   });
 
   it("counts the ID3v2 footer against the window", () => {
@@ -93,8 +92,10 @@ describe("metadataFitsInHeader", () => {
     // the window leaves no room to check what follows it, and is correctly
     // rejected on those grounds instead — which is a different rule.
     const almost = LIMIT - 15;
-    assertEquals(metadataFitsInHeader(id3v2Tag(almost), LIMIT), true);
-    assertEquals(metadataFitsInHeader(id3v2Tag(almost, 0x10), LIMIT), false);
+    expect(metadataFitsInHeader(id3v2Tag(almost), LIMIT)).toStrictEqual(true);
+    expect(metadataFitsInHeader(id3v2Tag(almost, 0x10), LIMIT)).toStrictEqual(
+      false,
+    );
   });
 
   it("walks FLAC metadata blocks to the last one", () => {
@@ -103,7 +104,7 @@ describe("metadataFitsInHeader", () => {
       flacBlock(34, false, 0),
       flacBlock(100, true, 6),
     );
-    assertEquals(metadataFitsInHeader(flac, LIMIT), true);
+    expect(metadataFitsInHeader(flac, LIMIT)).toStrictEqual(true);
   });
 
   it("rejects a FLAC picture block that overruns the window", () => {
@@ -113,20 +114,20 @@ describe("metadataFitsInHeader", () => {
       flacBlock(34, false, 0),
       flacBlock(LIMIT * 4, true, 6),
     );
-    assertEquals(metadataFitsInHeader(flac, LIMIT), false);
+    expect(metadataFitsInHeader(flac, LIMIT)).toStrictEqual(false);
   });
 
   it("accepts MP4 when moov precedes the media data", () => {
     // "faststart" layout: ftyp, moov, then mdat.
     const mp4 = concat(atom("ftyp", 16), atom("moov", 200), atom("mdat", 64));
-    assertEquals(metadataFitsInHeader(mp4, LIMIT), true);
+    expect(metadataFitsInHeader(mp4, LIMIT)).toStrictEqual(true);
   });
 
   it("rejects MP4 when moov sits past the window behind the media data", () => {
     // Non-faststart: moov is at the end, so a header+footer splice moves it to
     // an offset TagLib will not find it at.
     const mp4 = concat(atom("ftyp", 16), atom("mdat", LIMIT * 4));
-    assertEquals(metadataFitsInHeader(mp4, LIMIT), false);
+    expect(metadataFitsInHeader(mp4, LIMIT)).toStrictEqual(false);
   });
 
   it("accepts Ogg once the comment header packet completes", () => {
@@ -134,14 +135,14 @@ describe("metadataFitsInHeader", () => {
     // segment shorter than 255 terminates a packet. Both land in the window
     // here, which is the ordinary case a partial read exists for.
     const ogg = concat(oggPage([30]), oggPage([100]));
-    assertEquals(metadataFitsInHeader(ogg, LIMIT), true);
+    expect(metadataFitsInHeader(ogg, LIMIT)).toStrictEqual(true);
   });
 
   it("rejects Ogg whose comment header runs past the window", () => {
     // 255 continues the packet into the next page, so this one never completes
     // inside the window.
     const ogg = concat(oggPage([30]), oggPage([255, 255]), oggPage([255, 255]));
-    assertEquals(metadataFitsInHeader(ogg, 200), false);
+    expect(metadataFitsInHeader(ogg, 200)).toStrictEqual(false);
   });
 
   it("accepts an MP3 carrying no ID3v2 tag at all", () => {
@@ -159,7 +160,7 @@ describe("metadataFitsInHeader", () => {
     mp3[417] = 0xFF;
     mp3[418] = 0xFB;
     mp3[419] = 0x90;
-    assertEquals(metadataFitsInHeader(mp3, LIMIT), true);
+    expect(metadataFitsInHeader(mp3, LIMIT)).toStrictEqual(true);
   });
 
   it("rejects a bare frame sync that is not an MPEG header", () => {
@@ -171,7 +172,7 @@ describe("metadataFitsInHeader", () => {
     notMp3[0] = 0xFF;
     notMp3[1] = 0xF8; // sync bits set, version 3, layer index 0 = reserved
     notMp3[2] = 0x90; // valid bitrate and sample-rate indices
-    assertEquals(metadataFitsInHeader(notMp3, LIMIT), false);
+    expect(metadataFitsInHeader(notMp3, LIMIT)).toStrictEqual(false);
   });
 
   it("walks past an ID3v2 prefix into the container behind it", () => {
@@ -189,8 +190,11 @@ describe("metadataFitsInHeader", () => {
       flacBlock(34, false, 0),
       flacBlock(100, true, 6),
     );
-    assertEquals(metadataFitsInHeader(concat(prefix, oversized), LIMIT), false);
-    assertEquals(metadataFitsInHeader(concat(prefix, modest), LIMIT), true);
+    expect(metadataFitsInHeader(concat(prefix, oversized), LIMIT))
+      .toStrictEqual(false);
+    expect(metadataFitsInHeader(concat(prefix, modest), LIMIT)).toStrictEqual(
+      true,
+    );
   });
 
   it("declines FLAC-in-Ogg, whose comment need not be the second packet", () => {
@@ -200,7 +204,7 @@ describe("metadataFitsInHeader", () => {
       oggPage([5], [0x7F, ...new TextEncoder().encode("FLAC")]),
       oggPage([30]),
     );
-    assertEquals(metadataFitsInHeader(flacInOgg, LIMIT), false);
+    expect(metadataFitsInHeader(flacInOgg, LIMIT)).toStrictEqual(false);
   });
 
   it("rejects a frame sync TagLib itself would reject", () => {
@@ -208,13 +212,13 @@ describe("metadataFitsInHeader", () => {
     // MPEG::File::findID3v2 keeps scanning for a tag when byte 0 is not a valid
     // frame — so a lax test here concludes "no ID3v2" for a file that has one.
     const bogus = Uint8Array.from([0xFF, 0xFB, 0xFF, 0xFF, 0, 0, 0, 0]);
-    assertEquals(metadataFitsInHeader(bogus, LIMIT), false);
+    expect(metadataFitsInHeader(bogus, LIMIT)).toStrictEqual(false);
     // "Valid" means a chained pair of frames: the first header alone cannot
     // vouch for "no metadata" any more (taglib-rfwe).
     const valid = new Uint8Array(417 + 4);
     valid.set([0xFF, 0xFB, 0x90, 0x00], 0);
     valid.set([0xFF, 0xFB, 0x90, 0x00], 417);
-    assertEquals(metadataFitsInHeader(valid, LIMIT), true);
+    expect(metadataFitsInHeader(valid, LIMIT)).toStrictEqual(true);
   });
 
   it("rejects a lone MPEG frame whose next frame is inconsistent (taglib-rfwe)", () => {
@@ -231,7 +235,7 @@ describe("metadataFitsInHeader", () => {
     const id3 = new Uint8Array(LIMIT * 2);
     id3.set(new TextEncoder().encode("ID3\x04\x00\x00"), 0);
     const tagged = concat(frame, id3);
-    assertEquals(metadataFitsInHeader(tagged, LIMIT), false);
+    expect(metadataFitsInHeader(tagged, LIMIT)).toStrictEqual(false);
 
     // The same frame followed by a CONSISTENT frame is a real tagless MP3 —
     // the next-frame check must not reject the population the footer window
@@ -239,18 +243,20 @@ describe("metadataFitsInHeader", () => {
     const chain = new Uint8Array(417 + 4);
     chain.set(frame, 0);
     chain.set(Uint8Array.from([0xFF, 0xFB, 0x90, 0x64]), 417);
-    assertEquals(metadataFitsInHeader(chain, LIMIT), true);
+    expect(metadataFitsInHeader(chain, LIMIT)).toStrictEqual(true);
 
     // A frame whose chain is cut off by the end of the buffer cannot vouch for
     // "no metadata" either (TagLib: nextData.size() < 4 → invalid).
-    assertEquals(metadataFitsInHeader(frame, LIMIT), false);
+    expect(metadataFitsInHeader(frame, LIMIT)).toStrictEqual(false);
   });
 
   it("refuses to vouch for an extent outside the buffer it was given", () => {
     // The probes read structural fields only, so they can report an extent they
     // never saw. Both call sites currently pass a full-length buffer, but a
     // short-read optimisation would otherwise reopen this whole defect class.
-    assertEquals(metadataFitsInHeader(id3v2(100_000), 1_000_000), false);
+    expect(metadataFitsInHeader(id3v2(100_000), 1_000_000)).toStrictEqual(
+      false,
+    );
   });
 
   it("does not vouch for a container it lacks the bytes to look at", () => {
@@ -266,31 +272,32 @@ describe("metadataFitsInHeader", () => {
     for (const gap of [0, 1, 2, 3]) {
       const window = new Uint8Array(LIMIT);
       window.set(id3v2Tag(LIMIT - gap - 10), 0);
-      assertEquals(
+      expect(
         metadataFitsInHeader(window, LIMIT),
-        false,
         `a tag ending ${gap} bytes before the limit vouched for what follows`,
-      );
+      ).toStrictEqual(false);
     }
   });
 
   it("rejects a format whose metadata extent it cannot determine", () => {
     // Unknown container: partial loading is unsafe because nothing here proves
     // the metadata is intact, so the safe answer is a full read.
-    assertEquals(metadataFitsInHeader(new Uint8Array(64), LIMIT), false);
+    expect(metadataFitsInHeader(new Uint8Array(64), LIMIT)).toStrictEqual(
+      false,
+    );
   });
 
   it("rejects malformed input rather than looping or overrunning", () => {
     // A zero/short atom size must not spin forever, and a truncated ID3v2
     // header must not be read past its end.
-    assertEquals(
-      metadataFitsInHeader(atom("ftyp", 0).slice(0, 8), LIMIT),
+    expect(metadataFitsInHeader(atom("ftyp", 0).slice(0, 8), LIMIT))
+      .toStrictEqual(false);
+    expect(metadataFitsInHeader(id3v2(100).slice(0, 6), LIMIT)).toStrictEqual(
       false,
     );
-    assertEquals(metadataFitsInHeader(id3v2(100).slice(0, 6), LIMIT), false);
     const zeroSized = new Uint8Array(16);
     zeroSized.set(new TextEncoder().encode("ftyp"), 4);
-    assertEquals(metadataFitsInHeader(zeroSized, LIMIT), false);
+    expect(metadataFitsInHeader(zeroSized, LIMIT)).toStrictEqual(false);
   });
 });
 
@@ -313,13 +320,17 @@ describe("trailerFitsInFooter", () => {
   const FOOTER = 131072;
 
   it("accepts an APE tag that fits the footer window", () => {
-    assertEquals(trailerFitsInFooter(apeTail(41_000, false), FOOTER), true);
+    expect(trailerFitsInFooter(apeTail(41_000, false), FOOTER)).toStrictEqual(
+      true,
+    );
   });
 
   it("rejects an APE tag larger than the footer window", () => {
     // Measured: a 410 KB APE tag lost EVERY tag value, because the splice
     // makes TagLib compute the tag start inside the header window's audio.
-    assertEquals(trailerFitsInFooter(apeTail(410_000, false), FOOTER), false);
+    expect(trailerFitsInFooter(apeTail(410_000, false), FOOTER)).toStrictEqual(
+      false,
+    );
   });
 
   it("counts the ID3v1 block sitting after an APE tag", () => {
@@ -327,15 +338,21 @@ describe("trailerFitsInFooter", () => {
     // much more of the window. Omitting it left a 96-byte band in which a tag
     // was spliced and then parsed out of audio.
     const size = FOOTER - 100; // fits under +32, does NOT fit under +128
-    assertEquals(trailerFitsInFooter(apeTail(size, false), FOOTER), true);
-    assertEquals(trailerFitsInFooter(apeTail(size, true), FOOTER), false);
+    expect(trailerFitsInFooter(apeTail(size, false), FOOTER)).toStrictEqual(
+      true,
+    );
+    expect(trailerFitsInFooter(apeTail(size, true), FOOTER)).toStrictEqual(
+      false,
+    );
   });
 
   it("accepts a tail with no APE trailer at all", () => {
-    assertEquals(trailerFitsInFooter(new Uint8Array(4096), FOOTER), true);
+    expect(trailerFitsInFooter(new Uint8Array(4096), FOOTER)).toStrictEqual(
+      true,
+    );
   });
 
   it("refuses to vouch for a tail shorter than the footer it is asked about", () => {
-    assertEquals(trailerFitsInFooter(new Uint8Array(8), FOOTER), false);
+    expect(trailerFitsInFooter(new Uint8Array(8), FOOTER)).toStrictEqual(false);
   });
 });

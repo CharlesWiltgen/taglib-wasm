@@ -15,8 +15,8 @@
  * pre-fix binary while its Emscripten twin passed (observed 2026-08-18).
  */
 
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import { readExtendedTag } from "../src/utils/tag-mapping.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
@@ -32,7 +32,7 @@ describe("COMPILATION boolean contract (taglib-c9b)", () => {
     for (const format of ["mp3", "flac", "m4a"] as const) {
       it(`${backend}: typed boolean and canonical '1'/'0' raw surface (${format})`, async () => {
         const taglib = await TagLib.initialize({ forceWasmType: backend });
-        const src = await Deno.readFile(FIXTURE_PATH[format]);
+        const src = new Uint8Array(await readFile(FIXTURE_PATH[format]));
 
         // Write true.
         using written = await taglib.open(new Uint8Array(src));
@@ -41,9 +41,9 @@ describe("COMPILATION boolean contract (taglib-c9b)", () => {
         const buf = written.getFileBuffer();
 
         using file = await taglib.open(buf);
-        assertEquals(readExtendedTag(file).compilation, true);
-        assertEquals(file.properties().compilation, ["1"]);
-        assertEquals(file.getProperty("COMPILATION"), ["1"]);
+        expect(readExtendedTag(file).compilation).toStrictEqual(true);
+        expect(file.properties().compilation).toStrictEqual(["1"]);
+        expect(file.getProperty("COMPILATION")).toStrictEqual(["1"]);
 
         // Write false.
         using writtenFalse = await taglib.open(buf);
@@ -52,14 +52,14 @@ describe("COMPILATION boolean contract (taglib-c9b)", () => {
         const bufFalse = writtenFalse.getFileBuffer();
 
         using fileFalse = await taglib.open(bufFalse);
-        assertEquals(readExtendedTag(fileFalse).compilation, false);
-        assertEquals(fileFalse.properties().compilation, ["0"]);
-        assertEquals(fileFalse.getProperty("COMPILATION"), ["0"]);
+        expect(readExtendedTag(fileFalse).compilation).toStrictEqual(false);
+        expect(fileFalse.properties().compilation).toStrictEqual(["0"]);
+        expect(fileFalse.getProperty("COMPILATION")).toStrictEqual(["0"]);
       });
 
       it(`${backend}: written bytes read identically by the other backend (${format})`, async () => {
         const taglib = await TagLib.initialize({ forceWasmType: backend });
-        const src = await Deno.readFile(FIXTURE_PATH[format]);
+        const src = new Uint8Array(await readFile(FIXTURE_PATH[format]));
 
         using written = await taglib.open(new Uint8Array(src));
         written.setProperties({ compilation: ["1"] });
@@ -70,14 +70,14 @@ describe("COMPILATION boolean contract (taglib-c9b)", () => {
           forceWasmType: OTHER[backend],
         });
         using file = await other.open(buf);
-        assertEquals(readExtendedTag(file).compilation, true);
-        assertEquals(file.properties().compilation, ["1"]);
-        assertEquals(file.getProperty("COMPILATION"), ["1"]);
+        expect(readExtendedTag(file).compilation).toStrictEqual(true);
+        expect(file.properties().compilation).toStrictEqual(["1"]);
+        expect(file.getProperty("COMPILATION")).toStrictEqual(["1"]);
       });
 
       it(`${backend}: literal 'true' COMPILATION reads as compilation=true (flac)`, async () => {
         const taglib = await TagLib.initialize({ forceWasmType: backend });
-        const src = await Deno.readFile(FIXTURE_PATH.flac);
+        const src = new Uint8Array(await readFile(FIXTURE_PATH.flac));
 
         // Non-canonical disk value: a tool wrote the literal string "true".
         // The typed surface must agree across backends — WASI's shim
@@ -89,7 +89,7 @@ describe("COMPILATION boolean contract (taglib-c9b)", () => {
         const buf = written.getFileBuffer();
 
         using file = await taglib.open(buf);
-        assertEquals(readExtendedTag(file).compilation, true);
+        expect(readExtendedTag(file).compilation).toStrictEqual(true);
       });
     }
   }

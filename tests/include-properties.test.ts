@@ -10,8 +10,8 @@
  * backends (WASI: open-time snapshot; Emscripten: built once per call).
  */
 
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import {
   applyTags,
@@ -27,7 +27,7 @@ const RELEASE_ID = "11111111-2222-3333-4444-555555555555";
 
 /** Seed an MP3 with one modeled and one unmodeled wire key. */
 async function seedMp3(): Promise<Uint8Array> {
-  const src = await Deno.readFile(FIXTURE_PATH.mp3);
+  const src = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
   const tl = await TagLib.initialize();
   const file = await tl.open(src);
   file.setProperty("MUSICBRAINZ_RELEASEID", RELEASE_ID);
@@ -56,7 +56,7 @@ function runScenarios(): void {
     });
     const item = items[0];
     if (item.status === "error") throw item.error;
-    assertEquals(item.data.tags.extraProperties, {
+    expect(item.data.tags.extraProperties).toStrictEqual({
       MUSICBRAINZ_RELEASEID: [RELEASE_ID],
       CATALOGNUMBER: ["LC1234"],
       WEIRDK3Y: ["wxyz"],
@@ -70,7 +70,7 @@ function runScenarios(): void {
     });
     const item = items[0];
     if (item.status === "error") throw item.error;
-    assertEquals(item.data.extraProperties, {
+    expect(item.data.extraProperties).toStrictEqual({
       CATALOGNUMBER: ["LC1234"],
       WEIRDK3Y: ["wxyz"],
     });
@@ -81,7 +81,7 @@ function runScenarios(): void {
     const tags = await readTags(seeded, {
       includeProperties: ["CATALOGNUMBER", "WEIRDK3Y", "NOPE"],
     });
-    assertEquals(tags.extraProperties, {
+    expect(tags.extraProperties).toStrictEqual({
       CATALOGNUMBER: ["LC1234"],
       WEIRDK3Y: ["wxyz"],
     });
@@ -92,7 +92,7 @@ function runScenarios(): void {
     const meta = await readMetadata(seeded, {
       includeProperties: ["CATALOGNUMBER", "WEIRDK3Y"],
     });
-    assertEquals(meta.tags.extraProperties, {
+    expect(meta.tags.extraProperties).toStrictEqual({
       CATALOGNUMBER: ["LC1234"],
       WEIRDK3Y: ["wxyz"],
     });
@@ -101,11 +101,11 @@ function runScenarios(): void {
   it("without the option extraProperties is absent", async () => {
     const seeded = await seedMp3();
     const tags = await readTags(seeded);
-    assertEquals(tags.extraProperties, undefined);
+    expect(tags.extraProperties).toStrictEqual(undefined);
     const { items } = await readMetadataBatch([seeded]);
     const item = items[0];
     if (item.status === "error") throw item.error;
-    assertEquals(item.data.tags.extraProperties, undefined);
+    expect(item.data.tags.extraProperties).toStrictEqual(undefined);
   });
 
   it("readTags -> applyTags round-trip never writes EXTRAPROPERTIES", async () => {
@@ -115,21 +115,20 @@ function runScenarios(): void {
     });
     const out = await applyTags(seeded, tags);
     const again = await readTags(out);
-    assertEquals(again.extraProperties, undefined);
+    expect(again.extraProperties).toStrictEqual(undefined);
     // The wire must not carry a synthetic key.
     const tl = await TagLib.initialize();
     const file = await tl.open(out);
     const props = file.properties();
     file.dispose();
-    assertEquals(
-      (props as Record<string, string[]>).EXTRAPROPERTIES,
+    expect((props as Record<string, string[]>).EXTRAPROPERTIES).toStrictEqual(
       undefined,
     );
     // The unmodeled key itself must survive the round-trip.
     const after = await readTags(out, {
       includeProperties: ["CATALOGNUMBER", "WEIRDK3Y"],
     });
-    assertEquals(after.extraProperties, {
+    expect(after.extraProperties).toStrictEqual({
       CATALOGNUMBER: ["LC1234"],
       WEIRDK3Y: ["wxyz"],
     });
