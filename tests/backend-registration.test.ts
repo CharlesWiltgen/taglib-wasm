@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview CI guard: both wasm backends must be present and loadable.
  *
@@ -18,35 +16,36 @@
  * `fileExists`.
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { readFile } from "node:fs/promises";
+import { expect, it } from "vite-plus/test";
 import { getAdapters, HAS_EMSCRIPTEN, HAS_WASI } from "./backend-adapter.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
 
 // GITHUB_ACTIONS, not CI: these artifacts are guaranteed by this repo's
 // workflows, whereas other CI systems (and agent harnesses) may set CI=true on
 // a checkout where dist/wasi/ was never materialized.
-const inCI = Deno.env.get("GITHUB_ACTIONS") === "true";
+const inCI = process.env.GITHUB_ACTIONS === "true";
 
-Deno.test({
-  name: "CI: both wasm backends are present and loadable",
-  ignore: !inCI,
-  fn: async () => {
-    assert(
+it(
+  "CI: both wasm backends are present and loadable",
+  { skip: !inCI },
+  async () => {
+    expect(
       HAS_WASI,
       "dist/wasi/taglib-wasi.wasm is missing — check the 'Materialize the " +
         "committed WASI binary for parity tests' step in ci.yml; without it " +
         "every forEachBackend parity test silently runs Emscripten-only",
-    );
-    assert(
+    ).toBeTruthy();
+    expect(
       HAS_EMSCRIPTEN,
       "build/taglib-wrapper.js is missing — the Emscripten backend cannot load",
-    );
-    assertEquals(getAdapters().map((adapter) => adapter.kind).sort(), [
+    ).toBeTruthy();
+    expect(getAdapters().map((adapter) => adapter.kind).sort()).toStrictEqual([
       "emscripten",
       "wasi",
     ]);
 
-    const buffer = await Deno.readFile(FIXTURE_PATH.mp3);
+    const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     // Load through the adapters, not TagLib.initialize: the adapters read the
     // very artifacts asserted above (dist/wasi/taglib-wasi.wasm and the
     // wrapper), whereas forceWasmType resolves build/*.wasm — so a corrupt
@@ -55,14 +54,13 @@ Deno.test({
       await adapter.init();
       try {
         const tags = await adapter.readTags(buffer, "mp3");
-        assertEquals(
+        expect(
           tags.title,
-          "Kiss",
           `${adapter.kind} loaded but could not read the fixture`,
-        );
+        ).toStrictEqual("Kiss");
       } finally {
         await adapter.dispose();
       }
     }
   },
-});
+);

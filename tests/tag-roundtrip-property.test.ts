@@ -6,7 +6,7 @@
  * - Idempotency: write same tags twice → same result
  */
 
-import { afterAll, beforeAll, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, it } from "vite-plus/test";
 import fc from "fast-check";
 import {
   type BackendAdapter,

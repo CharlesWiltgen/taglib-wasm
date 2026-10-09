@@ -2,8 +2,7 @@
  * @fileoverview Integration workflow tests simulating real user scenarios.
  */
 
-import { assertEquals, assertExists, assertGreater } from "@std/assert";
-import { afterAll, beforeAll, type describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import {
   type BackendAdapter,
   extForFormat,
@@ -30,9 +29,9 @@ forEachBackend("Integration Workflows", (adapter: BackendAdapter) => {
       results[format] = tags.title;
     }
 
-    assertEquals(Object.keys(results).length, FORMATS.length);
+    expect(Object.keys(results).length).toStrictEqual(FORMATS.length);
     for (const format of FORMATS) {
-      assertEquals(results[format], "Kiss", `${format}: wrong title`);
+      expect(results[format], `${format}: wrong title`).toStrictEqual("Kiss");
     }
   });
 
@@ -41,7 +40,7 @@ forEachBackend("Integration Workflows", (adapter: BackendAdapter) => {
 
     // Read original
     const original = await adapter.readTags(buffer, "mp3");
-    assertEquals(original.title, "Kiss");
+    expect(original.title).toStrictEqual("Kiss");
 
     // Modify
     const modified = await adapter.writeTags(
@@ -53,13 +52,14 @@ forEachBackend("Integration Workflows", (adapter: BackendAdapter) => {
       },
       "mp3",
     );
-    assertExists(modified);
+    expect(modified).not.toBeNull();
+    expect(modified).toBeDefined();
 
     // Verify persistence
     const readBack = await adapter.readTags(modified!, "mp3");
-    assertEquals(readBack.title, "Modified Kiss");
-    assertEquals(readBack.artist, "Modified Artist");
-    assertEquals(readBack.year, 2026);
+    expect(readBack.title).toStrictEqual("Modified Kiss");
+    expect(readBack.artist).toStrictEqual("Modified Artist");
+    expect(readBack.year).toStrictEqual(2026);
   });
 
   it("batch processing: process all formats sequentially", async () => {
@@ -73,12 +73,13 @@ forEachBackend("Integration Workflows", (adapter: BackendAdapter) => {
         extForFormat(format),
       );
 
-      assertExists(tags.title);
-      assertGreater(props.sampleRate, 0);
+      expect(tags.title).not.toBeNull();
+      expect(tags.title).toBeDefined();
+      expect(props.sampleRate).toBeGreaterThan(0);
       processed.push(format);
     }
 
-    assertEquals(processed.length, FORMATS.length);
+    expect(processed.length).toStrictEqual(FORMATS.length);
   });
 
   it("format converter metadata: read from one format, write to another", async () => {
@@ -97,12 +98,13 @@ forEachBackend("Integration Workflows", (adapter: BackendAdapter) => {
       },
       "flac",
     );
-    assertExists(modified);
+    expect(modified).not.toBeNull();
+    expect(modified).toBeDefined();
 
     // Verify the FLAC file has the MP3's metadata
     const flacTags = await adapter.readTags(modified!, "flac");
-    assertEquals(flacTags.title, mp3Tags.title);
-    assertEquals(flacTags.artist, mp3Tags.artist);
-    assertEquals(flacTags.album, mp3Tags.album);
+    expect(flacTags.title).toStrictEqual(mp3Tags.title);
+    expect(flacTags.artist).toStrictEqual(mp3Tags.artist);
+    expect(flacTags.album).toStrictEqual(mp3Tags.album);
   });
 });

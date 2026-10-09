@@ -5,8 +5,10 @@
  * tests can be written once and run against both.
  */
 
-import { describe, type it } from "@std/testing/bdd";
-import { resolve } from "@std/path";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { describe } from "vite-plus/test";
 import type { AudioProperties } from "../src/types.ts";
 import { mediaChecksum } from "../src/taglib/audio-file-checksum.ts";
 import type {
@@ -84,7 +86,7 @@ export interface BackendAdapter {
 // WASI adapter
 // ---------------------------------------------------------------------------
 
-const WASM_PATH = resolve(Deno.cwd(), "dist/wasi/taglib-wasi.wasm");
+const WASM_PATH = resolve(process.cwd(), "dist/wasi/taglib-wasi.wasm");
 export const HAS_WASI = fileExists(WASM_PATH);
 
 export class WasiBackendAdapter implements BackendAdapter {
@@ -224,10 +226,10 @@ export class WasiBackendAdapter implements BackendAdapter {
       "./wasi-test-helpers.ts"
     );
 
-    const tempDir = await Deno.makeTempDir();
+    const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
     const filename = `test-write.${ext}`;
     const destPath = resolve(tempDir, filename);
-    await Deno.writeFile(destPath, buffer);
+    await writeFile(destPath, buffer);
 
     try {
       using wasi = await loadWasiHost({
@@ -240,9 +242,9 @@ export class WasiBackendAdapter implements BackendAdapter {
         tags as unknown as import("../src/types.ts").ExtendedTag,
       );
 
-      return await Deno.readFile(destPath);
+      return new Uint8Array(await readFile(destPath));
     } finally {
-      await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+      await rm(tempDir, { recursive: true }).catch(() => {});
     }
   }
 
@@ -281,8 +283,8 @@ export class WasiBackendAdapter implements BackendAdapter {
 // ---------------------------------------------------------------------------
 
 export const HAS_EMSCRIPTEN = fileExists(
-  resolve(Deno.cwd(), "build/taglib-wrapper.js"),
-) || fileExists(resolve(Deno.cwd(), "dist/taglib-wrapper.js"));
+  resolve(process.cwd(), "build/taglib-wrapper.js"),
+) || fileExists(resolve(process.cwd(), "dist/taglib-wrapper.js"));
 
 export class EmscriptenBackendAdapter implements BackendAdapter {
   readonly kind = "emscripten" as const;
@@ -495,7 +497,7 @@ export function forEachBackend(
 }
 
 export async function readFixture(format: Format): Promise<Uint8Array> {
-  return await Deno.readFile(FIXTURE_PATH[format]);
+  return new Uint8Array(await readFile(FIXTURE_PATH[format]));
 }
 
 export function extForFormat(format: Format): string {

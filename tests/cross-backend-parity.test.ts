@@ -6,8 +6,7 @@
  * parity tests pass, users can trust that switching backends is safe.
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import { afterAll, beforeAll, describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import {
   EmscriptenBackendAdapter,
   extForFormat,
@@ -24,10 +23,10 @@ import { type Format, FORMATS } from "./shared-fixtures.ts";
 // (taglib-qivb), so under GITHUB_ACTIONS it must run and fail loudly instead.
 // Keyed on GITHUB_ACTIONS rather than CI because other CI systems (and agent
 // harnesses) may set CI=true on a checkout without built artifacts.
-const IN_CI = Deno.env.get("GITHUB_ACTIONS") === "true";
+const IN_CI = process.env.GITHUB_ACTIONS === "true";
 const SKIP = (!HAS_WASI || !HAS_EMSCRIPTEN) && !IN_CI;
 
-describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
+describe("Cross-Backend Parity", { skip: SKIP }, () => {
   const wasi = new WasiBackendAdapter();
   const emscripten = new EmscriptenBackendAdapter();
 
@@ -49,30 +48,20 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       const wasiTags = await wasi.readTags(buffer, ext);
       const emTags = await emscripten.readTags(buffer, ext);
 
-      assertEquals(
-        wasiTags.title,
+      expect(wasiTags.title, `${format}: title mismatch`).toStrictEqual(
         emTags.title,
-        `${format}: title mismatch`,
       );
-      assertEquals(
-        wasiTags.artist,
+      expect(wasiTags.artist, `${format}: artist mismatch`).toStrictEqual(
         emTags.artist,
-        `${format}: artist mismatch`,
       );
-      assertEquals(
-        wasiTags.album,
+      expect(wasiTags.album, `${format}: album mismatch`).toStrictEqual(
         emTags.album,
-        `${format}: album mismatch`,
       );
-      assertEquals(
-        wasiTags.year,
+      expect(wasiTags.year, `${format}: year mismatch`).toStrictEqual(
         emTags.year,
-        `${format}: year mismatch`,
       );
-      assertEquals(
-        wasiTags.track,
+      expect(wasiTags.track, `${format}: track mismatch`).toStrictEqual(
         emTags.track,
-        `${format}: track mismatch`,
       );
     });
 
@@ -83,17 +72,19 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       const wasiProps = await wasi.readProperties(buffer, ext);
       const emProps = await emscripten.readProperties(buffer, ext);
 
-      assertExists(wasiProps["title"], `${format}: WASI should have title`);
-      assertExists(emProps["title"], `${format}: Emscripten should have title`);
-      assertEquals(
-        wasiProps["title"],
+      expect(wasiProps["title"], `${format}: WASI should have title`).not
+        .toBeNull();
+      expect(wasiProps["title"], `${format}: WASI should have title`)
+        .toBeDefined();
+      expect(emProps["title"], `${format}: Emscripten should have title`).not
+        .toBeNull();
+      expect(emProps["title"], `${format}: Emscripten should have title`)
+        .toBeDefined();
+      expect(wasiProps["title"], `${format}: title mismatch`).toStrictEqual(
         emProps["title"],
-        `${format}: title mismatch`,
       );
-      assertEquals(
-        wasiProps["artist"],
+      expect(wasiProps["artist"], `${format}: artist mismatch`).toStrictEqual(
         emProps["artist"],
-        `${format}: artist mismatch`,
       );
     });
 
@@ -104,11 +95,10 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       const wasiFormat = await wasi.readFormat(buffer, ext);
       const emFormat = await emscripten.readFormat(buffer, ext);
 
-      assertEquals(
+      expect(
         wasiFormat,
-        emFormat,
         `${format}: format mismatch (wasi=${wasiFormat}, em=${emFormat})`,
-      );
+      ).toStrictEqual(emFormat);
     });
 
     it(`should produce matching audio properties for ${format}`, async () => {
@@ -118,27 +108,19 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       const wasiProps = await wasi.readAudioProperties(buffer, ext);
       const emProps = await emscripten.readAudioProperties(buffer, ext);
 
-      assertEquals(
-        wasiProps.sampleRate,
-        emProps.sampleRate,
-        `${format}: sampleRate mismatch`,
-      );
-      assertEquals(
-        wasiProps.channels,
+      expect(wasiProps.sampleRate, `${format}: sampleRate mismatch`)
+        .toStrictEqual(emProps.sampleRate);
+      expect(wasiProps.channels, `${format}: channels mismatch`).toStrictEqual(
         emProps.channels,
-        `${format}: channels mismatch`,
       );
       // Bitrate can differ slightly due to encoding differences
       const bitrateDiff = Math.abs(wasiProps.bitrate - emProps.bitrate);
-      assertEquals(
+      expect(
         bitrateDiff <= 10,
-        true,
         `${format}: bitrate difference ${bitrateDiff} > 10 (wasi=${wasiProps.bitrate}, em=${emProps.bitrate})`,
-      );
-      assertEquals(
-        wasiProps.duration,
+      ).toStrictEqual(true);
+      expect(wasiProps.duration, `${format}: duration mismatch`).toStrictEqual(
         emProps.duration,
-        `${format}: duration mismatch`,
       );
     });
 
@@ -149,26 +131,15 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       const wasiProps = await wasi.readExtendedAudioProperties(buffer, ext);
       const emProps = await emscripten.readExtendedAudioProperties(buffer, ext);
 
-      assertEquals(
-        wasiProps.codec,
+      expect(wasiProps.codec, `${format}: codec mismatch`).toStrictEqual(
         emProps.codec,
-        `${format}: codec mismatch`,
       );
-      assertEquals(
-        wasiProps.containerFormat,
-        emProps.containerFormat,
-        `${format}: containerFormat mismatch`,
-      );
-      assertEquals(
-        wasiProps.isLossless,
-        emProps.isLossless,
-        `${format}: isLossless mismatch`,
-      );
-      assertEquals(
-        wasiProps.bitsPerSample,
-        emProps.bitsPerSample,
-        `${format}: bitsPerSample mismatch`,
-      );
+      expect(wasiProps.containerFormat, `${format}: containerFormat mismatch`)
+        .toStrictEqual(emProps.containerFormat);
+      expect(wasiProps.isLossless, `${format}: isLossless mismatch`)
+        .toStrictEqual(emProps.isLossless);
+      expect(wasiProps.bitsPerSample, `${format}: bitsPerSample mismatch`)
+        .toStrictEqual(emProps.bitsPerSample);
     });
 
     it(`should produce matching picture count for ${format}`, async () => {
@@ -178,11 +149,10 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       const wasiCount = await wasi.readPictureCount(buffer, ext);
       const emCount = await emscripten.readPictureCount(buffer, ext);
 
-      assertEquals(
+      expect(
         wasiCount,
-        emCount,
         `${format}: picture count mismatch (wasi=${wasiCount}, em=${emCount})`,
-      );
+      ).toStrictEqual(emCount);
     });
 
     it(`should produce matching rating count for ${format}`, async () => {
@@ -192,11 +162,10 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       const wasiCount = await wasi.readRatingCount(buffer, ext);
       const emCount = await emscripten.readRatingCount(buffer, ext);
 
-      assertEquals(
+      expect(
         wasiCount,
-        emCount,
         `${format}: rating count mismatch (wasi=${wasiCount}, em=${emCount})`,
-      );
+      ).toStrictEqual(emCount);
     });
 
     it(`should read WASI-written tags with Emscripten (${format})`, async () => {
@@ -209,24 +178,23 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       };
 
       const modified = await wasi.writeTags(buffer, writtenTags, ext);
-      assertExists(modified, `${format}: WASI writeTags returned null`);
+      expect(modified, `${format}: WASI writeTags returned null`).not
+        .toBeNull();
+      expect(modified, `${format}: WASI writeTags returned null`).toBeDefined();
 
       const readBack = await emscripten.readTags(modified!, ext);
-      assertEquals(
+      expect(
         readBack.title,
-        writtenTags.title,
         `${format}: Emscripten failed to read WASI-written title`,
-      );
-      assertEquals(
+      ).toStrictEqual(writtenTags.title);
+      expect(
         readBack.artist,
-        writtenTags.artist,
         `${format}: Emscripten failed to read WASI-written artist`,
-      );
-      assertEquals(
+      ).toStrictEqual(writtenTags.artist);
+      expect(
         readBack.album,
-        writtenTags.album,
         `${format}: Emscripten failed to read WASI-written album`,
-      );
+      ).toStrictEqual(writtenTags.album);
     });
 
     it(`should read Emscripten-written tags with WASI (${format})`, async () => {
@@ -239,24 +207,24 @@ describe({ name: "Cross-Backend Parity", ignore: SKIP }, () => {
       };
 
       const modified = await emscripten.writeTags(buffer, writtenTags, ext);
-      assertExists(modified, `${format}: Emscripten writeTags returned null`);
+      expect(modified, `${format}: Emscripten writeTags returned null`).not
+        .toBeNull();
+      expect(modified, `${format}: Emscripten writeTags returned null`)
+        .toBeDefined();
 
       const readBack = await wasi.readTags(modified!, ext);
-      assertEquals(
+      expect(
         readBack.title,
-        writtenTags.title,
         `${format}: WASI failed to read Emscripten-written title`,
-      );
-      assertEquals(
+      ).toStrictEqual(writtenTags.title);
+      expect(
         readBack.artist,
-        writtenTags.artist,
         `${format}: WASI failed to read Emscripten-written artist`,
-      );
-      assertEquals(
+      ).toStrictEqual(writtenTags.artist);
+      expect(
         readBack.album,
-        writtenTags.album,
         `${format}: WASI failed to read Emscripten-written album`,
-      );
+      ).toStrictEqual(writtenTags.album);
     });
   }
 });

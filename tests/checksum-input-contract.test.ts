@@ -15,9 +15,12 @@
  * checksum's `source` says what was hashed, not whether the file was good.
  */
 
-import { assertEquals, assertRejects } from "@std/assert";
-import { afterAll, describe, it } from "@std/testing/bdd";
-import { resolve } from "@std/path";
+import { readFileSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { afterAll, describe, expect, it } from "vite-plus/test";
+import { expectRejects } from "./_assert-helpers.ts";
 import type { AudioFileInput } from "../src/types.ts";
 import type { WasmModule } from "../src/wasm.ts";
 import type { AudioFile } from "../src/taglib/index.ts";
@@ -28,7 +31,7 @@ import { loadUnifiedTagLibModule } from "../src/runtime/unified-loader/index.ts"
 import { FileOperationError, InvalidFormatError } from "../src/errors.ts";
 import { HAS_WASI } from "./backend-adapter.ts";
 
-const TEMP_DIR = await Deno.makeTempDir({ prefix: "taglib-j9ld-" });
+const TEMP_DIR = await mkdtemp(join(tmpdir(), "taglib-j9ld-"));
 
 /**
  * 1 KiB of bytes with no container signature: the shape a truncation or a disk
@@ -48,16 +51,16 @@ const JUNK_MPEG_SYNC = Uint8Array.from([
   ...JUNK.slice(4),
 ]);
 
-await Deno.writeFile(`${TEMP_DIR}/empty.mp3`, new Uint8Array(0));
-await Deno.writeFile(`${TEMP_DIR}/empty.bin`, new Uint8Array(0));
-await Deno.writeFile(`${TEMP_DIR}/empty.mpc`, new Uint8Array(0));
-await Deno.writeFile(`${TEMP_DIR}/junk.mp3`, JUNK);
-await Deno.writeFile(`${TEMP_DIR}/junk.bin`, JUNK);
-await Deno.writeFile(`${TEMP_DIR}/junk.txt`, JUNK);
-await Deno.writeFile(`${TEMP_DIR}/mpeg-sync-junk.mp3`, JUNK_MPEG_SYNC);
+await writeFile(`${TEMP_DIR}/empty.mp3`, new Uint8Array(0));
+await writeFile(`${TEMP_DIR}/empty.bin`, new Uint8Array(0));
+await writeFile(`${TEMP_DIR}/empty.mpc`, new Uint8Array(0));
+await writeFile(`${TEMP_DIR}/junk.mp3`, JUNK);
+await writeFile(`${TEMP_DIR}/junk.bin`, JUNK);
+await writeFile(`${TEMP_DIR}/junk.txt`, JUNK);
+await writeFile(`${TEMP_DIR}/mpeg-sync-junk.mp3`, JUNK_MPEG_SYNC);
 
 afterAll(async () => {
-  await Deno.remove(TEMP_DIR, { recursive: true });
+  await rm(TEMP_DIR, { recursive: true });
 });
 
 /** The fixture paths both backends must agree on, with the digest's own
@@ -181,18 +184,17 @@ describe("unreadable inputs", () => {
     it(`[${backend.id}] every input kind reports its contract class`, async () => {
       backend.enable();
       for (const [label, make, expected] of UNREADABLE) {
-        assertEquals(
+        expect(
           await outcome(() => readMediaChecksum(make(TEMP_DIR))),
-          expected,
           `${backend.id}: ${label}`,
-        );
+        ).toStrictEqual(expected);
       }
     });
   }
 
   it("the backend this suite calls 'wasi' really is WASI", async () => {
     const module = await loadUnifiedTagLibModule();
-    assertEquals(module.isWasi, true);
+    expect(module.isWasi).toStrictEqual(true);
   });
 });
 
@@ -201,16 +203,16 @@ describe("readable inputs", () => {
     it(`[${backend.id}] keeps the payload walks and the whole-file fallback`, async () => {
       backend.enable();
       for (const [path, source] of READABLE) {
-        assertEquals(
+        expect(
           await outcome(() => readMediaChecksum(resolve(path))),
-          `ok:${source}`,
           `${backend.id}: ${path} by path`,
-        );
-        assertEquals(
-          await outcome(() => readMediaChecksum(Deno.readFileSync(path))),
-          `ok:${source}`,
+        ).toStrictEqual(`ok:${source}`);
+        expect(
+          await outcome(() =>
+            readMediaChecksum(new Uint8Array(readFileSync(path)))
+          ),
           `${backend.id}: ${path} by buffer`,
-        );
+        ).toStrictEqual(`ok:${source}`);
       }
     });
 
@@ -219,11 +221,9 @@ describe("readable inputs", () => {
       const path = `${TEMP_DIR}/mpeg-sync-junk.mp3`;
       for (const input of [path, JUNK_MPEG_SYNC]) {
         const sum = await readMediaChecksum(input);
-        assertEquals(sum.source, "file", `${backend.id}: source`);
-        assertEquals(
-          sum.bytesHashed,
+        expect(sum.source, `${backend.id}: source`).toStrictEqual("file");
+        expect(sum.bytesHashed, `${backend.id}: bytesHashed`).toStrictEqual(
           JUNK_MPEG_SYNC.length,
-          `${backend.id}: bytesHashed`,
         );
       }
     });
@@ -507,16 +507,14 @@ describe("corpus: a path and a buffer reach the verdict their bytes earn", () =>
   for (const [corpus, rows] of CORPORA) {
     it(`[wasi] ${corpus}, ${rows.length} fixtures, both forms`, async () => {
       for (const [path, expectedPath, expectedBuffer] of rows) {
-        assertEquals(
-          await openVerdict("wasi", path),
+        expect(await openVerdict("wasi", path), `path: ${path}`).toStrictEqual(
           expectedPath,
-          `path: ${path}`,
         );
-        assertEquals(
-          await openVerdict("wasi", Deno.readFileSync(path)),
-          expectedBuffer,
+        expect(
+          await openVerdict("wasi", new Uint8Array(readFileSync(path))),
           `buffer: ${path}`,
-        );
+        )
+          .toStrictEqual(expectedBuffer);
       }
     });
   }
@@ -528,21 +526,19 @@ describe("corpus: a path and a buffer reach the verdict their bytes earn", () =>
       )
       .map(([path]) => path)
       .sort();
-    assertEquals(asymmetric, [...PATH_ACCEPTS_WHILE_BUFFER_REFUSES].sort());
+    expect(asymmetric).toStrictEqual(
+      [...PATH_ACCEPTS_WHILE_BUFFER_REFUSES].sort(),
+    );
   });
 
   it("[emscripten] tests/test-files, both forms", async () => {
     for (const [path, expectedPath, expectedBuffer] of OWN_CORPUS_EMSCRIPTEN) {
-      assertEquals(
-        await openVerdict("emscripten", path),
-        expectedPath,
-        `path: ${path}`,
-      );
-      assertEquals(
-        await openVerdict("emscripten", Deno.readFileSync(path)),
-        expectedBuffer,
+      expect(await openVerdict("emscripten", path), `path: ${path}`)
+        .toStrictEqual(expectedPath);
+      expect(
+        await openVerdict("emscripten", new Uint8Array(readFileSync(path))),
         `buffer: ${path}`,
-      );
+      ).toStrictEqual(expectedBuffer);
     }
   });
 });
@@ -601,13 +597,14 @@ describe("degenerate heads", () => {
   it("[wasi] a file of a few bytes answers what the same bytes answer as a buffer", async () => {
     for (const [name, bytes, ext, expected] of TINY_HEADS) {
       const path = `${TEMP_DIR}/${name}.${ext}`;
-      await Deno.writeFile(path, Uint8Array.from(bytes));
-      assertEquals(await openVerdict("wasi", path), expected, `path: ${name}`);
-      assertEquals(
-        await openVerdict("wasi", Uint8Array.from(bytes)),
+      await writeFile(path, Uint8Array.from(bytes));
+      expect(await openVerdict("wasi", path), `path: ${name}`).toStrictEqual(
         expected,
-        `buffer: ${name}`,
       );
+      expect(
+        await openVerdict("wasi", Uint8Array.from(bytes)),
+        `buffer: ${name}`,
+      ).toStrictEqual(expected);
     }
   });
 });
@@ -622,7 +619,7 @@ describe("degenerate heads", () => {
 describe("a path outside every preopen", () => {
   it(
     "[wasi] fails as a file operation, like a path that is not there",
-    { ignore: !HAS_WASI },
+    { skip: !HAS_WASI },
     async () => {
       const { loadWasiHost } = await import(
         "../src/runtime/wasi-host-loader.ts"
@@ -638,12 +635,12 @@ describe("a path outside every preopen", () => {
       (adapter as { isWasi?: boolean }).isWasi = true;
       const instance = new TagLib(adapter as unknown as WasmModule);
 
-      await assertRejects(
+      await expectRejects(
         () => instance.open("/outside/nothing.mp3"),
         FileOperationError,
         "outside the WASI preopens",
       );
-      await assertRejects(
+      await expectRejects(
         () => instance.open("/mapped/junk.mp3"),
         InvalidFormatError,
         "corrupted or in an unsupported format",
@@ -698,12 +695,11 @@ describe("zero bytes, extension sweep", () => {
       backend.enable();
       for (const ext of FORMAT_EXTENSIONS) {
         const path = `${TEMP_DIR}/sweep-empty.${ext}`;
-        await Deno.writeFile(path, new Uint8Array(0));
-        assertEquals(
+        await writeFile(path, new Uint8Array(0));
+        expect(
           await outcome(() => readMediaChecksum(path)),
-          "throw:INVALID_FORMAT",
           `${backend.id}: empty .${ext} by path`,
-        );
+        ).toStrictEqual("throw:INVALID_FORMAT");
       }
     });
   }

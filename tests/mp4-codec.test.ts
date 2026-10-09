@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview MP4 codec mapping across the extended Codec enum (taglib 2.3.2).
  *
@@ -19,9 +17,9 @@
  * (d4662048…) all eight instances read "AAC"/"unknown" instead.
  */
 
-import { assertEquals } from "@std/assert";
-import { afterAll, beforeAll, it } from "@std/testing/bdd";
-import { join } from "@std/path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import { forEachBackend } from "./backend-adapter.ts";
 
 const FIXTURE_DIR = join("tests", "test-files", "mp4");
@@ -44,11 +42,11 @@ forEachBackend("MP4 codec mapping", (adapter) => {
 
   for (const { file, codec, isLossless } of CASES) {
     it(`reports ${codec} for an MP4 carrying a ${codec} track`, async () => {
-      const buffer = await Deno.readFile(join(FIXTURE_DIR, file));
+      const buffer = new Uint8Array(await readFile(join(FIXTURE_DIR, file)));
       const props = await adapter.readExtendedAudioProperties(buffer, "m4a");
-      assertEquals(props.containerFormat, "MP4");
-      assertEquals(props.codec, codec);
-      assertEquals(props.isLossless, isLossless);
+      expect(props.containerFormat).toStrictEqual("MP4");
+      expect(props.codec).toStrictEqual(codec);
+      expect(props.isLossless).toStrictEqual(isLossless);
     });
   }
 });

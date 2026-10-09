@@ -5,15 +5,12 @@
  * API, where a path and a buffer must describe the same file.
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertNotEquals,
-  assertRejects,
-} from "@std/assert";
-import { afterAll, beforeAll, it } from "@std/testing/bdd";
-import { resolve } from "@std/path";
+import { readFileSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
+import { expectDefined, expectRejects } from "./_assert-helpers.ts";
 import {
   type BackendAdapter,
   forEachBackend,
@@ -79,58 +76,61 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
 
   for (const [ext, path] of CASES) {
     it(`survives a tag edit on ${ext}`, async () => {
-      const original = Deno.readFileSync(path);
+      const original = new Uint8Array(readFileSync(path));
       const before = await adapter.mediaChecksum(original, ext);
-      assertEquals(before.source, "audio-payload");
+      expect(before.source).toStrictEqual("audio-payload");
       const edited = await adapter.writeTags(original, {
         title: "Checksum Spike",
       }, ext);
-      assertExists(edited, `${ext}: writeTags returned null`);
+      expectDefined(edited, `${ext}: writeTags returned null`);
       const after = await adapter.mediaChecksum(edited, ext);
-      assertEquals(
-        after.hex,
+      expect(after.hex, `${ext}: hash must survive a tag edit`).toStrictEqual(
         before.hex,
-        `${ext}: hash must survive a tag edit`,
       );
-      assertEquals(
-        after.bytesHashed,
+      expect(after.bytesHashed, `${ext}: bytesHashed`).toStrictEqual(
         before.bytesHashed,
-        `${ext}: bytesHashed`,
       );
     });
   }
 
   it("changes when a payload byte changes", async () => {
-    const original = Deno.readFileSync("tests/test-files/wav/kiss-snippet.wav");
+    const original = new Uint8Array(
+      readFileSync("tests/test-files/wav/kiss-snippet.wav"),
+    );
     const before = await adapter.mediaChecksum(original, "wav");
     const range = walkWav(original).ranges[0]; // the derived range, not a guess
     const mutated = original.slice();
     mutated[range.offset + 10] ^= 0xff;
-    assertNotEquals(
-      (await adapter.mediaChecksum(mutated, "wav")).hex,
+    expect((await adapter.mediaChecksum(mutated, "wav")).hex).not.toStrictEqual(
       before.hex,
     );
   });
 
   it("checksums ADTS/AAC as payload, not as a file", async () => {
-    const aac = Deno.readFileSync("tests/test-files/aac/empty1s.aac");
+    const aac = new Uint8Array(
+      readFileSync("tests/test-files/aac/empty1s.aac"),
+    );
     const sum = await adapter.mediaChecksum(aac, "aac");
     // The fixture is exactly the payload (TagLib asserts last frame 136 + 11 =
     // 147 at test_mpeg.cpp:165-171), so `bytesHashed` alone cannot distinguish a
     // walk from a whole-file fallback — but `source` can, and must: a walk that
     // cannot see ADTS headers answers "file" here. Task 2's oracle pins the range.
-    assertEquals(sum.source, "audio-payload");
-    assertEquals(sum.bytesHashed, 147);
+    expect(sum.source).toStrictEqual("audio-payload");
+    expect(sum.bytesHashed).toStrictEqual(147);
   });
 
   it("returns FLAC's STREAMINFO digest for basis: pcm, and throws elsewhere", async () => {
-    const flac = Deno.readFileSync("tests/test-files/flac/kiss-snippet.flac");
+    const flac = new Uint8Array(
+      readFileSync("tests/test-files/flac/kiss-snippet.flac"),
+    );
     const pcm = await adapter.mediaChecksum(flac, "flac", { basis: "pcm" });
-    assertEquals(pcm.source, "flac-streaminfo-md5");
-    assertEquals(pcm.algorithm, "md5");
-    assertEquals(pcm.bytesHashed, 16);
-    const mp3 = Deno.readFileSync("tests/test-files/mp3/kiss-snippet.mp3");
-    await assertRejects(
+    expect(pcm.source).toStrictEqual("flac-streaminfo-md5");
+    expect(pcm.algorithm).toStrictEqual("md5");
+    expect(pcm.bytesHashed).toStrictEqual(16);
+    const mp3 = new Uint8Array(
+      readFileSync("tests/test-files/mp3/kiss-snippet.mp3"),
+    );
+    await expectRejects(
       () => adapter.mediaChecksum(mp3, "mp3", { basis: "pcm" }),
       UnsupportedFormatError,
     );
@@ -143,36 +143,34 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
   // the digest would mean TagLib re-encoded the stream on save, i.e. the doc
   // would be wrong rather than this test.
   it("keeps FLAC's STREAMINFO digest across a tag edit", async () => {
-    const flac = Deno.readFileSync(FLAC_PATH);
+    const flac = new Uint8Array(readFileSync(FLAC_PATH));
     const before = await adapter.mediaChecksum(flac, "flac", { basis: "pcm" });
-    assertEquals(before.source, "flac-streaminfo-md5");
+    expect(before.source).toStrictEqual("flac-streaminfo-md5");
     const edited = await adapter.writeTags(
       flac,
       { title: "Checksum Spike" },
       "flac",
     );
-    assertExists(edited, "flac: writeTags returned null");
+    expectDefined(edited, "flac: writeTags returned null");
     // Not decoration: if the write returned the input bytes (or dropped the
     // tag), the stability assertion below would hold for the wrong reason.
-    assertEquals(
+    expect(
       (await adapter.readTags(edited, "flac")).title,
-      "Checksum Spike",
       "the tag edit must actually have landed",
-    );
+    ).toStrictEqual("Checksum Spike");
     const after = await adapter.mediaChecksum(edited, "flac", { basis: "pcm" });
-    assertEquals(
-      after.hex,
-      before.hex,
-      "a tag edit must not move the STREAMINFO digest",
-    );
-    assertEquals(after.bytesHashed, 16);
+    expect(after.hex, "a tag edit must not move the STREAMINFO digest")
+      .toStrictEqual(before.hex);
+    expect(after.bytesHashed).toStrictEqual(16);
   });
 
   it("falls back to a whole-file hash, and the fallback is honest about it", async () => {
-    const ogg = Deno.readFileSync("tests/test-files/ogg/kiss-snippet.ogg");
+    const ogg = new Uint8Array(
+      readFileSync("tests/test-files/ogg/kiss-snippet.ogg"),
+    );
     const sum = await adapter.mediaChecksum(ogg, "ogg");
-    assertEquals(sum.source, "file");
-    assertEquals(sum.bytesHashed, ogg.length);
+    expect(sum.source).toStrictEqual("file");
+    expect(sum.bytesHashed).toStrictEqual(ogg.length);
     // The spec's fallback-honesty guard: the weaker guarantee means a tag edit
     // DOES move this hash, where source: "audio-payload" promises it cannot.
     const edited = await adapter.writeTags(
@@ -180,12 +178,11 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
       { title: "Checksum Spike" },
       "ogg",
     );
-    assertExists(edited, "ogg: writeTags returned null");
-    assertNotEquals(
+    expectDefined(edited, "ogg: writeTags returned null");
+    expect(
       (await adapter.mediaChecksum(edited, "ogg")).hex,
-      sum.hex,
       "a whole-file hash must change when the file changes",
-    );
+    ).not.toStrictEqual(sum.hex);
   });
 
   // The adapter tests above hand the module a buffer, so they cannot see the
@@ -206,30 +203,29 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
         const handle = (file as unknown as {
           fileHandle: { getBuffer(): Uint8Array };
         }).fileHandle;
-        assertEquals(
-          handle.getBuffer().length,
-          0,
-          "WASI path mode must hold no bytes",
-        );
+        expect(handle.getBuffer().length, "WASI path mode must hold no bytes")
+          .toStrictEqual(0);
       }
 
       const pcm = await file.mediaChecksum({ basis: "pcm" });
-      assertEquals(pcm.source, "flac-streaminfo-md5");
-      assertEquals(pcm.algorithm, "md5");
-      assertEquals(pcm.bytesHashed, 16);
+      expect(pcm.source).toStrictEqual("flac-streaminfo-md5");
+      expect(pcm.algorithm).toStrictEqual("md5");
+      expect(pcm.bytesHashed).toStrictEqual(16);
       // The value comes from the file's own STREAMINFO block, read by
       // flacStreamInfoMd5 — not from the bytes the handle happens to hold.
-      assertEquals(pcm.hex, flacStreamInfoMd5(Deno.readFileSync(path)));
+      expect(pcm.hex).toStrictEqual(
+        flacStreamInfoMd5(new Uint8Array(readFileSync(path))),
+      );
 
       // Same file, encoded basis, through the same handle: the digest must equal
       // the one the buffer route answers, or the path route read something else.
       const fromPath = await file.mediaChecksum();
       const fromBuffer = await adapter.mediaChecksum(
-        Deno.readFileSync(path),
+        new Uint8Array(readFileSync(path)),
         "flac",
       );
-      assertEquals(fromPath.source, "audio-payload");
-      assertEquals(fromPath.hex, fromBuffer.hex);
+      expect(fromPath.source).toStrictEqual("audio-payload");
+      expect(fromPath.hex).toStrictEqual(fromBuffer.hex);
     } finally {
       file.dispose();
     }
@@ -239,7 +235,7 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
     const taglib = await TagLib.initialize({ forceWasmType: adapter.kind });
     const file = await taglib.open(resolve(MP3_PATH));
     try {
-      await assertRejects(
+      await expectRejects(
         () => file.mediaChecksum({ basis: "pcm" }),
         UnsupportedFormatError,
       );
@@ -253,11 +249,14 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
 // can only build the descriptors its own inputs allow, so `path` → `blob` → the
 // caller's bytes → throw is not reachable from a test through it: these are
 // synthetic descriptors on purpose, since the point is which source wins.
-Deno.test("the source rule prefers the file over the handle's image", async () => {
-  const bytes = Deno.readFileSync(MP3_PATH);
-  const path = await Deno.makeTempFile({ suffix: ".mp3" });
+it("the source rule prefers the file over the handle's image", async () => {
+  const bytes = new Uint8Array(readFileSync(MP3_PATH));
+  const path = await join(
+    await mkdtemp(join(tmpdir(), "taglib-")),
+    "tmpfile.mp3",
+  );
   try {
-    await Deno.writeFile(path, bytes);
+    await writeFile(path, bytes);
     const io = getPlatformIO();
     const fromBytes = await mediaChecksum(
       { bytes, partiallyLoaded: false },
@@ -274,8 +273,8 @@ Deno.test("the source rule prefers the file over the handle's image", async () =
       "mp3",
       io,
     );
-    assertEquals(viaPath.hex, fromBytes.hex);
-    assertEquals(viaPath.bytesHashed, fromBytes.bytesHashed);
+    expect(viaPath.hex).toStrictEqual(fromBytes.hex);
+    expect(viaPath.bytesHashed).toStrictEqual(fromBytes.bytesHashed);
 
     // No path, but a Blob: the only way back to a partial File's bytes.
     const viaBlob = await mediaChecksum(
@@ -283,16 +282,16 @@ Deno.test("the source rule prefers the file over the handle's image", async () =
       "mp3",
       io,
     );
-    assertEquals(viaBlob.hex, fromBytes.hex);
+    expect(viaBlob.hex).toStrictEqual(fromBytes.hex);
 
     // Neither: the image would be hashed as a truncated file while the result
     // claims source: "audio-payload", so this case refuses instead.
-    await assertRejects(
+    await expectRejects(
       () => mediaChecksum({ bytes: image, partiallyLoaded: true }, "mp3", io),
       MetadataError,
     );
   } finally {
-    await Deno.remove(path).catch(() => {});
+    await rm(path).catch(() => {});
   }
 });
 
@@ -303,11 +302,13 @@ Deno.test("the source rule prefers the file over the handle's image", async () =
 // adapter block above: the fixture is a synthetic container that `TagLib.open()`
 // may not accept, while `mediaChecksum` reads bytes it is handed without opening
 // anything — the gap is the join, not the walk.
-Deno.test("several payload ranges join in order into one digest", async () => {
-  const bytes = Deno.readFileSync("tests/test-files/mp4/synth-multi-mdat.mp4");
+it("several payload ranges join in order into one digest", async () => {
+  const bytes = new Uint8Array(
+    readFileSync("tests/test-files/mp4/synth-multi-mdat.mp4"),
+  );
   const walk = mediaRanges("MP4", bytes);
-  assertEquals(walk.kind, "ranges");
-  assertEquals(walk.ranges, [
+  expect(walk.kind).toStrictEqual("ranges");
+  expect(walk.ranges).toStrictEqual([
     { offset: 48, length: 32 },
     { offset: 96, length: 24 },
     { offset: 160, length: 16 },
@@ -339,9 +340,9 @@ Deno.test("several payload ranges join in order into one digest", async () => {
     "MP4",
     io,
   );
-  assertEquals(sum.source, "audio-payload");
-  assertEquals(sum.bytesHashed, 72);
-  assertEquals(sum.hex, await sha256Hex(expected));
+  expect(sum.source).toStrictEqual("audio-payload");
+  expect(sum.bytesHashed).toStrictEqual(72);
+  expect(sum.hex).toStrictEqual(await sha256Hex(expected));
 });
 
 /** The digest the synthesized fixture's STREAMINFO block carries. */
@@ -419,8 +420,8 @@ function flacWithOversizedMetadata(): Uint8Array {
 // than that window makes the metadata chain's *implied* end run past the bytes
 // in hand, which is where a walk gives up — even though STREAMINFO, the only
 // block the digest needs, is inside the window.
-Deno.test("basis: pcm reads STREAMINFO past a metadata chain larger than the header window", async () => {
-  const dir = await Deno.makeTempDir();
+it("basis: pcm reads STREAMINFO past a metadata chain larger than the header window", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "taglib-"));
   const path = resolve(dir, "oversized-metadata.flac");
   const backends = [
     ...(HAS_WASI ? (["wasi"] as const) : []),
@@ -428,27 +429,24 @@ Deno.test("basis: pcm reads STREAMINFO past a metadata chain larger than the hea
   ];
   try {
     const fixture = flacWithOversizedMetadata();
-    assertEquals(
-      fixture.length > 65536,
-      true,
-      "fixture must exceed the window",
-    );
-    await Deno.writeFile(path, fixture);
+    expect(fixture.length > 65536, "fixture must exceed the window")
+      .toStrictEqual(true);
+    await writeFile(path, fixture);
 
     for (const backend of backends) {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
       const file = await taglib.open(path);
       try {
         const pcm = await file.mediaChecksum({ basis: "pcm" });
-        assertEquals(pcm.source, "flac-streaminfo-md5", backend);
-        assertEquals(pcm.hex, PCM_DIGEST_HEX, backend);
-        assertEquals(pcm.bytesHashed, 16, backend);
+        expect(pcm.source, backend).toStrictEqual("flac-streaminfo-md5");
+        expect(pcm.hex, backend).toStrictEqual(PCM_DIGEST_HEX);
+        expect(pcm.bytesHashed, backend).toStrictEqual(16);
       } finally {
         file.dispose();
       }
     }
   } finally {
-    await Deno.remove(dir, { recursive: true }).catch(() => {});
+    await rm(dir, { recursive: true }).catch(() => {});
   }
 });
 
@@ -481,53 +479,53 @@ function flacBehindLargeId3v2(flac: Uint8Array): Uint8Array {
 // since there the marker is at offset 0 and only the chain after it is large.
 // STREAMINFO is present either way, so the digest must come from a whole-source
 // read rather than fail the file.
-Deno.test("basis: pcm reads STREAMINFO past a prepended tag larger than the header window", async () => {
-  const dir = await Deno.makeTempDir();
+it("basis: pcm reads STREAMINFO past a prepended tag larger than the header window", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "taglib-"));
   const path = resolve(dir, "large-id3v2.flac");
   const backends = [
     ...(HAS_WASI ? (["wasi"] as const) : []),
     ...(HAS_EMSCRIPTEN ? (["emscripten"] as const) : []),
   ];
   try {
-    const flac = Deno.readFileSync(FLAC_PATH);
+    const flac = new Uint8Array(readFileSync(FLAC_PATH));
     const fixture = flacBehindLargeId3v2(flac);
-    assertEquals(
-      fixture.length > 65536,
-      true,
-      "fixture must exceed the window",
-    );
-    await Deno.writeFile(path, fixture);
+    expect(fixture.length > 65536, "fixture must exceed the window")
+      .toStrictEqual(true);
+    await writeFile(path, fixture);
 
     // The digest the untagged fixture answers: the prepended tag is not audio,
     // so it must not move the digest.
     const expected = flacStreamInfoMd5(flac);
-    assertExists(expected);
+    expect(expected).not.toBeNull();
+    expect(expected).toBeDefined();
 
     for (const backend of backends) {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
       const file = await taglib.open(path);
       try {
         const pcm = await file.mediaChecksum({ basis: "pcm" });
-        assertEquals(pcm.source, "flac-streaminfo-md5", backend);
-        assertEquals(pcm.hex, expected, backend);
-        assertEquals(pcm.bytesHashed, 16, backend);
+        expect(pcm.source, backend).toStrictEqual("flac-streaminfo-md5");
+        expect(pcm.hex, backend).toStrictEqual(expected);
+        expect(pcm.bytesHashed, backend).toStrictEqual(16);
       } finally {
         file.dispose();
       }
     }
   } finally {
-    await Deno.remove(dir, { recursive: true }).catch(() => {});
+    await rm(dir, { recursive: true }).catch(() => {});
   }
 });
 
 // The Simple API opens the file itself, so both input forms reach a handle that
 // describes the same bytes: the digest belongs to the file, not to the input
 // form, and that is what makes them agree.
-Deno.test("readMediaChecksum accepts a path and a buffer", async () => {
+it("readMediaChecksum accepts a path and a buffer", async () => {
   const byPath = await readMediaChecksum(MP3_PATH);
-  const byBuffer = await readMediaChecksum(Deno.readFileSync(MP3_PATH));
-  assertEquals(byPath.hex, byBuffer.hex);
-  assertEquals(byPath.source, "audio-payload");
+  const byBuffer = await readMediaChecksum(
+    new Uint8Array(readFileSync(MP3_PATH)),
+  );
+  expect(byPath.hex).toStrictEqual(byBuffer.hex);
+  expect(byPath.source).toStrictEqual("audio-payload");
 });
 
 // A caller's own bytes can sit on a SharedArrayBuffer, and the WASI handle
@@ -535,25 +533,25 @@ Deno.test("readMediaChecksum accepts a path and a buffer", async () => {
 // `subarray` of the caller's buffer, can hand Web Crypto a shared-buffer view
 // it refuses. FLAC walks one range, so it reaches that path. The hash must be
 // the same one the ArrayBuffer-backed copy produces, not a TypeError.
-Deno.test("a SharedArrayBuffer-backed input hashes like an ordinary buffer", async () => {
-  const full = Deno.readFileSync(FLAC_PATH);
+it("a SharedArrayBuffer-backed input hashes like an ordinary buffer", async () => {
+  const full = new Uint8Array(readFileSync(FLAC_PATH));
   const sab = new Uint8Array(new SharedArrayBuffer(full.length));
   sab.set(full);
 
   const bySab = await readMediaChecksum(sab);
   const byArrayBuffer = await readMediaChecksum(full);
-  assertEquals(bySab.hex, byArrayBuffer.hex);
-  assertEquals(bySab.bytesHashed, byArrayBuffer.bytesHashed);
-  assertEquals(bySab.source, "audio-payload");
+  expect(bySab.hex).toStrictEqual(byArrayBuffer.hex);
+  expect(bySab.bytesHashed).toStrictEqual(byArrayBuffer.bytesHashed);
+  expect(bySab.source).toStrictEqual("audio-payload");
 });
 
 // `basis: "pcm"` on the path form: the wrapper hands the open handle a path, so
 // this is the input form the digest's source rule has to survive.
-Deno.test("readMediaChecksum returns the FLAC PCM digest for basis: pcm", async () => {
+it("readMediaChecksum returns the FLAC PCM digest for basis: pcm", async () => {
   const sum = await readMediaChecksum(FLAC_PATH, { basis: "pcm" });
-  assertEquals(sum.source, "flac-streaminfo-md5");
-  assertEquals(sum.algorithm, "md5");
-  assertEquals(sum.bytesHashed, 16);
+  expect(sum.source).toStrictEqual("flac-streaminfo-md5");
+  expect(sum.algorithm).toStrictEqual("md5");
+  expect(sum.bytesHashed).toStrictEqual(16);
 });
 
 /**
@@ -568,11 +566,11 @@ const LARGE_PATH = "tests/test-files/mp3/large-1_2MiB.mp3";
 // where it can actually fail: on a fixture that splices. On a small file the
 // loader hands the handle the whole file and all three forms agree by
 // construction, which is a parity instance that cannot fail.
-Deno.test("a partial handle hashes the file, not its window image", async () => {
-  const full = Deno.readFileSync(LARGE_PATH);
+it("a partial handle hashes the file, not its window image", async () => {
+  const full = new Uint8Array(readFileSync(LARGE_PATH));
 
   const byBuffer = await readMediaChecksum(full);
-  assertEquals(byBuffer.source, "audio-payload");
+  expect(byBuffer.source).toStrictEqual("audio-payload");
 
   // Only the backends this checkout can load: build/taglib-web.js and the WASI
   // dist are build output, so an unconditional loop would die with a wasm-load
@@ -582,7 +580,7 @@ Deno.test("a partial handle hashes the file, not its window image", async () => 
     ...(HAS_WASI ? (["wasi"] as const) : []),
     ...(HAS_EMSCRIPTEN ? (["emscripten"] as const) : []),
   ];
-  assert(backends.length > 0, "no wasm backend available to test");
+  expect(backends.length > 0, "no wasm backend available to test").toBeTruthy();
 
   for (const forceWasmType of backends) {
     const taglib = await TagLib.initialize({ forceWasmType });
@@ -592,17 +590,17 @@ Deno.test("a partial handle hashes the file, not its window image", async () => 
     using handle = await taglib.open(file);
 
     const loaded = handle.getFileBuffer();
-    assert(
+    expect(
       loaded.length < full.length,
       `${forceWasmType}: fixture did not partial-load (${loaded.length} of ${full.length} bytes) — fix the fixture size or format, not the source rule`,
-    );
+    ).toBeTruthy();
 
     const byHandle = await handle.mediaChecksum();
-    assertEquals(byHandle.source, "audio-payload", `${forceWasmType}: source`);
-    assertEquals(
-      byHandle.hex,
+    expect(byHandle.source, `${forceWasmType}: source`).toStrictEqual(
+      "audio-payload",
+    );
+    expect(byHandle.hex, `${forceWasmType}: File vs buffer`).toStrictEqual(
       byBuffer.hex,
-      `${forceWasmType}: File vs buffer`,
     );
 
     // The control: the ranges derived from the *image the handle holds*, hashed
@@ -612,17 +610,13 @@ Deno.test("a partial handle hashes the file, not its window image", async () => 
     // spliced header+footer, so a correct implementation's digest can only
     // coincide with it by accident (and on this fixture it does not).
     const imageWalk = mediaRanges("MP3", loaded);
-    assertNotEquals(
+    expect(
       await hashRanges(loaded, imageWalk.ranges),
-      byHandle.hex,
       `${forceWasmType}: derived the ranges from the window image, not the file`,
-    );
+    ).not.toStrictEqual(byHandle.hex);
   }
 
   // The third input form the spec's item 3 names.
-  assertEquals(
-    (await readMediaChecksum(LARGE_PATH)).hex,
-    byBuffer.hex,
-    "path vs buffer",
-  );
+  expect((await readMediaChecksum(LARGE_PATH)).hex, "path vs buffer")
+    .toStrictEqual(byBuffer.hex);
 });

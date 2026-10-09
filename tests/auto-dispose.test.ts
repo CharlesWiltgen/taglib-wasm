@@ -8,7 +8,7 @@
 // deno task test, ci.yml and sonarcloud.yml). The test fails loudly without
 // the flag rather than skipping, so a config regression cannot turn this
 // guard into decoration.
-import { assertEquals } from "@std/assert";
+import { expect, it } from "vite-plus/test";
 import { TagLib } from "../src/taglib.ts";
 import type { TagLib as TagLibType } from "../src/taglib/taglib-class.ts";
 import { readFixture } from "./backend-adapter.ts";
@@ -65,23 +65,24 @@ async function waitForDisposal(handle: DisposableHandle): Promise<boolean> {
 }
 
 for (const wasmType of ["wasi", "emscripten"] as const) {
-  Deno.test(
+  it(
     `dropped wrapper is auto-disposed by the FinalizationRegistry [${wasmType}]`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: wasmType });
       const handle = await openAndDrop(taglib, "mp3");
-      assertEquals(handle.destroyed, false, "handle should start alive");
-      const disposed = await waitForDisposal(handle);
-      assertEquals(
-        disposed,
-        true,
-        "FileHandle must be destroyed once the wrapper is unreachable",
+      expect(handle.destroyed, "handle should start alive").toStrictEqual(
+        false,
       );
+      const disposed = await waitForDisposal(handle);
+      expect(
+        disposed,
+        "FileHandle must be destroyed once the wrapper is unreachable",
+      ).toStrictEqual(true);
     },
   );
 }
 
-Deno.test(
+it(
   "explicit dispose() destroys the handle and destroy() is idempotent",
   async () => {
     const taglib = await TagLib.initialize();
@@ -91,11 +92,8 @@ Deno.test(
     };
     const handle = wrapperWithHandle.fileHandle;
     wrapper.dispose();
-    assertEquals(
-      handle.destroyed,
-      true,
-      "explicit dispose destroys the handle",
-    );
+    expect(handle.destroyed, "explicit dispose destroys the handle")
+      .toStrictEqual(true);
     // The double-destroy path is the contract that matters: a finalizer
     // racing an explicit dispose, or the open()-failure path, may call
     // destroy() twice. Both backends must be idempotent — no throw, state
@@ -104,6 +102,6 @@ Deno.test(
     // invariant the ordering exists to protect.)
     wrapper.dispose();
     handle.destroy();
-    assertEquals(handle.destroyed, true, "destroy() is idempotent");
+    expect(handle.destroyed, "destroy() is idempotent").toStrictEqual(true);
   },
 );

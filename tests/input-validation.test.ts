@@ -5,8 +5,7 @@
  * to ensure both backends fail gracefully on bad data.
  */
 
-import { assertEquals } from "@std/assert";
-import { afterAll, beforeAll, type describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import {
   type BackendAdapter,
   forEachBackend,
@@ -29,7 +28,7 @@ forEachBackend("Input Validation", (adapter: BackendAdapter) => {
     } catch {
       threw = true;
     }
-    assertEquals(threw, true, "empty buffer should throw");
+    expect(threw, "empty buffer should throw").toStrictEqual(true);
   });
 
   it("should reject tiny buffer (< 128 bytes)", async () => {
@@ -40,7 +39,7 @@ forEachBackend("Input Validation", (adapter: BackendAdapter) => {
     } catch {
       threw = true;
     }
-    assertEquals(threw, true, "tiny buffer should throw");
+    expect(threw, "tiny buffer should throw").toStrictEqual(true);
   });
 
   it("should reject non-audio bytes (not audio)", async () => {
@@ -55,7 +54,7 @@ forEachBackend("Input Validation", (adapter: BackendAdapter) => {
     } catch {
       threw = true;
     }
-    assertEquals(threw, true, "non-audio bytes should throw");
+    expect(threw, "non-audio bytes should throw").toStrictEqual(true);
   });
 
   it("should reject truncated file", async () => {
@@ -70,7 +69,7 @@ forEachBackend("Input Validation", (adapter: BackendAdapter) => {
     }
     // Some backends may parse partial tags, others throw
     // Either behavior is acceptable — the key is no crash
-    assertEquals(typeof threw, "boolean");
+    expect(typeof threw).toStrictEqual("boolean");
   });
 
   it("should handle large tag strings without crash", async () => {
@@ -85,13 +84,13 @@ forEachBackend("Input Validation", (adapter: BackendAdapter) => {
       );
       if (modified) {
         const tags = await adapter.readTags(modified, "flac");
-        assertEquals(tags.title, longTitle);
+        expect(tags.title).toStrictEqual(longTitle);
       }
     } catch {
       threw = true;
     }
     // Should not crash, may or may not succeed
-    assertEquals(typeof threw, "boolean");
+    expect(typeof threw).toStrictEqual("boolean");
   });
 
   it("should handle buffer with all zeros", async () => {
@@ -102,7 +101,7 @@ forEachBackend("Input Validation", (adapter: BackendAdapter) => {
     } catch {
       threw = true;
     }
-    assertEquals(threw, true, "all-zero buffer should throw");
+    expect(threw, "all-zero buffer should throw").toStrictEqual(true);
   });
 
   it("should handle buffer with valid magic but corrupt body", async () => {
@@ -126,6 +125,6 @@ forEachBackend("Input Validation", (adapter: BackendAdapter) => {
       threw = true;
     }
     // Should not crash — either returns empty tags or throws
-    assertEquals(typeof threw, "boolean");
+    expect(typeof threw).toStrictEqual("boolean");
   });
 });

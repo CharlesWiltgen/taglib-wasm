@@ -37,20 +37,26 @@ function createNodeFileHandle(fs: NodeFs, fd: number): WasiFileHandle {
       return n;
     },
     seekSync(offset: number, whence: 0 | 1 | 2): number {
+      // Validate before mutating `position`: a rejected seek must leave the
+      // cursor where it was (as Deno's `seekSync` does), or the negative
+      // position would leak into the next `readSync` and throw
+      // ERR_OUT_OF_RANGE from node:fs instead of the guest's EINVAL.
+      let next = position;
       if (whence === 0) {
-        position = offset;
+        next = offset;
       } else if (whence === 1) {
-        position += offset;
+        next += offset;
       } else {
         const stat = fs.fstatSync(fd);
-        position = stat.size + offset;
+        next = stat.size + offset;
       }
-      if (position < 0) {
+      if (next < 0) {
         throw new FileOperationError(
           "read",
-          `Invalid seek position: ${position}`,
+          `Invalid seek position: ${next}`,
         );
       }
+      position = next;
       return position;
     },
     truncateSync(size: number): void {

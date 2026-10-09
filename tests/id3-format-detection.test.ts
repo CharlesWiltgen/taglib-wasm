@@ -9,8 +9,8 @@
  * the actual audio format before constructing format-specific File objects.
  */
 
-import { assertEquals, assertNotEquals } from "@std/assert";
-import { afterAll, beforeAll, it } from "@std/testing/bdd";
+import { readFile } from "node:fs/promises";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import { type BackendAdapter, forEachBackend } from "./backend-adapter.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
 
@@ -26,34 +26,33 @@ forEachBackend(
     });
 
     it("should detect FLAC buffer as FLAC, not MP3", async () => {
-      const buffer = await Deno.readFile(FIXTURE_PATH.flac);
-      assertEquals(
-        buffer[0] === 0x66 && buffer[1] === 0x4C, // "fL"
-        true,
+      const buffer = new Uint8Array(await readFile(FIXTURE_PATH.flac));
+      expect(
+        buffer[0] === 0x66 && buffer[1] === 0x4C,
         "test fixture should start with fLaC magic",
+      ).toStrictEqual( // "fL"
+        true,
       );
       const format = await adapter.readFormat(buffer, "flac");
-      assertEquals(format, "FLAC");
+      expect(format).toStrictEqual("FLAC");
     });
 
     it("should detect ID3v2-prefixed TTA as TTA, not MP3", async () => {
-      const buffer = await Deno.readFile(FIXTURE_PATH.tta);
-      assertEquals(
-        buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33, // "ID3"
-        true,
+      const buffer = new Uint8Array(await readFile(FIXTURE_PATH.tta));
+      expect(
+        buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33,
         "test fixture should start with ID3v2 header",
+      ).toStrictEqual( // "ID3"
+        true,
       );
       const format = await adapter.readFormat(buffer, "tta");
-      assertNotEquals(
-        format,
-        "MP3",
-        "TTA with ID3v2 prefix must not be detected as MP3",
-      );
-      assertEquals(format, "TTA");
+      expect(format, "TTA with ID3v2 prefix must not be detected as MP3").not
+        .toStrictEqual("MP3");
+      expect(format).toStrictEqual("TTA");
     });
 
     it("should detect synthetic ID3v2-prefixed FLAC as FLAC", async () => {
-      const flac = await Deno.readFile(FIXTURE_PATH.flac);
+      const flac = new Uint8Array(await readFile(FIXTURE_PATH.flac));
 
       // Build a minimal ID3v2.3 header (10 bytes, no frames, size=0)
       const id3Header = new Uint8Array([
@@ -74,17 +73,14 @@ forEachBackend(
       prefixed.set(flac, id3Header.length);
 
       const format = await adapter.readFormat(prefixed, "flac");
-      assertEquals(
-        format,
-        "FLAC",
-        "FLAC with ID3v2 prefix must be detected as FLAC",
-      );
+      expect(format, "FLAC with ID3v2 prefix must be detected as FLAC")
+        .toStrictEqual("FLAC");
     });
 
     it("should still detect plain MP3 as MP3", async () => {
-      const buffer = await Deno.readFile(FIXTURE_PATH.mp3);
+      const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
       const format = await adapter.readFormat(buffer, "mp3");
-      assertEquals(format, "MP3");
+      expect(format).toStrictEqual("MP3");
     });
   },
 );

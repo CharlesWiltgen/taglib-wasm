@@ -18,15 +18,16 @@
  * back is not evidence about what landed in the file.
  */
 
-import { assert, assertEquals, assertExists } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { readFile } from "node:fs/promises";
+import { describe, expect, it } from "vite-plus/test";
 import { TagLib } from "../src/taglib.ts";
 import type { AudioFile } from "../src/taglib/audio-file-interface.ts";
 import { applyTags, readTags } from "../src/simple/index.ts";
 import { HAS_EMSCRIPTEN, HAS_WASI } from "./backend-adapter.ts";
+import { expectDefined } from "./_assert-helpers.ts";
 import { GNRE_GENRE_FIXTURES } from "./shared-fixtures.ts";
 
-const IN_CI = Deno.env.get("GITHUB_ACTIONS") === "true";
+const IN_CI = process.env.GITHUB_ACTIONS === "true";
 const SKIP = (!HAS_WASI || !HAS_EMSCRIPTEN) && !IN_CI;
 
 type Fixture = keyof typeof GNRE_GENRE_FIXTURES;
@@ -143,106 +144,121 @@ async function savedBytes(
 ): Promise<Uint8Array> {
   return await withFile(backend, bytes, (file) => {
     mutate?.(file);
-    assert(file.save(), "save() reported failure");
+    expect(file.save(), "save() reported failure").toBeTruthy();
     return file.getFileBuffer();
   });
 }
 
 for (const backend of BACKENDS) {
-  describe(`MP4 genre precedence [${backend}]`, { ignore: SKIP }, () => {
+  describe(`MP4 genre precedence [${backend}]`, { skip: SKIP }, () => {
     it("reads the string ©gen when gnre precedes it", async () => {
-      const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES["before"]);
-      assertEquals(genreAtoms(bytes), [`gnre:0012`, `${GEN}:${STRING_GENRE}`]);
+      const bytes = new Uint8Array(
+        await readFile(GNRE_GENRE_FIXTURES["before"]),
+      );
+      expect(genreAtoms(bytes)).toStrictEqual([
+        `gnre:0012`,
+        `${GEN}:${STRING_GENRE}`,
+      ]);
       await withFile(backend, bytes, (file) => {
-        assertEquals(file.tag().genre, STRING_GENRE);
-        assertEquals(file.properties().genre, [STRING_GENRE]);
-        assertEquals(file.getProperty("GENRE"), [STRING_GENRE]);
-        assertEquals(file.getMP4Item(GEN), STRING_GENRE);
+        expect(file.tag().genre).toStrictEqual(STRING_GENRE);
+        expect(file.properties().genre).toStrictEqual([STRING_GENRE]);
+        expect(file.getProperty("GENRE")).toStrictEqual([STRING_GENRE]);
+        expect(file.getMP4Item(GEN)).toStrictEqual(STRING_GENRE);
       });
     });
 
     it("a bare save keeps the string and writes no gnre", async () => {
-      const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES["before"]);
+      const bytes = new Uint8Array(
+        await readFile(GNRE_GENRE_FIXTURES["before"]),
+      );
       const out = await savedBytes(backend, bytes);
-      assertEquals(genreAtoms(out), [`${GEN}:${STRING_GENRE}`]);
+      expect(genreAtoms(out)).toStrictEqual([`${GEN}:${STRING_GENRE}`]);
       const gen = genAtomBytes(out);
-      assertExists(gen);
+      expectDefined(gen);
       // The data box's type word must be 1 (UTF-8): TagLib's parseText accepts
       // nothing else, so any other value makes the atom invisible on re-read.
       // Layout of the child: size + "©gen" (8) + size + "data" + type + locale.
-      assertEquals(
+      expect(
         new DataView(gen.buffer, gen.byteOffset, gen.byteLength).getUint32(16),
-        1,
-      );
+      ).toStrictEqual(1);
       await withFile(backend, out.slice(), (file) => {
-        assertEquals(file.tag().genre, STRING_GENRE);
-        assertEquals(file.properties().genre, [STRING_GENRE]);
+        expect(file.tag().genre).toStrictEqual(STRING_GENRE);
+        expect(file.properties().genre).toStrictEqual([STRING_GENRE]);
       });
     });
 
     it("a readTags -> applyTags round-trip preserves the string", async () => {
       await TagLib.initialize({ forceWasmType: backend });
-      const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES["before"]);
+      const bytes = new Uint8Array(
+        await readFile(GNRE_GENRE_FIXTURES["before"]),
+      );
       const tags = await readTags(bytes);
-      assertExists(tags.genre);
-      assertEquals(tags.genre, [STRING_GENRE]);
+      expectDefined(tags.genre);
+      expect(tags.genre).toStrictEqual([STRING_GENRE]);
       const out = await applyTags(bytes, { genre: tags.genre });
-      assertEquals(genreAtoms(out), [`${GEN}:${STRING_GENRE}`]);
-      assertEquals((await readTags(out)).genre, [STRING_GENRE]);
+      expect(genreAtoms(out)).toStrictEqual([`${GEN}:${STRING_GENRE}`]);
+      expect((await readTags(out)).genre).toStrictEqual([STRING_GENRE]);
     });
 
     it("a title-only edit preserves the string", async () => {
       await TagLib.initialize({ forceWasmType: backend });
-      const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES["before"]);
+      const bytes = new Uint8Array(
+        await readFile(GNRE_GENRE_FIXTURES["before"]),
+      );
       const out = await applyTags(bytes, { title: "Genre Precedence" });
-      assertEquals(genreAtoms(out), [`${GEN}:${STRING_GENRE}`]);
+      expect(genreAtoms(out)).toStrictEqual([`${GEN}:${STRING_GENRE}`]);
       const tags = await readTags(out);
-      assertEquals(tags.title, ["Genre Precedence"]);
-      assertEquals(tags.genre, [STRING_GENRE]);
+      expect(tags.title).toStrictEqual(["Genre Precedence"]);
+      expect(tags.genre).toStrictEqual([STRING_GENRE]);
     });
 
     it("an explicit setGenre wins, including the table name", async () => {
-      const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES["before"]);
+      const bytes = new Uint8Array(
+        await readFile(GNRE_GENRE_FIXTURES["before"]),
+      );
       const jazz = await savedBytes(
         backend,
         bytes,
         (file) => file.tag().setGenre("Jazz"),
       );
-      assertEquals(genreAtoms(jazz), [`${GEN}:Jazz`]);
+      expect(genreAtoms(jazz)).toStrictEqual([`${GEN}:Jazz`]);
       const table = await savedBytes(
         backend,
         bytes,
         (file) => file.tag().setGenre(TABLE_GENRE),
       );
-      assertEquals(genreAtoms(table), [`${GEN}:${TABLE_GENRE}`]);
+      expect(genreAtoms(table)).toStrictEqual([`${GEN}:${TABLE_GENRE}`]);
     });
 
     it("leaves the ©gen of the after and omit controls untouched", async () => {
       for (const name of ["after", "omit"] as const) {
-        const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES[name]);
+        const bytes = new Uint8Array(await readFile(GNRE_GENRE_FIXTURES[name]));
         const before = genAtomBytes(bytes);
-        assertExists(before);
+        expect(before).not.toBeNull();
+        expect(before).toBeDefined();
         await withFile(backend, bytes, (file) => {
-          assertEquals(file.tag().genre, STRING_GENRE);
+          expect(file.tag().genre).toStrictEqual(STRING_GENRE);
         });
         const out = await savedBytes(backend, bytes);
-        assertEquals(genAtomBytes(out), before, `${name}: ©gen rewritten`);
-        assertEquals(genreAtoms(out), [`${GEN}:${STRING_GENRE}`]);
+        expect(genAtomBytes(out), `${name}: ©gen rewritten`).toStrictEqual(
+          before,
+        );
+        expect(genreAtoms(out)).toStrictEqual([`${GEN}:${STRING_GENRE}`]);
       }
     });
 
     it("still reads the ID3v1 table name for a gnre-only file", async () => {
-      const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES["only"]);
-      assertEquals(genreAtoms(bytes), ["gnre:0012"]);
+      const bytes = new Uint8Array(await readFile(GNRE_GENRE_FIXTURES["only"]));
+      expect(genreAtoms(bytes)).toStrictEqual(["gnre:0012"]);
       await withFile(backend, bytes, (file) => {
-        assertEquals(file.tag().genre, TABLE_GENRE);
-        assertEquals(file.properties().genre, [TABLE_GENRE]);
+        expect(file.tag().genre).toStrictEqual(TABLE_GENRE);
+        expect(file.properties().genre).toStrictEqual([TABLE_GENRE]);
       });
       // The save rewrites the numeric atom as a string; the value must survive.
       const out = await savedBytes(backend, bytes);
-      assertEquals(genreAtoms(out), [`${GEN}:${TABLE_GENRE}`]);
+      expect(genreAtoms(out)).toStrictEqual([`${GEN}:${TABLE_GENRE}`]);
       await withFile(backend, out.slice(), (file) => {
-        assertEquals(file.tag().genre, TABLE_GENRE);
+        expect(file.tag().genre).toStrictEqual(TABLE_GENRE);
       });
     });
 
@@ -252,43 +268,42 @@ for (const backend of BACKENDS) {
       // the gnre table name is then the only genre in the file. Pinned here by
       // patching that word in memory — the rule is a single comparison in the
       // boundary probe, and nothing else in the suite can fail if it goes.
-      const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES["before"]);
+      const bytes = new Uint8Array(
+        await readFile(GNRE_GENRE_FIXTURES["before"]),
+      );
       const ilst = ilstAtom(bytes);
-      assertExists(ilst);
+      expectDefined(ilst);
       const gen = childAtoms(bytes, ilst.start + 8, ilst.end).find(
         (a) => a.name === GEN,
       );
-      assertExists(gen);
+      expectDefined(gen);
       const typeWord = gen.start + 16;
-      assertEquals(
-        new DataView(bytes.buffer, bytes.byteOffset).getUint32(typeWord),
-        1,
-      );
+      expect(new DataView(bytes.buffer, bytes.byteOffset).getUint32(typeWord))
+        .toStrictEqual(1);
       new DataView(bytes.buffer, bytes.byteOffset).setUint32(typeWord, 0);
 
       await withFile(backend, bytes, (file) => {
-        assertEquals(file.tag().genre, TABLE_GENRE);
-        assertEquals(file.properties().genre, [TABLE_GENRE]);
+        expect(file.tag().genre).toStrictEqual(TABLE_GENRE);
+        expect(file.properties().genre).toStrictEqual([TABLE_GENRE]);
       });
       const out = await savedBytes(backend, bytes);
-      assertEquals(genreAtoms(out), [`${GEN}:${TABLE_GENRE}`]);
+      expect(genreAtoms(out)).toStrictEqual([`${GEN}:${TABLE_GENRE}`]);
     });
   });
 }
 
-describe("MP4 genre precedence parity", { ignore: SKIP }, () => {
+describe("MP4 genre precedence parity", { skip: SKIP }, () => {
   it("both backends write the same genre atoms for every fixture", async () => {
     for (const name of Object.keys(GNRE_GENRE_FIXTURES) as Fixture[]) {
-      const bytes = await Deno.readFile(GNRE_GENRE_FIXTURES[name]);
+      const bytes = new Uint8Array(await readFile(GNRE_GENRE_FIXTURES[name]));
       const written: Record<string, string[]> = {};
       for (const backend of BACKENDS) {
         written[backend] = genreAtoms(await savedBytes(backend, bytes));
       }
-      assertEquals(
+      expect(
         written.wasi,
-        written.emscripten,
         `${name}: WASI and Emscripten wrote different genre atoms`,
-      );
+      ).toStrictEqual(written.emscripten);
     }
   });
 });

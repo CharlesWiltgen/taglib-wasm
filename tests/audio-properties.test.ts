@@ -2,8 +2,7 @@
  * @fileoverview Parameterized audio properties tests across both backends.
  */
 
-import { assert, assertExists } from "@std/assert";
-import { afterAll, beforeAll, type describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import {
   type BackendAdapter,
   extForFormat,
@@ -34,25 +33,26 @@ forEachBackend("Audio Properties", (adapter: BackendAdapter) => {
       );
       const expected = EXPECTED_AUDIO_PROPS[format];
 
-      assertExists(props, `${format}: no audio properties`);
-      assert(
+      expect(props, `${format}: no audio properties`).not.toBeNull();
+      expect(props, `${format}: no audio properties`).toBeDefined();
+      expect(
         props.sampleRate === expected.sampleRate,
         `${format}: sampleRate ${props.sampleRate} !== ${expected.sampleRate}`,
-      );
-      assert(
+      ).toBeTruthy();
+      expect(
         props.channels === expected.channels,
         `${format}: channels ${props.channels} !== ${expected.channels}`,
-      );
-      assert(
+      ).toBeTruthy();
+      expect(
         props.bitrate >= expected.bitrateMin &&
           props.bitrate <= expected.bitrateMax,
         `${format}: bitrate ${props.bitrate} out of range [${expected.bitrateMin}, ${expected.bitrateMax}]`,
-      );
-      assert(
+      ).toBeTruthy();
+      expect(
         props.duration >= expected.lengthMin &&
           props.duration <= expected.lengthMax,
         `${format}: duration ${props.duration} out of range [${expected.lengthMin}, ${expected.lengthMax}]`,
-      );
+      ).toBeTruthy();
     });
   }
 
@@ -60,9 +60,9 @@ forEachBackend("Audio Properties", (adapter: BackendAdapter) => {
     const buffer = await readFixture("mp3");
     const props = await adapter.readAudioProperties(buffer, "mp3");
 
-    assert(props.duration > 0, "duration should be positive");
-    assert(props.bitrate > 0, "bitrate should be positive");
-    assert(props.sampleRate > 0, "sampleRate should be positive");
-    assert(props.channels > 0, "channels should be positive");
+    expect(props.duration > 0, "duration should be positive").toBeTruthy();
+    expect(props.bitrate > 0, "bitrate should be positive").toBeTruthy();
+    expect(props.sampleRate > 0, "sampleRate should be positive").toBeTruthy();
+    expect(props.channels > 0, "channels should be positive").toBeTruthy();
   });
 });

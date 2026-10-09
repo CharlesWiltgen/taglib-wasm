@@ -1,6 +1,22 @@
 import { expect } from "vite-plus/test";
 
 /**
+ * `@std/assert`'s `assertExists` is declared `asserts actual is NonNullable<T>`:
+ * besides throwing on null/undefined it NARROWS the type of the argument.
+ * Vitest's `expect(x).not.toBeNull()` / `.toBeDefined()` assert the same two
+ * things but cannot narrow, so call sites that use the value afterwards (as a
+ * `Uint8Array`, an atom record, a tag array) fail to type-check. This keeps the
+ * assertion strength and the narrowing.
+ */
+export function expectDefined<T>(
+  value: T,
+  message?: string,
+): asserts value is NonNullable<T> {
+  expect(value, message).not.toBeNull();
+  expect(value, message).toBeDefined();
+}
+
+/**
  * `@std/assert`'s `assertThrows(fn, ErrorClass, msgIncludes, msg)` asserts BOTH the
  * class and a message substring, and RETURNS the error. Vitest splits those:
  * `toThrow(Class)` checks only `instanceof`, `toThrow(string)` only the message, and

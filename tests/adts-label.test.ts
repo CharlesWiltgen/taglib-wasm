@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview ADTS / raw AAC must not be labelled MP3.
  *
@@ -17,9 +15,9 @@
  * (3a33b89d…) both backends read codec "MP3" — and container/format "MP3" too.
  */
 
-import { assertEquals } from "@std/assert";
-import { afterAll, beforeAll, it } from "@std/testing/bdd";
-import { join } from "@std/path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import { forEachBackend } from "./backend-adapter.ts";
 import { TagLib } from "../src/taglib.ts";
 
@@ -35,13 +33,13 @@ forEachBackend("ADTS / raw AAC labels", (adapter) => {
   });
 
   it("reports codec AAC, container ADTS, and format AAC", async () => {
-    const buffer = await Deno.readFile(FIXTURE);
+    const buffer = new Uint8Array(await readFile(FIXTURE));
 
     const props = await adapter.readExtendedAudioProperties(buffer, "aac");
-    assertEquals(props.codec, "AAC");
-    assertEquals(props.containerFormat, "ADTS");
+    expect(props.codec).toStrictEqual("AAC");
+    expect(props.containerFormat).toStrictEqual("ADTS");
 
-    assertEquals(await adapter.readFormat(buffer, "aac"), "AAC");
+    expect(await adapter.readFormat(buffer, "aac")).toStrictEqual("AAC");
   });
 });
 
@@ -54,10 +52,10 @@ forEachBackend("ADTS / raw AAC labels", (adapter) => {
 for (const backend of ["wasi", "emscripten"] as const) {
   it(`[${backend}] keeps chapter writes working on ADTS`, async () => {
     const taglib = await TagLib.initialize({ forceWasmType: backend });
-    const file = await taglib.open(await Deno.readFile(FIXTURE));
+    const file = await taglib.open(new Uint8Array(await readFile(FIXTURE)));
     let out: Uint8Array;
     try {
-      assertEquals(file.getFormat(), "AAC");
+      expect(file.getFormat()).toStrictEqual("AAC");
       file.setChapters([
         { startTimeMs: 0, title: "A" },
         { startTimeMs: 1000, title: "B" },
@@ -70,7 +68,10 @@ for (const backend of ["wasi", "emscripten"] as const) {
 
     const reopened = await taglib.open(out);
     try {
-      assertEquals(reopened.getChapters().map((c) => c.title), ["A", "B"]);
+      expect(reopened.getChapters().map((c) => c.title)).toStrictEqual([
+        "A",
+        "B",
+      ]);
     } finally {
       reopened.dispose();
     }

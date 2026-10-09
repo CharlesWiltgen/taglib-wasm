@@ -2,8 +2,7 @@
  * @fileoverview Comprehensive unicode handling tests across both backends.
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import { afterAll, beforeAll, type describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import {
   type BackendAdapter,
   forEachBackend,
@@ -41,10 +40,11 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
         { title: value },
         "flac",
       );
-      assertExists(modified, `${name}: write returned null`);
+      expect(modified, `${name}: write returned null`).not.toBeNull();
+      expect(modified, `${name}: write returned null`).toBeDefined();
 
       const tags = await adapter.readTags(modified!, "flac");
-      assertEquals(tags.title, value, `${name}: title mismatch`);
+      expect(tags.title, `${name}: title mismatch`).toStrictEqual(value);
     });
   }
 
@@ -55,10 +55,11 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
       { title: longTitle },
       "flac",
     );
-    assertExists(modified);
+    expect(modified).not.toBeNull();
+    expect(modified).toBeDefined();
 
     const tags = await adapter.readTags(modified!, "flac");
-    assertEquals(tags.title, longTitle);
+    expect(tags.title).toStrictEqual(longTitle);
   });
 
   it("should handle mixed scripts in single field", async () => {
@@ -68,12 +69,13 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
       { title: mixed, artist: mixed, album: mixed },
       "flac",
     );
-    assertExists(modified);
+    expect(modified).not.toBeNull();
+    expect(modified).toBeDefined();
 
     const tags = await adapter.readTags(modified!, "flac");
-    assertEquals(tags.title, mixed);
-    assertEquals(tags.artist, mixed);
-    assertEquals(tags.album, mixed);
+    expect(tags.title).toStrictEqual(mixed);
+    expect(tags.artist).toStrictEqual(mixed);
+    expect(tags.album).toStrictEqual(mixed);
   });
 
   it("should handle special unicode characters (ZWJ, combining marks)", async () => {
@@ -84,11 +86,14 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
       { title: zwjTitle, artist: combiningArtist },
       "flac",
     );
-    assertExists(modified, "write returned null for special unicode");
+    expect(modified, "write returned null for special unicode").not.toBeNull();
+    expect(modified, "write returned null for special unicode").toBeDefined();
 
     const tags = await adapter.readTags(modified!, "flac");
-    assertExists(tags.title, "should handle zero-width joiners");
-    assertExists(tags.artist, "should handle combining marks");
+    expect(tags.title, "should handle zero-width joiners").not.toBeNull();
+    expect(tags.title, "should handle zero-width joiners").toBeDefined();
+    expect(tags.artist, "should handle combining marks").not.toBeNull();
+    expect(tags.artist, "should handle combining marks").toBeDefined();
   });
 
   it("should handle very long emoji strings (64KB+)", async () => {
@@ -103,7 +108,9 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
 
       if (modified) {
         const tags = await adapter.readTags(modified, "flac");
-        assertExists(tags.title, "should preserve start of long title");
+        expect(tags.title, "should preserve start of long title").not
+          .toBeNull();
+        expect(tags.title, "should preserve start of long title").toBeDefined();
       }
     } catch {
       // Format limitations may reject very long strings — acceptable

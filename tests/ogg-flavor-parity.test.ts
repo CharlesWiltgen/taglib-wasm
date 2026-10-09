@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview Ogg flavors: getFormat() distinguishes Vorbis, FLAC, Speex and
  * Opus inside the Ogg container.
@@ -24,9 +22,9 @@
  * the ticket's recorded output.
  */
 
-import { assertEquals } from "@std/assert";
-import { afterAll, beforeAll, it } from "@std/testing/bdd";
-import { join } from "@std/path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import { forEachBackend } from "./backend-adapter.ts";
 
 const FIXTURE_DIR = join("tests", "test-files");
@@ -74,14 +72,14 @@ forEachBackend("Ogg flavor labels", (adapter) => {
 
   for (const { file, ext, format, codec, isLossless } of CASES) {
     it(`reports ${format} for ${file}`, async () => {
-      const buffer = await Deno.readFile(join(FIXTURE_DIR, file));
+      const buffer = new Uint8Array(await readFile(join(FIXTURE_DIR, file)));
 
       const props = await adapter.readExtendedAudioProperties(buffer, ext);
-      assertEquals(props.containerFormat, "OGG");
-      assertEquals(props.codec, codec);
-      assertEquals(props.isLossless, isLossless);
+      expect(props.containerFormat).toStrictEqual("OGG");
+      expect(props.codec).toStrictEqual(codec);
+      expect(props.isLossless).toStrictEqual(isLossless);
 
-      assertEquals(await adapter.readFormat(buffer, ext), format);
+      expect(await adapter.readFormat(buffer, ext)).toStrictEqual(format);
     });
   }
 });

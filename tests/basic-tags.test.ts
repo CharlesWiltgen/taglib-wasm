@@ -2,8 +2,7 @@
  * @fileoverview Parameterized basic tag tests across both backends.
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import { afterAll, beforeAll, type describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import {
   type BackendAdapter,
   extForFormat,
@@ -26,13 +25,14 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
       const buffer = await readFixture(format);
       const tags = await adapter.readTags(buffer, extForFormat(format));
 
-      assertExists(tags.title, `${format}: title missing`);
+      expect(tags.title, `${format}: title missing`).not.toBeNull();
+      expect(tags.title, `${format}: title missing`).toBeDefined();
       // Per-format expectations: the fixtures are not uniform (see
       // EXPECTED_KISS_TAGS), so artist/album are asserted per format too
       // rather than decaying into an unused constant.
-      assertEquals(tags.title, EXPECTED_KISS_TAGS[format].title);
-      assertEquals(tags.artist, EXPECTED_KISS_TAGS[format].artist);
-      assertEquals(tags.album, EXPECTED_KISS_TAGS[format].album);
+      expect(tags.title).toStrictEqual(EXPECTED_KISS_TAGS[format].title);
+      expect(tags.artist).toStrictEqual(EXPECTED_KISS_TAGS[format].artist);
+      expect(tags.album).toStrictEqual(EXPECTED_KISS_TAGS[format].album);
     });
   }
 
@@ -50,15 +50,16 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
         newTags,
         extForFormat(format),
       );
-      assertExists(modified, `${format}: writeTags returned null`);
+      expect(modified, `${format}: writeTags returned null`).not.toBeNull();
+      expect(modified, `${format}: writeTags returned null`).toBeDefined();
 
       const readBack = await adapter.readTags(
         modified!,
         extForFormat(format),
       );
-      assertEquals(readBack.title, "Test Title");
-      assertEquals(readBack.artist, "Test Artist");
-      assertEquals(readBack.album, "Test Album");
+      expect(readBack.title).toStrictEqual("Test Title");
+      expect(readBack.artist).toStrictEqual("Test Artist");
+      expect(readBack.album).toStrictEqual("Test Album");
     });
   }
 
@@ -69,12 +70,13 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
       { title: "Replaced", artist: "New Artist", album: "New Album" },
       "mp3",
     );
-    assertExists(modified);
+    expect(modified).not.toBeNull();
+    expect(modified).toBeDefined();
 
     const readBack = await adapter.readTags(modified!, "mp3");
-    assertEquals(readBack.title, "Replaced");
-    assertEquals(readBack.artist, "New Artist");
-    assertEquals(readBack.album, "New Album");
+    expect(readBack.title).toStrictEqual("Replaced");
+    expect(readBack.artist).toStrictEqual("New Artist");
+    expect(readBack.album).toStrictEqual("New Album");
   });
 
   it("should handle unicode tags", async () => {
@@ -90,11 +92,12 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
       unicodeTags,
       "flac",
     );
-    assertExists(modified);
+    expect(modified).not.toBeNull();
+    expect(modified).toBeDefined();
 
     const readBack = await adapter.readTags(modified!, "flac");
-    assertEquals(readBack.title, unicodeTags.title);
-    assertEquals(readBack.artist, unicodeTags.artist);
-    assertEquals(readBack.album, unicodeTags.album);
+    expect(readBack.title).toStrictEqual(unicodeTags.title);
+    expect(readBack.artist).toStrictEqual(unicodeTags.artist);
+    expect(readBack.album).toStrictEqual(unicodeTags.album);
   });
 });

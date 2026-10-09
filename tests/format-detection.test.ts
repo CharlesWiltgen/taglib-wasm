@@ -2,8 +2,8 @@
  * @fileoverview Parameterized format detection tests across both backends.
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import { afterAll, beforeAll, type describe, it } from "@std/testing/bdd";
+import { readFile } from "node:fs/promises";
+import { afterAll, beforeAll, expect, it } from "vite-plus/test";
 import type { FileType } from "../src/types.ts";
 import {
   type BackendAdapter,
@@ -47,7 +47,8 @@ forEachBackend("Format Detection", (adapter: BackendAdapter) => {
     it(`should detect ${format} format from valid file`, async () => {
       const buffer = await readFixture(format);
       const tags = await adapter.readTags(buffer, extForFormat(format));
-      assertExists(tags, `${format}: should successfully read tags`);
+      expect(tags, `${format}: should successfully read tags`).not.toBeNull();
+      expect(tags, `${format}: should successfully read tags`).toBeDefined();
     });
   }
 
@@ -59,7 +60,7 @@ forEachBackend("Format Detection", (adapter: BackendAdapter) => {
     } catch {
       threw = true;
     }
-    assertEquals(threw, true, "empty buffer should throw");
+    expect(threw, "empty buffer should throw").toStrictEqual(true);
   });
 
   it("should reject non-audio bytes", async () => {
@@ -77,7 +78,7 @@ forEachBackend("Format Detection", (adapter: BackendAdapter) => {
     } catch {
       threw = true;
     }
-    assertEquals(threw, true, "non-audio bytes should throw");
+    expect(threw, "non-audio bytes should throw").toStrictEqual(true);
   });
 
   it("should reject tiny buffer", async () => {
@@ -88,7 +89,7 @@ forEachBackend("Format Detection", (adapter: BackendAdapter) => {
     } catch {
       threw = true;
     }
-    assertEquals(threw, true, "tiny buffer should throw");
+    expect(threw, "tiny buffer should throw").toStrictEqual(true);
   });
 });
 
@@ -104,9 +105,9 @@ forEachBackend("Niche Format Detection", (adapter: BackendAdapter) => {
   for (const { format, path } of NICHE_FORMATS) {
     it(`should report ${format} for ${path.split("/").pop()}`, async () => {
       if (!fileExists(path)) return;
-      const buffer = await Deno.readFile(path);
+      const buffer = new Uint8Array(await readFile(path));
       const ext = path.slice(path.lastIndexOf(".") + 1);
-      assertEquals(await adapter.readFormat(buffer, ext), format);
+      expect(await adapter.readFormat(buffer, ext)).toStrictEqual(format);
     });
   }
 });
