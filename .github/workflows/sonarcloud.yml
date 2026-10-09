@@ -17,10 +17,14 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      - uses: actions/setup-node@v7
         with:
-          deno-version: "2.9.6"
+          node-version: 24
+
+      - name: Install dependencies
+        # Vitest and its coverage provider are npm devDependencies; this job
+        # needs no other toolchain (it previously installed only Deno).
+        run: npm ci
 
       - name: Materialize committed WASM binaries for tests
         # Tests run against the committed build/*.wasm (module-loader.ts
@@ -35,22 +39,13 @@ jobs:
           cp build/taglib-wasi.wasm dist/wasi/taglib-wasi.wasm
 
       - name: Run tests with coverage
-        # tests/ and src/ both contain colocated unit tests; the local gate
-        # runs both, so the coverage feed must too. Coverage should go UP
-        # (cheap, dense unit tests); verified on branch before merge.
-        # --v8-flags=--expose-gc: tests/auto-dispose.test.ts requires it.
-        run: deno test --allow-read --allow-write --allow-env --coverage=coverage --v8-flags=--expose-gc tests/ src/
-
-      - name: Generate coverage report
-        run: |
-          deno coverage coverage --lcov --output=coverage.lcov
-          sed -i 's|SF:/home/.*/TagLib-Wasm/|SF:|g' coverage.lcov || true
-          mkdir -p coverage
-          mv coverage.lcov coverage/lcov.info
-
-      - name: Generate test execution report
-        run: |
-          ./scripts/generate-sonar-test-report.ts || echo "Failed to generate test report"
+        # tests/ and src/ both contain test files; the local gate runs both, so
+        # the coverage feed must too. Coverage should go UP (cheap, dense unit
+        # tests); verified on branch before merge. --expose-gc comes from
+        # vite.config.ts `test.execArgv`. Vitest's v8/lcov reporter writes
+        # coverage/lcov.info directly — no report conversion step is needed,
+        # and the paths in it are already repository-relative.
+        run: npx vp test --coverage
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
@@ -58,7 +53,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
+          # No -Dsonar.testExecutionReportPaths: that property requires Sonar's
+          # Generic Test Data shape (<testExecutions><file>…), which Vitest's
+          # JUnit reporter does not emit, so pointing it at junit.xml would feed
+          # the parser a document it rejects ("expected testExecutions but got
+          # testsuites"). Coverage still flows via lcov below.
           args: >
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.testExecutionReportPaths=test-results-sonar.xml

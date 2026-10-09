@@ -1,0 +1,41 @@
+{
+  // Tests-inclusive type-check config. `deno check ./src ./tests` covered the
+  // test files; tsconfig.json is the npm package build config and excludes them,
+  // so this config keeps that coverage after the toolchain flip.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "emitDeclarationOnly": false,
+    "declaration": false,
+    // tsconfig.json sets declarationMap: true; TS5069 rejects a declaration map
+    // without `declaration` (or `composite`), so this override is required.
+    "declarationMap": false,
+    // TS switch to target ES2022 for the package build, but the tests run on
+    // Node 24 (Deno's check ran with the ESNext lib via `deno.window`), and
+    // tests/auto-dispose.test.ts uses Promise.withResolvers (ES2024,
+    // TS2550 under ES2022). Widen the lib for the check only; the build
+    // config is untouched.
+    "lib": ["ESNext", "DOM", "ESNext.Disposable"]
+  },
+  "include": ["index.ts", "src/**/*", "tests/**/*", "*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "lib",
+    "build",
+    "examples",
+    // Deno-only files: they use the `Deno` namespace and JSR (`@std/*`)
+    // specifiers, which tsc cannot resolve, and only `deno check`/`deno test`
+    // can type-check. Phase 1 keeps them on the residual Deno gate
+    // (`deno task test` type-checks every module it runs); phase 2 deletes or
+    // rewrites them. Listing them here keeps this gate aligned with the files
+    // the Node test gate actually runs — it is not a way to hide a
+    // type error in code that Node executes.
+    "tests/deno-detect.test.ts",
+    "tests/deno-compat-patches.test.ts",
+    "tests/wasi-fs-provider.test.ts",
+    "tests/offline-support.test.ts",
+    "tests/wasi-vs-emscripten.bench.ts",
+    "tests/test-files/_gen/make-bwf-fixtures.ts"
+  ]
+}

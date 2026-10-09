@@ -124,7 +124,7 @@
     "fmt:vp": "vp fmt",
     "lint:vp": "vp lint --type-aware",
     "test:vp": "vp test",
-    "check:vp": "tsc --noEmit && vp lint --type-aware"
+    "check:vp": "tsc --noEmit -p tsconfig.check.json && vp lint --type-aware"
   },
   "engines": {
     "node": ">=24.0.0"

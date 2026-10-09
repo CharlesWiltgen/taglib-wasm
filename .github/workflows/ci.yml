@@ -35,6 +35,9 @@ jobs:
           node-version: 24
 
       - name: Setup Deno
+        # Deno stays in this job: the docs-coverage and knip gates still run as
+        # deno tasks (`deno task docs:coverage`, `deno task knip`) until a later
+        # phase retires them. fmt/lint/check no longer need Deno.
         uses: denoland/setup-deno@v2
         with:
           deno-version: "2.9.6"
@@ -55,16 +58,19 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        run: deno fmt --check
+        run: npx vp fmt --check
 
       - name: Run linter
-        run: deno lint
+        run: npx vp lint --type-aware
 
       - name: Run ESLint (typescript-eslint)
         run: npm run lint:ts
 
       - name: Type check
-        run: deno check ./src ./tests
+        # tsconfig.check.json is tests-inclusive: tsconfig.json excludes tests
+        # (it is the npm build config), and `deno check ./src ./tests` used to
+        # provide that coverage.
+        run: npx tsc --noEmit -p tsconfig.check.json
 
       - name: Install ast-grep
         run: npm install -g @ast-grep/cli@0.45.1
@@ -125,6 +131,8 @@ jobs:
           node-version: 24
 
       - name: Setup Deno
+        # Deno stays in this job: `deno task build:ts` and the
+        # `deno publish --dry-run` guard below still run under Deno.
         uses: denoland/setup-deno@v2
         with:
           deno-version: "2.9.6"
@@ -238,6 +246,9 @@ jobs:
           node-version: 24
 
       - name: Setup Deno
+        # Deno stays in this job: the two smoke tests below run under `deno run`
+        # (they use Deno.readFile/Deno.exit), and `npm run build:ts` /
+        # `postbuild` still shell out to Deno.
         uses: denoland/setup-deno@v2
         with:
           deno-version: "2.9.6"
@@ -471,6 +482,8 @@ jobs:
           node-version: 24
 
       - name: Setup Deno
+        # Deno stays in this job: the residual Deno-only tests below still run
+        # under `deno task test`.
         uses: denoland/setup-deno@v2
         with:
           deno-version: "2.9.6"
@@ -508,24 +521,28 @@ jobs:
           mkdir -p dist/wasi
           cp build/taglib-wasi.wasm dist/wasi/taglib-wasi.wasm
 
-      - name: Run tests
-        # tests/ and src/ both contain colocated unit tests (CLAUDE.md T-1);
-        # the local gate runs both, so CI must too — a guard that does not
-        # run in CI is decoration (extra-state-registry.test.ts caught
-        # _mp4ItemNames to no one). --v8-flags=--expose-gc: tests/
-        # auto-dispose.test.ts requires it and fails loudly without it.
-        run: deno test --allow-read --allow-write --allow-env --coverage=coverage --v8-flags=--expose-gc tests/ src/
+      - name: Run tests (Vitest)
+        # tests/ and src/ both contain test files (CLAUDE.md T-1); the local gate
+        # runs both, so CI must too — a guard that does not run in CI is
+        # decoration (extra-state-registry.test.ts caught _mp4ItemNames to no
+        # one). --expose-gc comes from vite.config.ts `test.execArgv`.
+        run: npx vp test --coverage
 
-      - name: Generate coverage report
-        if: matrix.os == 'ubuntu-latest'
-        run: deno coverage coverage --lcov --output=coverage.lcov
+      - name: Run residual Deno-only tests
+        # The four Deno-gated files (deno-detect, deno-compat-patches,
+        # wasi-fs-provider, offline-support) import Deno-only modules, so they
+        # are excluded from the Vitest run; `deno task test` runs exactly them
+        # (deno.json test.exclude lists everything else). They are deleted or
+        # rewritten in phase 2, which retires this gate.
+        run: deno task test
 
       - name: Upload coverage reports
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov
-          path: coverage.lcov
+          # Vitest's v8/lcov reporter (vite.config.ts) writes this directly.
+          path: coverage/lcov.info
 
   test-wasi:
     name: Test (WASI)
@@ -536,10 +553,14 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      - uses: actions/setup-node@v7
         with:
-          deno-version: "2.9.6"
+          node-version: 24
+
+      - name: Install dependencies
+        # Vitest is an npm devDependency, so this job needs the Node toolchain;
+        # it previously installed only Deno and ran `deno test`.
+        run: npm ci
 
       - name: Download WASI artifacts
         uses: actions/download-artifact@v8
@@ -564,8 +585,10 @@ jobs:
           ls -l build/taglib-wasi.wasm
 
       - name: Run WASI tests
+        # Positional filters narrow the widened `test.include` globs
+        # (vite.config.ts) to the four files that exercise the WASI backend.
         run: |
-          deno test --allow-read --allow-write --allow-env \
+          npx vp test \
             tests/wasi-host.test.ts \
             tests/wasi-write-roundtrip.test.ts \
             tests/extended-write-roundtrip.test.ts \
@@ -585,6 +608,9 @@ jobs:
           node-version: 24
 
       - name: Setup Deno
+        # Deno stays in this job: the cross-runtime smoke run below drives it as
+        # one of its three runtimes, and the JSR `deno doc --lint` step invokes
+        # it directly.
         uses: denoland/setup-deno@v2
         with:
           deno-version: "2.9.6"
