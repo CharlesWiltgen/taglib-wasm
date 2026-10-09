@@ -3,6 +3,7 @@
  */
 
 import { afterAll, beforeAll, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import {
   type BackendAdapter,
   extForFormat,
@@ -33,8 +34,7 @@ forEachBackend("Audio Properties", (adapter: BackendAdapter) => {
       );
       const expected = EXPECTED_AUDIO_PROPS[format];
 
-      expect(props, `${format}: no audio properties`).not.toBeNull();
-      expect(props, `${format}: no audio properties`).toBeDefined();
+      expectDefined(props, `${format}: no audio properties`);
       expect(
         props.sampleRate === expected.sampleRate,
         `${format}: sampleRate ${props.sampleRate} !== ${expected.sampleRate}`,

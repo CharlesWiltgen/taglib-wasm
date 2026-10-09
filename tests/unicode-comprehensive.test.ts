@@ -3,6 +3,7 @@
  */
 
 import { afterAll, beforeAll, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import {
   type BackendAdapter,
   forEachBackend,
@@ -40,10 +41,9 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
         { title: value },
         "flac",
       );
-      expect(modified, `${name}: write returned null`).not.toBeNull();
-      expect(modified, `${name}: write returned null`).toBeDefined();
+      expectDefined(modified, `${name}: write returned null`);
 
-      const tags = await adapter.readTags(modified!, "flac");
+      const tags = await adapter.readTags(modified, "flac");
       expect(tags.title, `${name}: title mismatch`).toStrictEqual(value);
     });
   }
@@ -55,10 +55,9 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
       { title: longTitle },
       "flac",
     );
-    expect(modified).not.toBeNull();
-    expect(modified).toBeDefined();
+    expectDefined(modified);
 
-    const tags = await adapter.readTags(modified!, "flac");
+    const tags = await adapter.readTags(modified, "flac");
     expect(tags.title).toStrictEqual(longTitle);
   });
 
@@ -69,10 +68,9 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
       { title: mixed, artist: mixed, album: mixed },
       "flac",
     );
-    expect(modified).not.toBeNull();
-    expect(modified).toBeDefined();
+    expectDefined(modified);
 
-    const tags = await adapter.readTags(modified!, "flac");
+    const tags = await adapter.readTags(modified, "flac");
     expect(tags.title).toStrictEqual(mixed);
     expect(tags.artist).toStrictEqual(mixed);
     expect(tags.album).toStrictEqual(mixed);
@@ -86,14 +84,11 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
       { title: zwjTitle, artist: combiningArtist },
       "flac",
     );
-    expect(modified, "write returned null for special unicode").not.toBeNull();
-    expect(modified, "write returned null for special unicode").toBeDefined();
+    expectDefined(modified, "write returned null for special unicode");
 
-    const tags = await adapter.readTags(modified!, "flac");
-    expect(tags.title, "should handle zero-width joiners").not.toBeNull();
-    expect(tags.title, "should handle zero-width joiners").toBeDefined();
-    expect(tags.artist, "should handle combining marks").not.toBeNull();
-    expect(tags.artist, "should handle combining marks").toBeDefined();
+    const tags = await adapter.readTags(modified, "flac");
+    expectDefined(tags.title, "should handle zero-width joiners");
+    expectDefined(tags.artist, "should handle combining marks");
   });
 
   it("should handle very long emoji strings (64KB+)", async () => {
@@ -108,9 +103,7 @@ forEachBackend("Unicode Comprehensive", (adapter: BackendAdapter) => {
 
       if (modified) {
         const tags = await adapter.readTags(modified, "flac");
-        expect(tags.title, "should preserve start of long title").not
-          .toBeNull();
-        expect(tags.title, "should preserve start of long title").toBeDefined();
+        expectDefined(tags.title, "should preserve start of long title");
       }
     } catch {
       // Format limitations may reject very long strings — acceptable

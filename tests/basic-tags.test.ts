@@ -3,6 +3,7 @@
  */
 
 import { afterAll, beforeAll, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import {
   type BackendAdapter,
   extForFormat,
@@ -25,8 +26,7 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
       const buffer = await readFixture(format);
       const tags = await adapter.readTags(buffer, extForFormat(format));
 
-      expect(tags.title, `${format}: title missing`).not.toBeNull();
-      expect(tags.title, `${format}: title missing`).toBeDefined();
+      expectDefined(tags.title, `${format}: title missing`);
       // Per-format expectations: the fixtures are not uniform (see
       // EXPECTED_KISS_TAGS), so artist/album are asserted per format too
       // rather than decaying into an unused constant.
@@ -50,11 +50,10 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
         newTags,
         extForFormat(format),
       );
-      expect(modified, `${format}: writeTags returned null`).not.toBeNull();
-      expect(modified, `${format}: writeTags returned null`).toBeDefined();
+      expectDefined(modified, `${format}: writeTags returned null`);
 
       const readBack = await adapter.readTags(
-        modified!,
+        modified,
         extForFormat(format),
       );
       expect(readBack.title).toStrictEqual("Test Title");
@@ -70,10 +69,9 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
       { title: "Replaced", artist: "New Artist", album: "New Album" },
       "mp3",
     );
-    expect(modified).not.toBeNull();
-    expect(modified).toBeDefined();
+    expectDefined(modified);
 
-    const readBack = await adapter.readTags(modified!, "mp3");
+    const readBack = await adapter.readTags(modified, "mp3");
     expect(readBack.title).toStrictEqual("Replaced");
     expect(readBack.artist).toStrictEqual("New Artist");
     expect(readBack.album).toStrictEqual("New Album");
@@ -92,10 +90,9 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
       unicodeTags,
       "flac",
     );
-    expect(modified).not.toBeNull();
-    expect(modified).toBeDefined();
+    expectDefined(modified);
 
-    const readBack = await adapter.readTags(modified!, "flac");
+    const readBack = await adapter.readTags(modified, "flac");
     expect(readBack.title).toStrictEqual(unicodeTags.title);
     expect(readBack.artist).toStrictEqual(unicodeTags.artist);
     expect(readBack.album).toStrictEqual(unicodeTags.album);

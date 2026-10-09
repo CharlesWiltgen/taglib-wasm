@@ -3,6 +3,7 @@
  */
 
 import { afterAll, beforeAll, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import {
   type BackendAdapter,
   extForFormat,
@@ -52,11 +53,10 @@ forEachBackend("Integration Workflows", (adapter: BackendAdapter) => {
       },
       "mp3",
     );
-    expect(modified).not.toBeNull();
-    expect(modified).toBeDefined();
+    expectDefined(modified);
 
     // Verify persistence
-    const readBack = await adapter.readTags(modified!, "mp3");
+    const readBack = await adapter.readTags(modified, "mp3");
     expect(readBack.title).toStrictEqual("Modified Kiss");
     expect(readBack.artist).toStrictEqual("Modified Artist");
     expect(readBack.year).toStrictEqual(2026);
@@ -73,8 +73,7 @@ forEachBackend("Integration Workflows", (adapter: BackendAdapter) => {
         extForFormat(format),
       );
 
-      expect(tags.title).not.toBeNull();
-      expect(tags.title).toBeDefined();
+      expectDefined(tags.title);
       expect(props.sampleRate).toBeGreaterThan(0);
       processed.push(format);
     }
@@ -98,11 +97,10 @@ forEachBackend("Integration Workflows", (adapter: BackendAdapter) => {
       },
       "flac",
     );
-    expect(modified).not.toBeNull();
-    expect(modified).toBeDefined();
+    expectDefined(modified);
 
     // Verify the FLAC file has the MP3's metadata
-    const flacTags = await adapter.readTags(modified!, "flac");
+    const flacTags = await adapter.readTags(modified, "flac");
     expect(flacTags.title).toStrictEqual(mp3Tags.title);
     expect(flacTags.artist).toStrictEqual(mp3Tags.artist);
     expect(flacTags.album).toStrictEqual(mp3Tags.album);

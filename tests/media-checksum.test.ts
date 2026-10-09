@@ -251,10 +251,8 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
 // synthetic descriptors on purpose, since the point is which source wins.
 it("the source rule prefers the file over the handle's image", async () => {
   const bytes = new Uint8Array(readFileSync(MP3_PATH));
-  const path = await join(
-    await mkdtemp(join(tmpdir(), "taglib-")),
-    "tmpfile.mp3",
-  );
+  const dir = await mkdtemp(join(tmpdir(), "taglib-"));
+  const path = join(dir, "tmpfile.mp3");
   try {
     await writeFile(path, bytes);
     const io = getPlatformIO();
@@ -291,7 +289,7 @@ it("the source rule prefers the file over the handle's image", async () => {
       MetadataError,
     );
   } finally {
-    await rm(path).catch(() => {});
+    await rm(dir, { recursive: true }).catch(() => {});
   }
 });
 
@@ -496,8 +494,7 @@ it("basis: pcm reads STREAMINFO past a prepended tag larger than the header wind
     // The digest the untagged fixture answers: the prepended tag is not audio,
     // so it must not move the digest.
     const expected = flacStreamInfoMd5(flac);
-    expect(expected).not.toBeNull();
-    expect(expected).toBeDefined();
+    expectDefined(expected);
 
     for (const backend of backends) {
       const taglib = await TagLib.initialize({ forceWasmType: backend });

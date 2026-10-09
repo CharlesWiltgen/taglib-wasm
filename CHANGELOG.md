@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A WASI host seek that fails no longer corrupts the next read on Node and
+  Bun** (taglib-tl17.1) — the Node/Bun filesystem provider for the WASI host
+  stored the computed offset before validating it, so a seek to a negative
+  position (the guest seeking relative to the end of a file shorter than the
+  offset) left the cursor negative; the guest's next read then called
+  `node:fs` with that negative position and threw `ERR_OUT_OF_RANGE` out of
+  the host where the guest should have seen `EINVAL`. The offset is now
+  validated before it is stored, so a rejected seek leaves the cursor
+  unchanged — matching Deno's `seekSync`, which the Deno path already used.
+  Deno and the Emscripten backend are unaffected; Node and Bun reading a file
+  through the WASI backend could previously see the host error surface as an
+  open failure.
+
 ## 2.3.0
 
 ### Fixed

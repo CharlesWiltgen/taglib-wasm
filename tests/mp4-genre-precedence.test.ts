@@ -234,8 +234,7 @@ for (const backend of BACKENDS) {
       for (const name of ["after", "omit"] as const) {
         const bytes = new Uint8Array(await readFile(GNRE_GENRE_FIXTURES[name]));
         const before = genAtomBytes(bytes);
-        expect(before).not.toBeNull();
-        expect(before).toBeDefined();
+        expectDefined(before);
         await withFile(backend, bytes, (file) => {
           expect(file.tag().genre).toStrictEqual(STRING_GENRE);
         });

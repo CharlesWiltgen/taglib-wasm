@@ -7,6 +7,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import {
   EmscriptenBackendAdapter,
   extForFormat,
@@ -72,14 +73,11 @@ describe("Cross-Backend Parity", { skip: SKIP }, () => {
       const wasiProps = await wasi.readProperties(buffer, ext);
       const emProps = await emscripten.readProperties(buffer, ext);
 
-      expect(wasiProps["title"], `${format}: WASI should have title`).not
-        .toBeNull();
-      expect(wasiProps["title"], `${format}: WASI should have title`)
-        .toBeDefined();
-      expect(emProps["title"], `${format}: Emscripten should have title`).not
-        .toBeNull();
-      expect(emProps["title"], `${format}: Emscripten should have title`)
-        .toBeDefined();
+      expectDefined(wasiProps["title"], `${format}: WASI should have title`);
+      expectDefined(
+        emProps["title"],
+        `${format}: Emscripten should have title`,
+      );
       expect(wasiProps["title"], `${format}: title mismatch`).toStrictEqual(
         emProps["title"],
       );
@@ -178,11 +176,12 @@ describe("Cross-Backend Parity", { skip: SKIP }, () => {
       };
 
       const modified = await wasi.writeTags(buffer, writtenTags, ext);
-      expect(modified, `${format}: WASI writeTags returned null`).not
-        .toBeNull();
-      expect(modified, `${format}: WASI writeTags returned null`).toBeDefined();
+      expectDefined(
+        modified,
+        `${format}: WASI writeTags returned null`,
+      );
 
-      const readBack = await emscripten.readTags(modified!, ext);
+      const readBack = await emscripten.readTags(modified, ext);
       expect(
         readBack.title,
         `${format}: Emscripten failed to read WASI-written title`,
@@ -207,12 +206,12 @@ describe("Cross-Backend Parity", { skip: SKIP }, () => {
       };
 
       const modified = await emscripten.writeTags(buffer, writtenTags, ext);
-      expect(modified, `${format}: Emscripten writeTags returned null`).not
-        .toBeNull();
-      expect(modified, `${format}: Emscripten writeTags returned null`)
-        .toBeDefined();
+      expectDefined(
+        modified,
+        `${format}: Emscripten writeTags returned null`,
+      );
 
-      const readBack = await wasi.readTags(modified!, ext);
+      const readBack = await wasi.readTags(modified, ext);
       expect(
         readBack.title,
         `${format}: WASI failed to read Emscripten-written title`,

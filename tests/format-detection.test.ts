@@ -4,6 +4,7 @@
 
 import { readFile } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import type { FileType } from "../src/types.ts";
 import {
   type BackendAdapter,
@@ -47,8 +48,7 @@ forEachBackend("Format Detection", (adapter: BackendAdapter) => {
     it(`should detect ${format} format from valid file`, async () => {
       const buffer = await readFixture(format);
       const tags = await adapter.readTags(buffer, extForFormat(format));
-      expect(tags, `${format}: should successfully read tags`).not.toBeNull();
-      expect(tags, `${format}: should successfully read tags`).toBeDefined();
+      expectDefined(tags, `${format}: should successfully read tags`);
     });
   }
 
