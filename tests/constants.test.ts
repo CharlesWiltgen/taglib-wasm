@@ -2,9 +2,9 @@
  * @fileoverview Tests for constants.ts utility functions and type definitions
  */
 
-import { assertEquals, assertExists } from "@std/assert";
+import { describe, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import type { PropertyMap } from "../src/types/tags.ts";
-import { describe, it } from "@std/testing/bdd";
 import {
   fromTagLibKey,
   getAllProperties,
@@ -14,6 +14,7 @@ import {
   isValidProperty,
   PROPERTIES,
   type PropertyKey,
+  type PropertyMetadata,
   propertyValue,
   propertyValues,
   toTagLibKey,
@@ -22,63 +23,66 @@ import {
 describe("constants", () => {
   it("isValidProperty - validates property keys correctly", () => {
     // Valid properties (camelCase)
-    assertEquals(isValidProperty("title"), true);
-    assertEquals(isValidProperty("artist"), true);
-    assertEquals(isValidProperty("album"), true);
-    assertEquals(isValidProperty("musicbrainzTrackId"), true);
-    assertEquals(isValidProperty("replayGainTrackGain"), true);
+    expect(isValidProperty("title")).toStrictEqual(true);
+    expect(isValidProperty("artist")).toStrictEqual(true);
+    expect(isValidProperty("album")).toStrictEqual(true);
+    expect(isValidProperty("musicbrainzTrackId")).toStrictEqual(true);
+    expect(isValidProperty("replayGainTrackGain")).toStrictEqual(true);
 
     // Invalid properties
-    assertEquals(isValidProperty("INVALID_PROPERTY"), false);
-    assertEquals(isValidProperty("TITLE"), false); // ALL_CAPS no longer valid
-    assertEquals(isValidProperty(""), false);
-    assertEquals(isValidProperty("123"), false);
+    expect(isValidProperty("INVALID_PROPERTY")).toStrictEqual(false);
+    expect(isValidProperty("TITLE")).toStrictEqual(false); // ALL_CAPS no longer valid
+    expect(isValidProperty("")).toStrictEqual(false);
+    expect(isValidProperty("123")).toStrictEqual(false);
   });
 
   it("getPropertyMetadata - returns correct metadata for properties", () => {
     // Test basic property
     const titleMeta = getPropertyMetadata("title");
     if (titleMeta) {
-      assertEquals(titleMeta.key, "TITLE");
-      assertEquals(titleMeta.description, "The title of the track");
-      assertEquals(titleMeta.type, "string");
-      assertEquals(titleMeta.supportedFormats, [
+      expect(titleMeta.key).toStrictEqual("TITLE");
+      expect(titleMeta.description).toStrictEqual("The title of the track");
+      expect(titleMeta.type).toStrictEqual("string");
+      expect(titleMeta.supportedFormats).toStrictEqual([
         "ID3v2",
         "MP4",
         "Vorbis",
         "WAV",
       ]);
-      assertExists(titleMeta.mappings);
+      expectDefined(titleMeta.mappings);
       const id3v2Mapping = titleMeta.mappings.id3v2;
       if (typeof id3v2Mapping === "object") {
-        assertEquals(id3v2Mapping.frame, "TIT2");
+        expect(id3v2Mapping.frame).toStrictEqual("TIT2");
       }
-      assertEquals(titleMeta.mappings.mp4, "©nam");
+      expect(titleMeta.mappings.mp4).toStrictEqual("©nam");
     }
 
     // Test extended property
     const mbTrackId = getPropertyMetadata("musicbrainzTrackId");
     if (mbTrackId) {
-      assertEquals(mbTrackId.key, "MUSICBRAINZ_TRACKID");
-      assertEquals(mbTrackId.description, "MusicBrainz Recording ID (UUID)");
+      expect(mbTrackId.key).toStrictEqual("MUSICBRAINZ_TRACKID");
+      expect(mbTrackId.description).toStrictEqual(
+        "MusicBrainz Recording ID (UUID)",
+      );
       const id3v2Mapping = mbTrackId.mappings.id3v2;
       if (typeof id3v2Mapping === "object") {
-        assertEquals(id3v2Mapping.frame, "UFID");
-        assertEquals(id3v2Mapping.description, "http://musicbrainz.org");
+        expect(id3v2Mapping.frame).toStrictEqual("UFID");
+        expect(id3v2Mapping.description).toStrictEqual(
+          "http://musicbrainz.org",
+        );
       }
     }
 
     // Test ReplayGain property
     const rgTrackGain = getPropertyMetadata("replayGainTrackGain");
     if (rgTrackGain) {
-      assertEquals(
-        rgTrackGain.description,
+      expect(rgTrackGain.description).toStrictEqual(
         "ReplayGain track gain in dB (e.g., '-6.54 dB')",
       );
       const id3v2Mapping = rgTrackGain.mappings.id3v2;
       if (typeof id3v2Mapping === "object") {
-        assertEquals(id3v2Mapping.frame, "TXXX");
-        assertEquals(id3v2Mapping.description, "ReplayGain_Track_Gain");
+        expect(id3v2Mapping.frame).toStrictEqual("TXXX");
+        expect(id3v2Mapping.description).toStrictEqual("ReplayGain_Track_Gain");
       }
     }
   });
@@ -87,19 +91,19 @@ describe("constants", () => {
     const keys = getAllPropertyKeys();
 
     // Check it's an array with expected properties
-    assertEquals(Array.isArray(keys), true);
-    assertEquals(keys.length > 35, true); // Should have many properties
+    expect(Array.isArray(keys)).toStrictEqual(true);
+    expect(keys.length > 35).toStrictEqual(true); // Should have many properties
 
     // Check some expected keys exist (camelCase)
-    assertEquals(keys.includes("title"), true);
-    assertEquals(keys.includes("artist"), true);
-    assertEquals(keys.includes("musicbrainzTrackId"), true);
-    assertEquals(keys.includes("replayGainTrackGain"), true);
-    assertEquals(keys.includes("acoustidFingerprint"), true);
+    expect(keys.includes("title")).toStrictEqual(true);
+    expect(keys.includes("artist")).toStrictEqual(true);
+    expect(keys.includes("musicbrainzTrackId")).toStrictEqual(true);
+    expect(keys.includes("replayGainTrackGain")).toStrictEqual(true);
+    expect(keys.includes("acoustidFingerprint")).toStrictEqual(true);
 
     // Verify all keys are valid
     for (const key of keys) {
-      assertEquals(isValidProperty(key), true);
+      expect(isValidProperty(key)).toStrictEqual(true);
     }
   });
 
@@ -107,58 +111,58 @@ describe("constants", () => {
     const properties = getAllProperties();
 
     // Check structure
-    assertEquals(Array.isArray(properties), true);
-    assertEquals(properties.length > 35, true);
+    expect(Array.isArray(properties)).toStrictEqual(true);
+    expect(properties.length > 35).toStrictEqual(true);
 
     // Check first few entries have correct structure
     for (const [key, metadata] of properties.slice(0, 5)) {
-      assertEquals(typeof key, "string");
-      assertEquals(isValidProperty(key), true);
-      assertExists(metadata.key);
-      assertExists(metadata.description);
-      assertExists(metadata.type);
-      assertExists(metadata.supportedFormats);
+      expect(typeof key).toStrictEqual("string");
+      expect(isValidProperty(key)).toStrictEqual(true);
+      expectDefined(metadata.key);
+      expectDefined(metadata.description);
+      expectDefined(metadata.type);
+      expectDefined(metadata.supportedFormats);
       // key field is the TagLib ALL_CAPS wire name, not the camelCase object key
-      assertEquals(metadata.key, toTagLibKey(key));
+      expect(metadata.key).toStrictEqual(toTagLibKey(key));
     }
   });
 
   it("getPropertiesByFormat - filters properties by format support", () => {
     // Test ID3v2 format
     const id3v2Props = getPropertiesByFormat("ID3v2");
-    assertEquals(Array.isArray(id3v2Props), true);
-    assertEquals(id3v2Props.includes("title"), true);
-    assertEquals(id3v2Props.includes("artist"), true);
-    assertEquals(id3v2Props.includes("musicbrainzTrackId"), true);
+    expect(Array.isArray(id3v2Props)).toStrictEqual(true);
+    expect(id3v2Props.includes("title")).toStrictEqual(true);
+    expect(id3v2Props.includes("artist")).toStrictEqual(true);
+    expect(id3v2Props.includes("musicbrainzTrackId")).toStrictEqual(true);
 
     // Verify all returned properties support ID3v2
     for (const prop of id3v2Props) {
       const metadata = getPropertyMetadata(prop as PropertyKey);
       if (metadata) {
-        assertEquals(metadata.supportedFormats.includes("ID3v2" as any), true);
+        expect(metadata.supportedFormats.includes("ID3v2")).toStrictEqual(true);
       }
     }
 
     // Test Vorbis format
     const vorbisProps = getPropertiesByFormat("Vorbis");
-    assertEquals(vorbisProps.includes("copyright"), true);
-    assertEquals(vorbisProps.includes("lyricist"), true);
-    assertEquals(vorbisProps.includes("conductor"), true);
+    expect(vorbisProps.includes("copyright")).toStrictEqual(true);
+    expect(vorbisProps.includes("lyricist")).toStrictEqual(true);
+    expect(vorbisProps.includes("conductor")).toStrictEqual(true);
 
     // Test WAV format (should have fewer properties)
     const wavProps = getPropertiesByFormat("WAV");
-    assertEquals(wavProps.length < id3v2Props.length, true);
-    assertEquals(wavProps.includes("title"), true);
-    assertEquals(wavProps.includes("artist"), true);
+    expect(wavProps.length < id3v2Props.length).toStrictEqual(true);
+    expect(wavProps.includes("title")).toStrictEqual(true);
+    expect(wavProps.includes("artist")).toStrictEqual(true);
 
     // WAV shouldn't include MusicBrainz properties
-    assertEquals(wavProps.includes("musicbrainzTrackId"), false);
+    expect(wavProps.includes("musicbrainzTrackId")).toStrictEqual(false);
   });
 
   it("should include totalTracks, totalDiscs, and compilation", () => {
-    assertEquals(PROPERTIES.totalTracks.key, "TRACKTOTAL");
-    assertEquals(PROPERTIES.totalDiscs.key, "DISCTOTAL");
-    assertEquals(PROPERTIES.compilation.key, "COMPILATION");
+    expect(PROPERTIES.totalTracks.key).toStrictEqual("TRACKTOTAL");
+    expect(PROPERTIES.totalDiscs.key).toStrictEqual("DISCTOTAL");
+    expect(PROPERTIES.compilation.key).toStrictEqual("COMPILATION");
   });
 
   it("PROPERTIES constant structure - validates all properties have required fields", () => {
@@ -169,66 +173,61 @@ describe("constants", () => {
 
     for (const [key, prop] of propertyEntries) {
       // key field is the TagLib ALL_CAPS wire name
-      assertEquals(prop.key, toTagLibKey(key));
+      expect(prop.key).toStrictEqual(toTagLibKey(key));
 
       // All required fields should exist
-      assertExists(prop.description, `${key} should have description`);
-      assertExists(prop.type, `${key} should have type`);
-      assertExists(
+      expectDefined(prop.description, `${key} should have description`);
+      expectDefined(prop.type, `${key} should have type`);
+      expectDefined(
         prop.supportedFormats,
         `${key} should have supportedFormats`,
       );
-      assertEquals(
+      expect(
         Array.isArray(prop.supportedFormats),
-        true,
         `${key} supportedFormats should be array`,
-      );
+      ).toStrictEqual(true);
 
       // Type should be valid
-      assertEquals(
+      expect(
         ["string", "number", "boolean"].includes(prop.type),
-        true,
         `${key} has invalid type`,
-      );
+      ).toStrictEqual(true);
 
       // Description should be meaningful
-      assertEquals(
+      expect(
         prop.description.length > 5,
-        true,
         `${key} description too short`,
-      );
+      ).toStrictEqual(true);
 
       // If mappings exist, validate structure
       if (prop.mappings) {
-        const mappings = prop.mappings as any;
+        const mappings = prop.mappings as PropertyMetadata["mappings"];
 
         // Check format-specific mappings
         if (mappings.id3v2) {
-          assertExists(
-            mappings.id3v2.frame,
+          const id3v2 = mappings.id3v2;
+          expectDefined(
+            typeof id3v2 === "object" ? id3v2.frame : undefined,
             `${key} ID3v2 mapping should have frame`,
           );
         }
         if (mappings.vorbis) {
-          assertEquals(
+          expect(
             typeof mappings.vorbis,
-            "string",
             `${key} Vorbis mapping should be string`,
-          );
+          ).toStrictEqual("string");
         }
         if (mappings.mp4) {
-          assertEquals(
+          expect(
             typeof mappings.mp4,
-            "string",
             `${key} MP4 mapping should be string`,
-          );
+          ).toStrictEqual("string");
         }
         if (mappings.wav) {
-          assertEquals(
+          expect(
             typeof mappings.wav,
-            "string",
             `${key} WAV mapping should be string`,
-          );
+          ).toStrictEqual("string");
         }
       }
     }
@@ -240,7 +239,7 @@ describe("constants", () => {
     for (const propKey of id3v2Props) {
       const prop = PROPERTIES[propKey as PropertyKey];
       if (prop.mappings && "id3v2" in prop.mappings) {
-        assertExists(
+        expectDefined(
           prop.mappings.id3v2,
           `${propKey} claims ID3v2 support but has no mapping`,
         );
@@ -252,7 +251,7 @@ describe("constants", () => {
     for (const propKey of vorbisProps) {
       const prop = PROPERTIES[propKey as PropertyKey];
       if (prop.mappings && "vorbis" in prop.mappings) {
-        assertExists(
+        expectDefined(
           prop.mappings.vorbis,
           `${propKey} claims Vorbis support but has no mapping`,
         );
@@ -270,15 +269,15 @@ describe("constants", () => {
 
     for (const propKey of txxx_props) {
       const prop = PROPERTIES[propKey as PropertyKey];
-      const mappings = prop.mappings as any;
-      if (mappings && mappings.id3v2) {
-        assertEquals(
-          mappings.id3v2.frame,
-          "TXXX",
+      const mappings = prop.mappings as PropertyMetadata["mappings"];
+      if (mappings.id3v2) {
+        const id3v2 = mappings.id3v2;
+        expect(
+          typeof id3v2 === "object" ? id3v2.frame : undefined,
           `${propKey} should use TXXX frame`,
-        );
-        assertExists(
-          mappings.id3v2.description,
+        ).toStrictEqual("TXXX");
+        expectDefined(
+          typeof id3v2 === "object" ? id3v2.description : undefined,
           `${propKey} TXXX should have description`,
         );
       }
@@ -293,13 +292,13 @@ describe("constants", () => {
 
     for (const propKey of itunesProps) {
       const prop = PROPERTIES[propKey as PropertyKey];
-      const mappings = prop.mappings as any;
-      if (mappings && mappings.mp4) {
-        assertEquals(
-          mappings.mp4.startsWith("----:com.apple.iTunes:"),
-          true,
+      const mappings = prop.mappings as PropertyMetadata["mappings"];
+      if (mappings.mp4) {
+        const mp4 = mappings.mp4;
+        expect(
+          typeof mp4 === "string" && mp4.startsWith("----:com.apple.iTunes:"),
           `${propKey} MP4 mapping should be iTunes atom`,
-        );
+        ).toStrictEqual(true);
       }
     }
   });
@@ -307,127 +306,132 @@ describe("constants", () => {
 
 describe("Property key translation", () => {
   it("toTagLibKey translates known camelCase keys to ALL_CAPS", () => {
-    assertEquals(toTagLibKey("title"), "TITLE");
-    assertEquals(toTagLibKey("musicbrainzTrackId"), "MUSICBRAINZ_TRACKID");
-    assertEquals(toTagLibKey("replayGainTrackGain"), "REPLAYGAIN_TRACK_GAIN");
-    assertEquals(toTagLibKey("appleSoundCheck"), "ITUNNORM");
-    assertEquals(toTagLibKey("musicbrainzReleaseId"), "MUSICBRAINZ_ALBUMID");
+    expect(toTagLibKey("title")).toStrictEqual("TITLE");
+    expect(toTagLibKey("musicbrainzTrackId")).toStrictEqual(
+      "MUSICBRAINZ_TRACKID",
+    );
+    expect(toTagLibKey("replayGainTrackGain")).toStrictEqual(
+      "REPLAYGAIN_TRACK_GAIN",
+    );
+    expect(toTagLibKey("appleSoundCheck")).toStrictEqual("ITUNNORM");
+    expect(toTagLibKey("musicbrainzReleaseId")).toStrictEqual(
+      "MUSICBRAINZ_ALBUMID",
+    );
   });
 
   it("should translate totalTracks, totalDiscs, compilation via toTagLibKey", () => {
-    assertEquals(toTagLibKey("totalTracks"), "TRACKTOTAL");
-    assertEquals(toTagLibKey("totalDiscs"), "DISCTOTAL");
-    assertEquals(toTagLibKey("compilation"), "COMPILATION");
+    expect(toTagLibKey("totalTracks")).toStrictEqual("TRACKTOTAL");
+    expect(toTagLibKey("totalDiscs")).toStrictEqual("DISCTOTAL");
+    expect(toTagLibKey("compilation")).toStrictEqual("COMPILATION");
   });
 
   it("fromTagLibKey translates ALL_CAPS to camelCase", () => {
-    assertEquals(fromTagLibKey("TITLE"), "title");
-    assertEquals(fromTagLibKey("MUSICBRAINZ_TRACKID"), "musicbrainzTrackId");
-    assertEquals(fromTagLibKey("REPLAYGAIN_TRACK_GAIN"), "replayGainTrackGain");
-    assertEquals(fromTagLibKey("ITUNNORM"), "appleSoundCheck");
-    assertEquals(fromTagLibKey("MUSICBRAINZ_ALBUMID"), "musicbrainzReleaseId");
+    expect(fromTagLibKey("TITLE")).toStrictEqual("title");
+    expect(fromTagLibKey("MUSICBRAINZ_TRACKID")).toStrictEqual(
+      "musicbrainzTrackId",
+    );
+    expect(fromTagLibKey("REPLAYGAIN_TRACK_GAIN")).toStrictEqual(
+      "replayGainTrackGain",
+    );
+    expect(fromTagLibKey("ITUNNORM")).toStrictEqual("appleSoundCheck");
+    expect(fromTagLibKey("MUSICBRAINZ_ALBUMID")).toStrictEqual(
+      "musicbrainzReleaseId",
+    );
   });
 
   it("should reverse-translate TRACKTOTAL, DISCTOTAL, COMPILATION via fromTagLibKey", () => {
-    assertEquals(fromTagLibKey("TRACKTOTAL"), "totalTracks");
-    assertEquals(fromTagLibKey("DISCTOTAL"), "totalDiscs");
-    assertEquals(fromTagLibKey("COMPILATION"), "compilation");
+    expect(fromTagLibKey("TRACKTOTAL")).toStrictEqual("totalTracks");
+    expect(fromTagLibKey("DISCTOTAL")).toStrictEqual("totalDiscs");
+    expect(fromTagLibKey("COMPILATION")).toStrictEqual("compilation");
   });
 
   it("should translate year to DATE via toTagLibKey (forward alias)", () => {
-    assertEquals(toTagLibKey("year"), "DATE");
+    expect(toTagLibKey("year")).toStrictEqual("DATE");
   });
 
   it("should translate track to TRACKNUMBER via toTagLibKey (forward alias)", () => {
-    assertEquals(toTagLibKey("track"), "TRACKNUMBER");
+    expect(toTagLibKey("track")).toStrictEqual("TRACKNUMBER");
   });
 
   it("should still translate date to DATE via toTagLibKey (canonical)", () => {
-    assertEquals(toTagLibKey("date"), "DATE");
+    expect(toTagLibKey("date")).toStrictEqual("DATE");
   });
 
   it("should still reverse DATE to date via fromTagLibKey (canonical stays)", () => {
-    assertEquals(fromTagLibKey("DATE"), "date");
+    expect(fromTagLibKey("DATE")).toStrictEqual("date");
   });
 
   it("translates additional properties (formerly ALL_CAPS pass-through)", () => {
     // Sorting
-    assertEquals(toTagLibKey("albumArtistSort"), "ALBUMARTISTSORT");
-    assertEquals(toTagLibKey("composerSort"), "COMPOSERSORT");
-    assertEquals(fromTagLibKey("ALBUMARTISTSORT"), "albumArtistSort");
-    assertEquals(fromTagLibKey("COMPOSERSORT"), "composerSort");
+    expect(toTagLibKey("albumArtistSort")).toStrictEqual("ALBUMARTISTSORT");
+    expect(toTagLibKey("composerSort")).toStrictEqual("COMPOSERSORT");
+    expect(fromTagLibKey("ALBUMARTISTSORT")).toStrictEqual("albumArtistSort");
+    expect(fromTagLibKey("COMPOSERSORT")).toStrictEqual("composerSort");
 
     // Identifiers
-    assertEquals(toTagLibKey("asin"), "ASIN");
-    assertEquals(
-      toTagLibKey("musicbrainzReleaseArtistId"),
+    expect(toTagLibKey("asin")).toStrictEqual("ASIN");
+    expect(toTagLibKey("musicbrainzReleaseArtistId")).toStrictEqual(
       "MUSICBRAINZ_ALBUMARTISTID",
     );
-    assertEquals(toTagLibKey("musicbrainzWorkId"), "MUSICBRAINZ_WORKID");
-    assertEquals(
-      toTagLibKey("musicbrainzReleaseTrackId"),
+    expect(toTagLibKey("musicbrainzWorkId")).toStrictEqual(
+      "MUSICBRAINZ_WORKID",
+    );
+    expect(toTagLibKey("musicbrainzReleaseTrackId")).toStrictEqual(
       "MUSICBRAINZ_RELEASETRACKID",
     );
-    assertEquals(
-      fromTagLibKey("MUSICBRAINZ_ALBUMARTISTID"),
+    expect(fromTagLibKey("MUSICBRAINZ_ALBUMARTISTID")).toStrictEqual(
       "musicbrainzReleaseArtistId",
     );
 
     // Miscellaneous
-    assertEquals(toTagLibKey("label"), "LABEL");
-    assertEquals(toTagLibKey("subtitle"), "SUBTITLE");
-    assertEquals(toTagLibKey("producer"), "PRODUCER");
-    assertEquals(toTagLibKey("originalDate"), "ORIGINALDATE");
-    assertEquals(toTagLibKey("involvedPeople"), "INVOLVEDPEOPLE");
-    assertEquals(toTagLibKey("encoding"), "ENCODING");
-    assertEquals(fromTagLibKey("ENCODING"), "encoding");
-    assertEquals(fromTagLibKey("INVOLVEDPEOPLE"), "involvedPeople");
+    expect(toTagLibKey("label")).toStrictEqual("LABEL");
+    expect(toTagLibKey("subtitle")).toStrictEqual("SUBTITLE");
+    expect(toTagLibKey("producer")).toStrictEqual("PRODUCER");
+    expect(toTagLibKey("originalDate")).toStrictEqual("ORIGINALDATE");
+    expect(toTagLibKey("involvedPeople")).toStrictEqual("INVOLVEDPEOPLE");
+    expect(toTagLibKey("encoding")).toStrictEqual("ENCODING");
+    expect(fromTagLibKey("ENCODING")).toStrictEqual("encoding");
+    expect(fromTagLibKey("INVOLVEDPEOPLE")).toStrictEqual("involvedPeople");
 
     // Corrected wire name (was REMIXEDBY, now REMIXER)
-    assertEquals(toTagLibKey("remixedBy"), "REMIXER");
-    assertEquals(fromTagLibKey("REMIXER"), "remixedBy");
+    expect(toTagLibKey("remixedBy")).toStrictEqual("REMIXER");
+    expect(fromTagLibKey("REMIXER")).toStrictEqual("remixedBy");
   });
 
   it("unknown keys pass through untranslated", () => {
-    assertEquals(toTagLibKey("MY_CUSTOM_TAG"), "MY_CUSTOM_TAG");
-    assertEquals(fromTagLibKey("MY_CUSTOM_TAG"), "MY_CUSTOM_TAG");
+    expect(toTagLibKey("MY_CUSTOM_TAG")).toStrictEqual("MY_CUSTOM_TAG");
+    expect(fromTagLibKey("MY_CUSTOM_TAG")).toStrictEqual("MY_CUSTOM_TAG");
   });
 
   it("PROPERTIES keys are camelCase", () => {
     for (const key of Object.keys(PROPERTIES)) {
-      assertEquals(
+      expect(
         key[0],
-        key[0].toLowerCase(),
         `Key "${key}" should start lowercase`,
-      );
-      assertEquals(
+      ).toStrictEqual(key[0].toLowerCase());
+      expect(
         key.includes("_"),
-        false,
         `Key "${key}" should not contain underscores`,
-      );
+      ).toStrictEqual(false);
     }
   });
 
   it("every PROPERTIES entry has a key field with ALL_CAPS TagLib wire name", () => {
     for (const [camelKey, meta] of Object.entries(PROPERTIES)) {
-      assertExists(
-        (meta as { key: string }).key,
-        `${camelKey} missing key field`,
-      );
-      assertEquals(
-        (meta as { key: string }).key,
-        (meta as { key: string }).key.toUpperCase(),
+      expectDefined(meta.key, `${camelKey} missing key field`);
+      expect(
+        meta.key,
         `${camelKey}.key should be ALL_CAPS`,
-      );
+      ).toStrictEqual(meta.key.toUpperCase());
     }
   });
 });
 
-Deno.test("propertyValues / propertyValue accessors (taglib-lk8u)", () => {
+it("propertyValues / propertyValue accessors (taglib-lk8u)", () => {
   const props: PropertyMap = { title: ["Kiss"], artist: [] };
-  assertEquals(propertyValues(props, "title"), ["Kiss"]);
-  assertEquals(propertyValues(props, "absent"), []);
-  assertEquals(propertyValue(props, "title"), "Kiss");
-  assertEquals(propertyValue(props, "artist"), undefined);
-  assertEquals(propertyValue(props, "absent"), undefined);
+  expect(propertyValues(props, "title")).toStrictEqual(["Kiss"]);
+  expect(propertyValues(props, "absent")).toStrictEqual([]);
+  expect(propertyValue(props, "title")).toStrictEqual("Kiss");
+  expect(propertyValue(props, "artist")).toStrictEqual(undefined);
+  expect(propertyValue(props, "absent")).toStrictEqual(undefined);
 });

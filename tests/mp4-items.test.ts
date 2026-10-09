@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * Cross-backend parity for MP4 freeform items (taglib-1qn).
  *
@@ -10,7 +8,11 @@
  * round-trip to survive a save. These tests pin that both backends agree.
  */
 
-import { assertEquals } from "@std/assert";
+import { randomUUID } from "node:crypto";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { expect, it } from "vite-plus/test";
 import { TagLib } from "../src/taglib.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
 
@@ -26,6 +28,11 @@ const ITUNNORM = "----:com.apple.iTunes:iTunNORM";
 // defect half the saved-bytes assertions below exist to catch.
 const FOREIGN = "----:org.example.test:FOREIGN_ATOM";
 
+/** A unique temp path with the given suffix (Node has no makeTempFile). */
+function tempFile(suffix: string): string {
+  return join(tmpdir(), `taglib-${randomUUID()}${suffix}`);
+}
+
 /** True when `needle` appears verbatim in `haystack` (ASCII atom names). */
 function bytesContain(haystack: Uint8Array, needle: string): boolean {
   const bytes = new TextEncoder().encode(needle);
@@ -40,9 +47,11 @@ function bytesContain(haystack: Uint8Array, needle: string): boolean {
 }
 
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] MP4 freeform item round-trips through save (taglib-1qn)`, async () => {
+  it(`[${backend}] MP4 freeform item round-trips through save (taglib-1qn)`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const file = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     file.setMP4Item(CUSTOM, "parity-value");
     file.save();
     const buf = file.getFileBuffer();
@@ -51,16 +60,17 @@ for (const backend of BACKENDS) {
     const reopened = await tl.open(buf);
     const value = reopened.getMP4Item(CUSTOM);
     reopened.dispose();
-    assertEquals(
+    expect(
       value,
-      "parity-value",
       `${backend}: freeform MP4 item lost on save round-trip`,
-    );
+    ).toStrictEqual("parity-value");
   });
 
-  Deno.test(`[${backend}] MP4 Sound Check (iTunNORM) item round-trips through save (taglib-1qn)`, async () => {
+  it(`[${backend}] MP4 Sound Check (iTunNORM) item round-trips through save (taglib-1qn)`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const file = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     file.setMP4Item(ITUNNORM, " 00000200 00000200");
     file.save();
     const buf = file.getFileBuffer();
@@ -69,16 +79,17 @@ for (const backend of BACKENDS) {
     const reopened = await tl.open(buf);
     const value = reopened.getMP4Item(ITUNNORM);
     reopened.dispose();
-    assertEquals(
+    expect(
       value,
-      " 00000200 00000200",
       `${backend}: iTunNORM item lost on save round-trip`,
-    );
+    ).toStrictEqual(" 00000200 00000200");
   });
 
-  Deno.test(`[${backend}] removeMP4Item clears a freeform item through save (taglib-1qn)`, async () => {
+  it(`[${backend}] removeMP4Item clears a freeform item through save (taglib-1qn)`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const seeded = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const seeded = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     seeded.setMP4Item(CUSTOM, "to-remove");
     seeded.save();
     const withItem = seeded.getFileBuffer();
@@ -93,16 +104,17 @@ for (const backend of BACKENDS) {
     const reopened = await tl.open(buf);
     const value = reopened.getMP4Item(CUSTOM);
     reopened.dispose();
-    assertEquals(
+    expect(
       value,
-      undefined,
       `${backend}: removeMP4Item did not persist through save`,
-    );
+    ).toStrictEqual(undefined);
   });
 
-  Deno.test(`[${backend}] removeMP4Item clears a FOREIGN-mean atom through save (taglib-65nm)`, async () => {
+  it(`[${backend}] removeMP4Item clears a FOREIGN-mean atom through save (taglib-65nm)`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const seeded = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const seeded = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     seeded.setMP4Item(FOREIGN, "to-remove");
     seeded.save();
     const withItem = seeded.getFileBuffer();
@@ -111,21 +123,19 @@ for (const backend of BACKENDS) {
     // Seed check: the atom must actually be on disk before removal — a test
     // that only asserts post-removal absence cannot tell "removed" from
     // "never written" (AGENTS.md observed-failing rule).
-    assertEquals(
+    expect(
       bytesContain(withItem, "FOREIGN_ATOM"),
-      true,
       `${backend}: seed did not write the foreign atom to disk`,
-    );
+    ).toStrictEqual(true);
 
     const file = await tl.open(withItem);
     file.removeMP4Item(FOREIGN);
     // Layer 1 — same-handle JS view: the raw `----:` snapshot slot must clear
     // immediately (the WASI raw-key deletion fix; Emscripten applies at once).
-    assertEquals(
+    expect(
       file.getMP4Item(FOREIGN),
-      undefined,
       `${backend}: removeMP4Item did not clear the live handle view`,
-    );
+    ).toStrictEqual(undefined);
     file.save();
     const buf = file.getFileBuffer();
     file.dispose();
@@ -133,21 +143,19 @@ for (const backend of BACKENDS) {
     // Layer 2 — the on-disk half: the atom bytes must be gone from the saved
     // file. This is the assertion the WASI C++ deletion channel exists for;
     // a view-only test cannot fail on the defect (AGENTS.md).
-    assertEquals(
+    expect(
       bytesContain(buf, "FOREIGN_ATOM"),
-      false,
       `${backend}: foreign-mean atom survives on disk after removeMP4Item`,
-    );
+    ).toStrictEqual(false);
 
     // Layer 3 — reopened view: disk-backed read-back agrees.
     const reopened = await tl.open(buf);
     const value = reopened.getMP4Item(FOREIGN);
     reopened.dispose();
-    assertEquals(
+    expect(
       value,
-      undefined,
       `${backend}: foreign-mean atom still reported after reopen`,
-    );
+    ).toStrictEqual(undefined);
   });
 }
 
@@ -158,18 +166,20 @@ for (const backend of BACKENDS) {
  * backend fails here.
  */
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] isMP4() reflects the opened format`, async () => {
+  it(`[${backend}] isMP4() reflects the opened format`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const mp4 = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
-    assertEquals(
+    const mp4 = await tl.open(new Uint8Array(await readFile(FIXTURE_PATH.m4a)));
+    expect(
       mp4.isMP4(),
-      true,
       `${backend}: m4a fixture not detected as MP4`,
-    );
+    ).toStrictEqual(true);
     mp4.dispose();
 
-    const mp3 = await tl.open(await Deno.readFile(FIXTURE_PATH.mp3));
-    assertEquals(mp3.isMP4(), false, `${backend}: mp3 fixture detected as MP4`);
+    const mp3 = await tl.open(new Uint8Array(await readFile(FIXTURE_PATH.mp3)));
+    expect(mp3.isMP4(), `${backend}: mp3 fixture detected as MP4`)
+      .toStrictEqual(
+        false,
+      );
     mp3.dispose();
   });
 }
@@ -223,39 +233,44 @@ const CANONICAL_ATOMS: Array<[name: string, value: string]> = [
 ];
 
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] setProperties(appleSoundCheck) writes Apple's iTunNORM casing (taglib-bnhl)`, async () => {
+  it(`[${backend}] setProperties(appleSoundCheck) writes Apple's iTunNORM casing (taglib-bnhl)`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const file = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     file.setProperties({ appleSoundCheck: [SOUND_CHECK] });
     file.save();
     const buf = file.getFileBuffer();
     file.dispose();
 
-    assertEquals(
+    expect(
       countAtomNames(buf, ["iTunNORM", "ITUNNORM"]),
-      { iTunNORM: 1, ITUNNORM: 0 },
       `${backend}: wrong atom-name casing written to the file`,
-    );
+    ).toStrictEqual({ iTunNORM: 1, ITUNNORM: 0 });
 
     // The value must still be readable, i.e. the correct casing is not bought
     // by breaking the round-trip.
     const reopened = await tl.open(buf);
-    assertEquals(reopened.getProperty("appleSoundCheck")?.[0], SOUND_CHECK);
+    expect(reopened.getProperty("appleSoundCheck")?.[0]).toStrictEqual(
+      SOUND_CHECK,
+    );
     reopened.dispose();
   });
 
-  Deno.test(`[${backend}] re-saving an existing iTunNORM does not add an upper-cased twin (taglib-bnhl)`, async () => {
+  it(`[${backend}] re-saving an existing iTunNORM does not add an upper-cased twin (taglib-bnhl)`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const seeded = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const seeded = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     seeded.setMP4Item(ITUNNORM, SOUND_CHECK);
     seeded.save();
     const withAtom = seeded.getFileBuffer();
     seeded.dispose();
     // Guard the premise: the seed itself must carry Apple's casing.
-    assertEquals(countAtomNames(withAtom, ["iTunNORM", "ITUNNORM"]), {
-      iTunNORM: 1,
-      ITUNNORM: 0,
-    }, `${backend}: seed did not use Apple's casing`);
+    expect(
+      countAtomNames(withAtom, ["iTunNORM", "ITUNNORM"]),
+      `${backend}: seed did not use Apple's casing`,
+    ).toStrictEqual({ iTunNORM: 1, ITUNNORM: 0 });
 
     const file = await tl.open(withAtom);
     file.tag().setTitle("an unrelated edit");
@@ -263,11 +278,10 @@ for (const backend of BACKENDS) {
     const buf = file.getFileBuffer();
     file.dispose();
 
-    assertEquals(
+    expect(
       countAtomNames(buf, ["iTunNORM", "ITUNNORM"]),
-      { iTunNORM: 1, ITUNNORM: 0 },
       `${backend}: an unrelated edit duplicated the atom under a new casing`,
-    );
+    ).toStrictEqual({ iTunNORM: 1, ITUNNORM: 0 });
   });
 }
 
@@ -275,33 +289,35 @@ for (const backend of BACKENDS) {
   for (const [atom, value] of CANONICAL_ATOMS) {
     const upper = atom.toUpperCase();
 
-    Deno.test(`[${backend}] setMP4Item writes ${atom} with Apple's casing (taglib-bnhl)`, async () => {
+    it(`[${backend}] setMP4Item writes ${atom} with Apple's casing (taglib-bnhl)`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+      const file = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+      );
       file.setMP4Item(`----:com.apple.iTunes:${atom}`, value);
       file.save();
       const buf = file.getFileBuffer();
       file.dispose();
 
-      assertEquals(
+      expect(
         countAtomNames(buf, [atom, upper]),
-        { [atom]: 1, [upper]: 0 },
         `${backend}: ${atom} written with wrong casing`,
-      );
+      ).toStrictEqual({ [atom]: 1, [upper]: 0 });
     });
 
-    Deno.test(`[${backend}] an unrelated edit does not duplicate ${atom} (taglib-bnhl)`, async () => {
+    it(`[${backend}] an unrelated edit does not duplicate ${atom} (taglib-bnhl)`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const seeded = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+      const seeded = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+      );
       seeded.setMP4Item(`----:com.apple.iTunes:${atom}`, value);
       seeded.save();
       const withAtom = seeded.getFileBuffer();
       seeded.dispose();
-      assertEquals(
+      expect(
         countAtomNames(withAtom, [atom, upper]),
-        { [atom]: 1, [upper]: 0 },
         `${backend}: seed did not use Apple's casing for ${atom}`,
-      );
+      ).toStrictEqual({ [atom]: 1, [upper]: 0 });
 
       const file = await tl.open(withAtom);
       file.tag().setTitle("an unrelated edit");
@@ -309,11 +325,10 @@ for (const backend of BACKENDS) {
       const buf = file.getFileBuffer();
       file.dispose();
 
-      assertEquals(
+      expect(
         countAtomNames(buf, [atom, upper]),
-        { [atom]: 1, [upper]: 0 },
         `${backend}: an unrelated edit duplicated ${atom} under a new casing`,
-      );
+      ).toStrictEqual({ [atom]: 1, [upper]: 0 });
     });
   }
 }
@@ -335,9 +350,11 @@ const ARBITRARY_ATOMS = [
 
 for (const backend of BACKENDS) {
   for (const atom of ARBITRARY_ATOMS) {
-    Deno.test(`[${backend}] setMP4Item preserves the atom name "${atom}" (taglib-bnhl)`, async () => {
+    it(`[${backend}] setMP4Item preserves the atom name "${atom}" (taglib-bnhl)`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+      const file = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+      );
       file.setMP4Item(`----:com.apple.iTunes:${atom}`, "probe-value");
       file.save();
       const buf = file.getFileBuffer();
@@ -346,11 +363,10 @@ for (const backend of BACKENDS) {
       // Assert the WHOLE record, not just the canonical count: checking only
       // counts[atom] cannot fail if a future change re-introduces the
       // upper-cased twin alongside it, which is taglib-bnhl's headline symptom.
-      assertEquals(
+      expect(
         countAtomNames(buf, [atom, atom.toUpperCase()]),
-        { [atom]: 1, [atom.toUpperCase()]: 0 },
         `${backend}: "${atom}" not written verbatim`,
-      );
+      ).toStrictEqual({ [atom]: 1, [atom.toUpperCase()]: 0 });
     });
   }
 }
@@ -370,23 +386,24 @@ const TYPED_FREEFORM: Array<[property: string, atom: string]> = [
 
 for (const backend of BACKENDS) {
   for (const [property, atom] of TYPED_FREEFORM) {
-    Deno.test(`[${backend}] ${property} writes the atom "${atom}" (taglib-bnhl)`, async () => {
+    it(`[${backend}] ${property} writes the atom "${atom}" (taglib-bnhl)`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+      const file = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+      );
       file.setProperties({ [property]: ["probe-value"] });
       file.save();
       const buf = file.getFileBuffer();
       file.dispose();
 
-      assertEquals(
+      expect(
         countAtomNames(buf, [atom, atom.toUpperCase()]),
-        { [atom]: 1, [atom.toUpperCase()]: 0 },
         `${backend}: ${property} wrote the wrong atom name`,
-      );
+      ).toStrictEqual({ [atom]: 1, [atom.toUpperCase()]: 0 });
 
       // Correct casing must not cost the round-trip.
       const reopened = await tl.open(buf);
-      assertEquals(reopened.getProperty(property)?.[0], "probe-value");
+      expect(reopened.getProperty(property)?.[0]).toStrictEqual("probe-value");
       reopened.dispose();
     });
   }
@@ -414,20 +431,21 @@ const STANDARD_ATOMS: Array<[atom: string, property: string, value: string]> = [
 
 for (const backend of BACKENDS) {
   for (const [atom, property, value] of STANDARD_ATOMS) {
-    Deno.test(`[${backend}] removeMP4Item("${atom}") removes the atom (taglib-0piv)`, async () => {
+    it(`[${backend}] removeMP4Item("${atom}") removes the atom (taglib-0piv)`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
 
-      const seed = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+      const seed = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+      );
       seed.setProperties({ [property]: [value] });
       seed.save();
       const withAtom = seed.getFileBuffer();
       seed.dispose();
       const check = await tl.open(withAtom);
-      assertEquals(
+      expect(
         (check.properties() as Record<string, string[]>)[property],
-        [value],
         `${backend}: seed did not write ${atom}`,
-      );
+      ).toStrictEqual([value]);
       check.dispose();
 
       const file = await tl.open(withAtom);
@@ -437,15 +455,14 @@ for (const backend of BACKENDS) {
       file.dispose();
 
       const reopened = await tl.open(buf);
-      assertEquals(
+      expect(
         (reopened.properties() as Record<string, string[]>)[property],
-        undefined,
         `${backend}: removeMP4Item("${atom}") did not remove it`,
-      );
+      ).toStrictEqual(undefined);
       if (property === "trackNumber") {
         // The numeric mirror must go with the raw value, or tag().track would
         // keep reporting a removed track (taglib-qpl mirror invariant).
-        assertEquals(reopened.tag().track, 0);
+        expect(reopened.tag().track).toStrictEqual(0);
       }
       reopened.dispose();
     });
@@ -471,9 +488,11 @@ const TYPED_ATOM_CASES: Array<[atom: string, value: string, why: string]> = [
 
 for (const backend of BACKENDS) {
   for (const [atom, value, why] of TYPED_ATOM_CASES) {
-    Deno.test(`[${backend}] setMP4Item round-trips ${atom}="${value}" — ${why} (taglib-uj2b)`, async () => {
+    it(`[${backend}] setMP4Item round-trips ${atom}="${value}" — ${why} (taglib-uj2b)`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+      const file = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+      );
       file.setMP4Item(atom, value);
       file.save();
       const buf = file.getFileBuffer();
@@ -481,11 +500,10 @@ for (const backend of BACKENDS) {
 
       const reopened = await tl.open(buf);
       try {
-        assertEquals(
+        expect(
           reopened.getMP4Item(atom),
-          value,
           `${backend}: ${atom} did not survive as "${value}"`,
-        );
+        ).toStrictEqual(value);
       } finally {
         reopened.dispose();
       }
@@ -498,57 +516,59 @@ for (const backend of BACKENDS) {
  * was caught only by probing a path the tests did not reach.
  */
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] saveToFile preserves freeform atom casing (reconstruct path)`, async () => {
+  it(`[${backend}] saveToFile preserves freeform atom casing (reconstruct path)`, async () => {
     // The casing fix lived in the C++ write path; the saveToFile reconstruct
     // rebuilds the property map at the FileHandle layer, below the site that
     // supplies atom names, so casing silently reverted for save-as only.
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const src = await Deno.makeTempFile({ suffix: ".m4a" });
-    const dst = await Deno.makeTempFile({ suffix: ".m4a" });
+    const src = tempFile(".m4a");
+    const dst = tempFile(".m4a");
     try {
-      await Deno.writeFile(src, await Deno.readFile(FIXTURE_PATH.m4a));
+      await writeFile(src, await readFile(FIXTURE_PATH.m4a));
       const file = await tl.open(src);
       file.setProperties({ replayGainTrackGain: ["-3.00 dB"] });
       await file.saveToFile(dst);
       file.dispose();
 
-      assertEquals(
-        countAtomNames(await Deno.readFile(dst), [
+      expect(
+        countAtomNames(new Uint8Array(await readFile(dst)), [
           "replaygain_track_gain",
           "REPLAYGAIN_TRACK_GAIN",
         ]),
-        { replaygain_track_gain: 1, REPLAYGAIN_TRACK_GAIN: 0 },
         `${backend}: saveToFile reverted the atom casing`,
-      );
+      ).toStrictEqual({ replaygain_track_gain: 1, REPLAYGAIN_TRACK_GAIN: 0 });
     } finally {
-      await Deno.remove(src).catch(() => {});
-      await Deno.remove(dst).catch(() => {});
+      await rm(src, { force: true }).catch(() => {});
+      await rm(dst, { force: true }).catch(() => {});
     }
   });
 
-  Deno.test(`[${backend}] setProperty (singular) writes the canonical atom name`, async () => {
+  it(`[${backend}] setProperty (singular) writes the canonical atom name`, async () => {
     // The atom-name channel was wired into setProperties only.
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const file = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     file.setProperty("replayGainTrackGain", "-3.00 dB");
     file.save();
     const buf = file.getFileBuffer();
     file.dispose();
 
-    assertEquals(
+    expect(
       countAtomNames(buf, ["replaygain_track_gain", "REPLAYGAIN_TRACK_GAIN"]),
-      { replaygain_track_gain: 1, REPLAYGAIN_TRACK_GAIN: 0 },
       `${backend}: setProperty wrote the upper-cased atom`,
-    );
+    ).toStrictEqual({ replaygain_track_gain: 1, REPLAYGAIN_TRACK_GAIN: 0 });
   });
 
-  Deno.test(`[${backend}] two atoms that fold alike both survive with their own values`, async () => {
+  it(`[${backend}] two atoms that fold alike both survive with their own values`, async () => {
     // The twin match folded away case AND separators, so "My_Atom" and "MyAtom"
     // looked like one atom: one was deleted and the survivor kept the other's
     // value, losing the value just written. Wrong casing is recoverable; a
     // deleted value is not.
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const first = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const first = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     first.setMP4Item("----:com.apple.iTunes:My_Atom", "AAA");
     first.save();
     const withFirst = first.getFileBuffer();
@@ -562,28 +582,26 @@ for (const backend of BACKENDS) {
 
     const reopened = await tl.open(buf);
     try {
-      assertEquals(
+      expect(
         reopened.getMP4Item("----:com.apple.iTunes:My_Atom"),
-        "AAA",
         `${backend}: the pre-existing atom lost its value`,
-      );
-      assertEquals(
+      ).toStrictEqual("AAA");
+      expect(
         reopened.getMP4Item("----:com.apple.iTunes:MyAtom"),
-        "BBB",
         `${backend}: the newly written value was lost`,
-      );
+      ).toStrictEqual("BBB");
     } finally {
       reopened.dispose();
     }
   });
 }
 
-Deno.test("[wasi] removeMP4Item('trkn') does not resurrect the atom as 0/total", async () => {
+it("[wasi] removeMP4Item('trkn') does not resurrect the atom as 0/total", async () => {
   // trkn carries number AND total, so clearing the number while leaving
   // totalTracks let merge_intpair_properties re-create the atom as "0/12" —
   // a removal that silently corrupted the value instead.
   const tl = await TagLib.initialize({ forceWasmType: "wasi" });
-  const seed = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+  const seed = await tl.open(new Uint8Array(await readFile(FIXTURE_PATH.m4a)));
   seed.setProperties({ trackNumber: ["3"], totalTracks: ["12"] });
   seed.save();
   const withTotal = seed.getFileBuffer();
@@ -598,8 +616,10 @@ Deno.test("[wasi] removeMP4Item('trkn') does not resurrect the atom as 0/total",
   const reopened = await tl.open(buf);
   try {
     const props = reopened.properties() as Record<string, string[]>;
-    assertEquals(props.trackNumber, undefined, "atom resurrected");
-    assertEquals(props.totalTracks, undefined, "total outlived its atom");
+    expect(props.trackNumber, "atom resurrected").toStrictEqual(undefined);
+    expect(props.totalTracks, "total outlived its atom").toStrictEqual(
+      undefined,
+    );
   } finally {
     reopened.dispose();
   }
@@ -624,10 +644,12 @@ const REWRITE_FIELDS = [
 
 for (const backend of BACKENDS) {
   for (const field of REWRITE_FIELDS) {
-    Deno.test(`[${backend}] a second write to ${field} sticks [m4a]`, async () => {
+    it(`[${backend}] a second write to ${field} sticks [m4a]`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
 
-      const first = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+      const first = await tl.open(
+        new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+      );
       first.setProperties({ [field]: ["First"] });
       first.save();
       const once = first.getFileBuffer();
@@ -642,43 +664,43 @@ for (const backend of BACKENDS) {
 
       const reopened = await tl.open(twice);
       try {
-        assertEquals(
+        expect(
           (reopened.properties() as Record<string, string[]>)[field],
-          ["Second"],
           `${backend}: the second write to ${field} was lost`,
-        );
+        ).toStrictEqual(["Second"]);
       } finally {
         reopened.dispose();
       }
     });
   }
 
-  Deno.test(`[${backend}] writing a freeform property leaves no upper-cased twin [m4a]`, async () => {
+  it(`[${backend}] writing a freeform property leaves no upper-cased twin [m4a]`, async () => {
     // acoustidFingerprint's atom name differs from its wire key by a separator
     // (space vs underscore), so a twin-detection scheme that only re-cases the
     // name misses it and both spellings end up on disk.
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const file = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     file.setProperties({ acoustidFingerprint: ["V1"] });
     file.save();
     const buf = file.getFileBuffer();
     file.dispose();
 
-    assertEquals(
+    expect(
       countAtomNames(buf, ["Acoustid Fingerprint", "ACOUSTID_FINGERPRINT"]),
-      { "Acoustid Fingerprint": 1, ACOUSTID_FINGERPRINT: 0 },
       `${backend}: an upper-cased twin atom was written alongside`,
-    );
+    ).toStrictEqual({ "Acoustid Fingerprint": 1, ACOUSTID_FINGERPRINT: 0 });
   });
 
-  Deno.test(`[${backend}] save-as preserves freeform-backed properties on a NON-MP4 file [flac]`, async () => {
+  it(`[${backend}] save-as preserves freeform-backed properties on a NON-MP4 file [flac]`, async () => {
     // A guard that assumes "MP4" while running for every container strips these
     // keys from the property map and then never writes them back.
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const src = await Deno.makeTempFile({ suffix: ".flac" });
-    const dst = await Deno.makeTempFile({ suffix: ".flac" });
+    const src = tempFile(".flac");
+    const dst = tempFile(".flac");
     try {
-      await Deno.writeFile(src, await Deno.readFile(FIXTURE_PATH.flac));
+      await writeFile(src, await readFile(FIXTURE_PATH.flac));
       const seed = await tl.open(src);
       seed.setProperties({
         replayGainTrackGain: ["-3.00 dB"],
@@ -686,7 +708,7 @@ for (const backend of BACKENDS) {
         musicbrainzTrackId: ["mbid"],
       });
       seed.save();
-      await Deno.writeFile(src, seed.getFileBuffer());
+      await writeFile(src, seed.getFileBuffer());
       seed.dispose();
 
       const file = await tl.open(src);
@@ -696,15 +718,15 @@ for (const backend of BACKENDS) {
       const reopened = await tl.open(dst);
       try {
         const props = reopened.properties() as Record<string, string[]>;
-        assertEquals(props.replayGainTrackGain, ["-3.00 dB"]);
-        assertEquals(props.appleSoundCheck, [" 0001"]);
-        assertEquals(props.musicbrainzTrackId, ["mbid"]);
+        expect(props.replayGainTrackGain).toStrictEqual(["-3.00 dB"]);
+        expect(props.appleSoundCheck).toStrictEqual([" 0001"]);
+        expect(props.musicbrainzTrackId).toStrictEqual(["mbid"]);
       } finally {
         reopened.dispose();
       }
     } finally {
-      await Deno.remove(src).catch(() => {});
-      await Deno.remove(dst).catch(() => {});
+      await rm(src, { force: true }).catch(() => {});
+      await rm(dst, { force: true }).catch(() => {});
     }
   });
 }
@@ -719,30 +741,29 @@ for (const backend of BACKENDS) {
 // Asserted on the raw bytes because the atom NAME is what the defect mangled; a
 // reader that normalises names would hide exactly that.
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] a foreign freeform mean survives a save (taglib-wkyi)`, async () => {
+  it(`[${backend}] a foreign freeform mean survives a save (taglib-wkyi)`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const file = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     file.setMP4Item("----:com.acme.tool:MyTag", "v");
     file.save();
     const buf = file.getFileBuffer();
     file.dispose();
 
     const text = new TextDecoder("latin1").decode(buf);
-    assertEquals(
+    expect(
       (text.match(/com\.acme\.tool/g) ?? []).length,
-      1,
       `${backend} moved the atom out of its own namespace`,
-    );
-    assertEquals(
+    ).toStrictEqual(1);
+    expect(
       (text.match(/MyTag/g) ?? []).length,
-      1,
       `${backend} did not keep the atom name verbatim`,
-    );
-    assertEquals(
+    ).toStrictEqual(1);
+    expect(
       (text.match(/MYTAG/g) ?? []).length,
-      0,
       `${backend} left an upper-cased twin behind`,
-    );
+    ).toStrictEqual(0);
   });
 }
 
@@ -752,37 +773,36 @@ for (const backend of BACKENDS) {
 // written, nor one any other tool wrote. The wkyi test passes on the raw bytes
 // while the read is broken, so this one must assert the ROUND TRIP.
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] a foreign freeform atom reads back after a save (taglib-5ibr)`, async () => {
+  it(`[${backend}] a foreign freeform atom reads back after a save (taglib-5ibr)`, async () => {
     const tl = await TagLib.initialize({ forceWasmType: backend });
-    const file = await tl.open(await Deno.readFile(FIXTURE_PATH.m4a));
+    const file = await tl.open(
+      new Uint8Array(await readFile(FIXTURE_PATH.m4a)),
+    );
     file.setMP4Item("----:com.acme.tool:MyTag", "acme-value");
     file.save();
     const sameHandle = file.getMP4Item("----:com.acme.tool:MyTag");
     const buf = file.getFileBuffer();
     file.dispose();
 
-    assertEquals(
+    expect(
       sameHandle,
-      "acme-value",
       `${backend} lost the atom on its own handle across a save`,
-    );
+    ).toStrictEqual("acme-value");
 
     const reopened = await tl.open(buf);
     try {
-      assertEquals(
+      expect(
         reopened.getMP4Item("----:com.acme.tool:MyTag"),
-        "acme-value",
         `${backend} cannot read back the atom it wrote`,
-      );
+      ).toStrictEqual("acme-value");
       // The atom rides a dedicated channel, not the property surface: TagLib's
       // PropertyMap never carries a foreign mean, so Emscripten's properties()
       // does not show it and WASI's must not either.
       const props = reopened.properties() as Record<string, string[]>;
-      assertEquals(
+      expect(
         props["----:com.acme.tool:MyTag"],
-        undefined,
         `${backend} leaked the foreign atom into properties()`,
-      );
+      ).toStrictEqual(undefined);
     } finally {
       reopened.dispose();
     }

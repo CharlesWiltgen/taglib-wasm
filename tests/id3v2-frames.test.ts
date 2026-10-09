@@ -5,10 +5,13 @@
  * (WASI), then public-API parity scenarios on both backends.
  */
 
-import { assert, assertEquals, assertThrows } from "@std/assert";
 import fc from "fast-check";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
 import { encode } from "@msgpack/msgpack";
+import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { expectDefined, expectThrows } from "./_assert-helpers.ts";
 import { loadWasiHost } from "../src/runtime/wasi-host-loader.ts";
 import {
   readId3v2FramesFromWasm,
@@ -31,47 +34,47 @@ const FLAC_FIXTURE = "tests/test-files/flac/kiss-snippet.flac";
 describe("readId3v2FramesFromWasm (wasm-io boundary)", () => {
   it("returns a TIT2 frame after a title write", async () => {
     using wasi = await loadWasiHost({});
-    const buffer = await Deno.readFile(MP3_FIXTURE);
+    const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
     const tagged = writeTagsToWasm(
       wasi,
       buffer,
       { title: "Frame Test" } as unknown as ExtendedTag,
     );
-    assert(tagged, "seeding title via writeTagsToWasm failed");
+    expectDefined(tagged, "seeding title via writeTagsToWasm failed");
     const frames = readId3v2FramesFromWasm(wasi, tagged);
     const tit2 = frames.filter((f: RawId3v2Frame) => f.id === "TIT2");
-    assertEquals(tit2.length, 1);
-    assert(tit2[0].data.length > 0, "TIT2 body must be non-empty");
-    assert(tit2[0].data instanceof Uint8Array);
+    expect(tit2.length).toStrictEqual(1);
+    expect(tit2[0].data.length > 0, "TIT2 body must be non-empty").toBeTruthy();
+    expect(tit2[0].data).toBeInstanceOf(Uint8Array);
   });
 
   it("id filter returns only matching frames", async () => {
     using wasi = await loadWasiHost({});
-    const buffer = await Deno.readFile(MP3_FIXTURE);
+    const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
     const tagged = writeTagsToWasm(
       wasi,
       buffer,
       { title: "T", artist: "A" } as unknown as ExtendedTag,
     );
-    assert(tagged);
+    expectDefined(tagged);
     const frames = readId3v2FramesFromWasm(wasi, tagged, "TPE1");
-    assert(frames.length >= 1);
-    assert(frames.every((f: RawId3v2Frame) => f.id === "TPE1"));
+    expect(frames.length >= 1).toBeTruthy();
+    expect(frames.every((f: RawId3v2Frame) => f.id === "TPE1")).toBeTruthy();
   });
 
   it("MP3 without an ID3v2 tag yields an empty array (not an error)", async () => {
     using wasi = await loadWasiHost({});
     // bitrate-mode fixtures are tagless LAME frames
-    const bare = await Deno.readFile(
-      "tests/test-files/mp3/bitrate-mode/no-xing.mp3",
+    const bare = new Uint8Array(
+      await readFile("tests/test-files/mp3/bitrate-mode/no-xing.mp3"),
     );
-    assertEquals(readId3v2FramesFromWasm(wasi, bare), []);
+    expect(readId3v2FramesFromWasm(wasi, bare)).toStrictEqual([]);
   });
 
   it("non-MP3 buffer throws UnsupportedFormatError", async () => {
     using wasi = await loadWasiHost({});
-    const flac = await Deno.readFile(FLAC_FIXTURE);
-    assertThrows(
+    const flac = new Uint8Array(await readFile(FLAC_FIXTURE));
+    expectThrows(
       () => readId3v2FramesFromWasm(wasi, flac),
       UnsupportedFormatError,
     );
@@ -79,14 +82,14 @@ describe("readId3v2FramesFromWasm (wasm-io boundary)", () => {
 
   it("a filter shorter than 4 chars matches nothing (no over-read)", async () => {
     using wasi = await loadWasiHost({});
-    const buffer = await Deno.readFile(MP3_FIXTURE);
+    const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
     const tagged = writeTagsToWasm(
       wasi,
       buffer,
       { title: "T" } as unknown as ExtendedTag,
     );
-    assert(tagged);
-    assertEquals(readId3v2FramesFromWasm(wasi, tagged, "TP"), []);
+    expectDefined(tagged);
+    expect(readId3v2FramesFromWasm(wasi, tagged, "TP")).toStrictEqual([]);
   });
 });
 
@@ -123,7 +126,7 @@ function writeRawTagBytes(
 describe("apply_id3v2_frames_from_msgpack (write contract)", () => {
   it("writes two TXXX frames byte-identically via per-ID replace", async () => {
     using wasi = await loadWasiHost({});
-    const buffer = await Deno.readFile(MP3_FIXTURE);
+    const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
     const body1 = new Uint8Array([0x03, 0x41, 0x00, 0x42]); // enc, "A", 0, "B"
     const body2 = new Uint8Array([0x03, 0x58, 0x00, 0x59, 0x5a]);
     const out = writeRawTagBytes(
@@ -131,31 +134,31 @@ describe("apply_id3v2_frames_from_msgpack (write contract)", () => {
       buffer,
       encode({ id3v2Frames: { TXXX: [body1, body2] } }),
     );
-    assert(out, "raw write failed");
+    expectDefined(out, "raw write failed");
     const frames = readId3v2FramesFromWasm(wasi, out, "TXXX");
-    assertEquals(frames.length, 2);
-    assertEquals([...frames[0].data], [...body1]);
-    assertEquals([...frames[1].data], [...body2]);
+    expect(frames.length).toStrictEqual(2);
+    expect([...frames[0].data]).toStrictEqual([...body1]);
+    expect([...frames[1].data]).toStrictEqual([...body2]);
   });
 
   it("an unmodeled vendor frame (RGAD) round-trips byte-identically", async () => {
     using wasi = await loadWasiHost({});
-    const buffer = await Deno.readFile(MP3_FIXTURE);
+    const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
     const body = new Uint8Array([0xde, 0xad, 0xbe, 0xef, 0x01]);
     const out = writeRawTagBytes(
       wasi,
       buffer,
       encode({ id3v2Frames: { RGAD: [body] } }),
     );
-    assert(out);
+    expectDefined(out);
     const frames = readId3v2FramesFromWasm(wasi, out, "RGAD");
-    assertEquals(frames.length, 1);
-    assertEquals([...frames[0].data], [...body]);
+    expect(frames.length).toStrictEqual(1);
+    expect([...frames[0].data]).toStrictEqual([...body]);
   });
 
   it("empty list removes all frames with that ID and preserves others", async () => {
     using wasi = await loadWasiHost({});
-    const buffer = await Deno.readFile(MP3_FIXTURE);
+    const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
     const seeded = writeRawTagBytes(
       wasi,
       buffer,
@@ -166,40 +169,39 @@ describe("apply_id3v2_frames_from_msgpack (write contract)", () => {
         },
       }),
     );
-    assert(seeded);
+    expectDefined(seeded);
     const removed = writeRawTagBytes(
       wasi,
       seeded,
       encode({ id3v2Frames: { RGAD: [] } }),
     );
-    assert(removed);
-    assertEquals(readId3v2FramesFromWasm(wasi, removed, "RGAD"), []);
+    expectDefined(removed);
+    expect(readId3v2FramesFromWasm(wasi, removed, "RGAD")).toStrictEqual([]);
     // Content, not count: a count-only guard stays green while the payload
     // is destroyed (AGENTS.md observed-failing doctrine).
-    assertEquals(
+    expect(
       [...readId3v2FramesFromWasm(wasi, removed, "NCON")[0].data],
-      [3, 4],
-    );
+    ).toStrictEqual([3, 4]);
   });
 
   it("unrelated typed writes preserve existing raw frames", async () => {
     using wasi = await loadWasiHost({});
-    const buffer = await Deno.readFile(MP3_FIXTURE);
+    const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
     const seeded = writeRawTagBytes(
       wasi,
       buffer,
       encode({ id3v2Frames: { NCON: [new Uint8Array([9, 9, 9])] } }),
     );
-    assert(seeded);
+    expectDefined(seeded);
     const titled = writeTagsToWasm(
       wasi,
       seeded,
       { title: "New Title" } as unknown as ExtendedTag,
     );
-    assert(titled);
+    expectDefined(titled);
     const ncon = readId3v2FramesFromWasm(wasi, titled, "NCON");
-    assertEquals(ncon.length, 1);
-    assertEquals([...ncon[0].data], [9, 9, 9]);
+    expect(ncon.length).toStrictEqual(1);
+    expect([...ncon[0].data]).toStrictEqual([9, 9, 9]);
   });
 });
 
@@ -210,12 +212,12 @@ async function openMp3(backend: typeof BACKENDS[number]) {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
   return {
     taglib,
-    file: await taglib.open(await Deno.readFile(MP3_FIXTURE)),
+    file: await taglib.open(new Uint8Array(await readFile(MP3_FIXTURE))),
   };
 }
 
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] set/save/reopen round-trips vendor frames byte-identically`, async () => {
+  it(`[${backend}] set/save/reopen round-trips vendor frames byte-identically`, async () => {
     const { taglib, file } = await openMp3(backend);
     const body = new Uint8Array([0x10, 0x20, 0x30]);
     let out: Uint8Array;
@@ -229,21 +231,21 @@ for (const backend of BACKENDS) {
     const reopened = await taglib.open(out);
     try {
       const frames: Id3v2Frame[] = reopened.getId3v2Frames("RGAD");
-      assertEquals(frames.length, 1);
-      assertEquals([...frames[0].data], [...body]);
+      expect(frames.length).toStrictEqual(1);
+      expect([...frames[0].data]).toStrictEqual([...body]);
     } finally {
       reopened.dispose();
     }
   });
 
-  Deno.test(`[${backend}] get after set reflects pending (unsaved) raw writes`, async () => {
+  it(`[${backend}] get after set reflects pending (unsaved) raw writes`, async () => {
     const { file } = await openMp3(backend);
     try {
       const body = new Uint8Array([7, 7]);
       file.setId3v2Frames("NCON", [body]);
       const frames = file.getId3v2Frames("NCON");
-      assertEquals(frames.length, 1);
-      assertEquals([...frames[0].data], [...body]);
+      expect(frames.length).toStrictEqual(1);
+      expect([...frames[0].data]).toStrictEqual([...body]);
     } finally {
       file.dispose();
     }
@@ -252,7 +254,7 @@ for (const backend of BACKENDS) {
   // M5: WASI's staged-frame read used to return the staged Uint8Array by
   // reference, so mutating a returned frame's data corrupted internal staged
   // state for later reads/saves. Embind already returns fresh copies.
-  Deno.test(`[${backend}] mutating a returned staged frame does not corrupt staged state`, async () => {
+  it(`[${backend}] mutating a returned staged frame does not corrupt staged state`, async () => {
     const { file } = await openMp3(backend);
     try {
       const body = new Uint8Array([1, 2, 3]);
@@ -260,13 +262,13 @@ for (const backend of BACKENDS) {
       const first = file.getId3v2Frames("NCON");
       first[0].data[0] = 0xff; // mutate the returned copy
       const second = file.getId3v2Frames("NCON");
-      assertEquals([...second[0].data], [1, 2, 3]);
+      expect([...second[0].data]).toStrictEqual([1, 2, 3]);
     } finally {
       file.dispose();
     }
   });
 
-  Deno.test(`[${backend}] removeId3v2Frames deletes all instances of the ID`, async () => {
+  it(`[${backend}] removeId3v2Frames deletes all instances of the ID`, async () => {
     const { taglib, file } = await openMp3(backend);
     let out: Uint8Array;
     try {
@@ -287,12 +289,11 @@ for (const backend of BACKENDS) {
     try {
       // Content, not count: both seeded owners AND payloads must survive the
       // round-trip (a count-only guard stays green while payloads are lost).
-      assertEquals(
+      expect(
         reopened.getId3v2Frames("PRIV").map((f) => [...f.data]),
-        [[65, 0, 1], [66, 0, 2]],
-      );
+      ).toStrictEqual([[65, 0, 1], [66, 0, 2]]);
       reopened.removeId3v2Frames("PRIV");
-      assertEquals(reopened.getId3v2Frames("PRIV"), []);
+      expect(reopened.getId3v2Frames("PRIV")).toStrictEqual([]);
       reopened.save();
       out2 = reopened.getFileBuffer();
     } finally {
@@ -300,33 +301,33 @@ for (const backend of BACKENDS) {
     }
     const final = await taglib.open(out2);
     try {
-      assertEquals(final.getId3v2Frames("PRIV"), []);
+      expect(final.getId3v2Frames("PRIV")).toStrictEqual([]);
     } finally {
       final.dispose();
     }
   });
 
-  Deno.test(`[${backend}] getId3v2Frames() without ID lists standard frames too`, async () => {
+  it(`[${backend}] getId3v2Frames() without ID lists standard frames too`, async () => {
     const { file } = await openMp3(backend);
     try {
       file.tag().setTitle("List Test");
       file.save();
       const all = file.getId3v2Frames();
-      assert(all.some((f) => f.id === "TIT2"));
+      expect(all.some((f) => f.id === "TIT2")).toBeTruthy();
     } finally {
       file.dispose();
     }
   });
 
-  Deno.test(`[${backend}] invalid frame IDs and empty bodies throw typed errors`, async () => {
+  it(`[${backend}] invalid frame IDs and empty bodies throw typed errors`, async () => {
     const { file } = await openMp3(backend);
     try {
-      assertThrows(
+      expectThrows(
         () => file.setId3v2Frames("bad!", [new Uint8Array([1])]),
         MetadataError,
       );
-      assertThrows(() => file.getId3v2Frames("toolong"), MetadataError);
-      assertThrows(
+      expectThrows(() => file.getId3v2Frames("toolong"), MetadataError);
+      expectThrows(
         () => file.setId3v2Frames("PRIV", [new Uint8Array(0)]),
         MetadataError,
       );
@@ -335,12 +336,14 @@ for (const backend of BACKENDS) {
     }
   });
 
-  Deno.test(`[${backend}] non-MP3 files throw UnsupportedFormatError`, async () => {
+  it(`[${backend}] non-MP3 files throw UnsupportedFormatError`, async () => {
     const taglib = await TagLib.initialize({ forceWasmType: backend });
-    const file = await taglib.open(await Deno.readFile(FLAC_FIXTURE));
+    const file = await taglib.open(
+      new Uint8Array(await readFile(FLAC_FIXTURE)),
+    );
     try {
-      assertThrows(() => file.getId3v2Frames(), UnsupportedFormatError);
-      assertThrows(
+      expectThrows(() => file.getId3v2Frames(), UnsupportedFormatError);
+      expectThrows(
         () => file.setId3v2Frames("RGAD", [new Uint8Array([1])]),
         UnsupportedFormatError,
       );
@@ -380,7 +383,7 @@ function buildV23TaggedMp3(audio: Uint8Array): Uint8Array {
 }
 
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] SYTC write/read round-trip (unblocks taglib-hxq)`, async () => {
+  it(`[${backend}] SYTC write/read round-trip (unblocks taglib-hxq)`, async () => {
     const { taglib, file } = await openMp3(backend);
     // SYTC body: timestamp format 0x02 (ms), one tempo change: 120 BPM at 0 ms
     const sytc = new Uint8Array([0x02, 0x78, 0x00, 0x00, 0x00, 0x00]);
@@ -395,14 +398,14 @@ for (const backend of BACKENDS) {
     const reopened = await taglib.open(out);
     try {
       const frames = reopened.getId3v2Frames("SYTC");
-      assertEquals(frames.length, 1);
-      assertEquals([...frames[0].data], [...sytc]);
+      expect(frames.length).toStrictEqual(1);
+      expect([...frames[0].data]).toStrictEqual([...sytc]);
     } finally {
       reopened.dispose();
     }
   });
 
-  Deno.test(`[${backend}] raw TIT2 write is readable as title after save+reload (spec caveat 1)`, async () => {
+  it(`[${backend}] raw TIT2 write is readable as title after save+reload (spec caveat 1)`, async () => {
     const { taglib, file } = await openMp3(backend);
     // TIT2 body: encoding 0x03 (UTF-8) + text
     const body = new Uint8Array([
@@ -419,7 +422,7 @@ for (const backend of BACKENDS) {
     }
     const reopened = await taglib.open(out);
     try {
-      assertEquals(reopened.tag().title, "Raw Title");
+      expect(reopened.tag().title).toStrictEqual("Raw Title");
     } finally {
       reopened.dispose();
     }
@@ -432,7 +435,7 @@ for (const backend of BACKENDS) {
   // silently discarded and the raw bytes persist through save+reload. See the
   // 2026-07-09 implementation-phase amendment in
   // docs/superpowers/specs/2026-07-09-raw-id3v2-frames-design.md.
-  Deno.test(`[${backend}] raw-then-typed write to the same ID: raw wins (I3 spec amendment)`, async () => {
+  it(`[${backend}] raw-then-typed write to the same ID: raw wins (I3 spec amendment)`, async () => {
     const { taglib, file } = await openMp3(backend);
     const body = new Uint8Array([
       0x03,
@@ -449,13 +452,13 @@ for (const backend of BACKENDS) {
     }
     const reopened = await taglib.open(out);
     try {
-      assertEquals(reopened.tag().title, "Raw Wins");
+      expect(reopened.tag().title).toStrictEqual("Raw Wins");
     } finally {
       reopened.dispose();
     }
   });
 
-  Deno.test(`[${backend}] raw COMM write survives save when the typed comment is empty (C1)`, async () => {
+  it(`[${backend}] raw COMM write survives save when the typed comment is empty (C1)`, async () => {
     const { taglib, file } = await openMp3(backend);
     // kiss-snippet.mp3 ships with comment == "" (no COMM frame), the exact
     // condition that let MPEG::File's default Duplicate sync clobber a raw
@@ -481,14 +484,14 @@ for (const backend of BACKENDS) {
     const reopened = await taglib.open(out);
     try {
       const frames = reopened.getId3v2Frames("COMM");
-      assertEquals(frames.length, 1);
-      assertEquals([...frames[0].data], [...body]);
+      expect(frames.length).toStrictEqual(1);
+      expect([...frames[0].data]).toStrictEqual([...body]);
     } finally {
       reopened.dispose();
     }
   });
 
-  Deno.test(`[${backend}] unrelated raw write does not disable ID3v1 title sync`, async () => {
+  it(`[${backend}] unrelated raw write does not disable ID3v1 title sync`, async () => {
     const { taglib, file } = await openMp3(backend);
     let out: Uint8Array;
     try {
@@ -510,13 +513,13 @@ for (const backend of BACKENDS) {
     }
     const v1File = await taglib.open(v1Only);
     try {
-      assertEquals(v1File.tag().title, "Sync Check");
+      expect(v1File.tag().title).toStrictEqual("Sync Check");
     } finally {
       v1File.dispose();
     }
   });
 
-  Deno.test(`[${backend}] removing all raw mapped frames restores ID3v1 sync`, async () => {
+  it(`[${backend}] removing all raw mapped frames restores ID3v1 sync`, async () => {
     const { taglib, file } = await openMp3(backend);
     let out: Uint8Array;
     try {
@@ -539,17 +542,17 @@ for (const backend of BACKENDS) {
     }
     const v1File = await taglib.open(v1Only);
     try {
-      assertEquals(v1File.tag().title, "Restored Sync");
+      expect(v1File.tag().title).toStrictEqual("Restored Sync");
     } finally {
       v1File.dispose();
     }
   });
 
-  Deno.test(`[${backend}] v2.3-sourced unknown frame survives load (implementation-phase pin)`, async () => {
+  it(`[${backend}] v2.3-sourced unknown frame survives load (implementation-phase pin)`, async () => {
     const taglib = await TagLib.initialize({ forceWasmType: backend });
     // Strip any existing tag first: use a tagless fixture as the audio body.
-    const audio = await Deno.readFile(
-      "tests/test-files/mp3/bitrate-mode/no-xing.mp3",
+    const audio = new Uint8Array(
+      await readFile("tests/test-files/mp3/bitrate-mode/no-xing.mp3"),
     );
     const file = await taglib.open(buildV23TaggedMp3(audio));
     try {
@@ -557,17 +560,17 @@ for (const backend of BACKENDS) {
       // EXPECTED: TagLib's v2.3→v2.4 in-memory conversion preserves unknown
       // frames as UnknownFrame. If this fails, TagLib DROPS unconvertible
       // v2.3 unknown frames: flip the assertion to pin the drop
-      // (assertEquals(frames.length, 0)) AND add the caveat to the docs task.
-      assertEquals(frames.length, 1);
-      assertEquals([...frames[0].data], [0xaa, 0xbb, 0xcc]);
+      // (expect(frames.length).toStrictEqual(0)) AND add the caveat to the docs task.
+      expect(frames.length).toStrictEqual(1);
+      expect([...frames[0].data]).toStrictEqual([0xaa, 0xbb, 0xcc]);
     } finally {
       file.dispose();
     }
   });
 
-  Deno.test(`[${backend}] frame body bytes round-trip (property)`, async () => {
+  it(`[${backend}] frame body bytes round-trip (property)`, async () => {
     const taglib = await TagLib.initialize({ forceWasmType: backend });
-    const buffer = await Deno.readFile(MP3_FIXTURE);
+    const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
     await fc.assert(
       fc.asyncProperty(
         fc.uint8Array({ minLength: 1, maxLength: 2048 }),
@@ -648,16 +651,16 @@ for (const backend of BACKENDS) {
   // to the msgpack boundary on either backend. `flags?` stays in the public
   // `Id3v2Frame` type for forward-compat (a future TagLib fix or a shim that
   // reads flags pre-render would populate it) but is currently never set.
-  Deno.test(`[${backend}] frame header flags are not surfaced (TagLib blanks flags at render)`, async () => {
+  it(`[${backend}] frame header flags are not surfaced (TagLib blanks flags at render)`, async () => {
     const taglib = await TagLib.initialize({ forceWasmType: backend });
-    const audio = await Deno.readFile(
-      "tests/test-files/mp3/bitrate-mode/no-xing.mp3",
+    const audio = new Uint8Array(
+      await readFile("tests/test-files/mp3/bitrate-mode/no-xing.mp3"),
     );
     const file = await taglib.open(buildV24FlaggedMp3(audio));
     try {
       const frames = file.getId3v2Frames("NCON");
-      assertEquals(frames.length, 1);
-      assertEquals(frames[0].flags, undefined);
+      expect(frames.length).toStrictEqual(1);
+      expect(frames[0].flags).toStrictEqual(undefined);
     } finally {
       file.dispose();
     }
@@ -668,13 +671,13 @@ for (const backend of BACKENDS) {
 // save-as reconstruct (saveViaFreshHandle → copyExtraState → the
 // "id3v2Frames" EXTRA_FIELDS entry). Mirrors the taglib-cd0 save-as
 // scenario in tests/audio-file-save.test.ts:115.
-Deno.test("[wasi] staged raw frames survive save-as reconstruct (extra-state registry)", async () => {
+it("[wasi] staged raw frames survive save-as reconstruct (extra-state registry)", async () => {
   const taglib = await TagLib.initialize({ forceWasmType: "wasi" });
-  const dir = await Deno.makeTempDir();
+  const dir = await mkdtemp(join(tmpdir(), "taglib-id3v2-"));
   try {
     const src = `${dir}/src.mp3`;
     const dst = `${dir}/dst.mp3`;
-    await Deno.copyFile(MP3_FIXTURE, src);
+    await copyFile(MP3_FIXTURE, src);
     const body = new Uint8Array([0x51, 0x52]);
     const file = await taglib.open(src); // path mode on WASI
     try {
@@ -686,13 +689,13 @@ Deno.test("[wasi] staged raw frames survive save-as reconstruct (extra-state reg
     const reopened = await taglib.open(dst);
     try {
       const frames = reopened.getId3v2Frames("RGAD");
-      assertEquals(frames.length, 1);
-      assertEquals([...frames[0].data], [...body]);
+      expect(frames.length).toStrictEqual(1);
+      expect([...frames[0].data]).toStrictEqual([...body]);
     } finally {
       reopened.dispose();
     }
   } finally {
-    await Deno.remove(dir, { recursive: true });
+    await rm(dir, { force: true, recursive: true });
   }
 });
 
@@ -701,11 +704,11 @@ Deno.test("[wasi] staged raw frames survive save-as reconstruct (extra-state reg
 // getStagedId3v2Frames, so the "id3v2Frames" EXTRA_FIELDS entry silently
 // no-op'd on saveViaFreshHandle's partial-load reconstruct path, dropping
 // the raw write.
-Deno.test(
+it(
   "[emscripten] staged raw frames survive a partial-load save-as reconstruct (C2)",
   async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const dir = await Deno.makeTempDir();
+    const dir = await mkdtemp(join(tmpdir(), "taglib-id3v2-"));
     try {
       const dst = `${dir}/dst.mp3`;
       const body = new Uint8Array([0x61, 0x62]);
@@ -723,13 +726,13 @@ Deno.test(
       const reopened = await taglib.open(dst);
       try {
         const frames = reopened.getId3v2Frames("RGAD");
-        assertEquals(frames.length, 1);
-        assertEquals([...frames[0].data], [...body]);
+        expect(frames.length).toStrictEqual(1);
+        expect([...frames[0].data]).toStrictEqual([...body]);
       } finally {
         reopened.dispose();
       }
     } finally {
-      await Deno.remove(dir, { recursive: true });
+      await rm(dir, { force: true, recursive: true });
     }
   },
 );
@@ -743,26 +746,26 @@ function decodeTit2Text(body: Uint8Array): string {
   return new TextDecoder().decode(body.subarray(1));
 }
 
-Deno.test("read-freshness for modeled IDs is pinned per backend (spec caveat 3)", async () => {
+it("read-freshness for modeled IDs is pinned per backend (spec caveat 3)", async () => {
   const results: Record<string, string> = {};
   for (const backend of BACKENDS) {
     const taglib = await TagLib.initialize({ forceWasmType: backend });
-    const file = await taglib.open(await Deno.readFile(MP3_FIXTURE));
+    const file = await taglib.open(new Uint8Array(await readFile(MP3_FIXTURE)));
     try {
       file.tag().setTitle("Pending Edit");
       // No save. Embind mutates live C++ state; WASI stages into tagData.
       const frames = file.getId3v2Frames("TIT2");
-      assertEquals(frames.length, 1);
+      expect(frames.length).toStrictEqual(1);
       results[backend] = decodeTit2Text(frames[0].data);
     } finally {
       file.dispose();
     }
   }
   // Embind: live tag already carries the pending mutation.
-  assertEquals(results["emscripten"], "Pending Edit");
+  expect(results["emscripten"]).toStrictEqual("Pending Edit");
   // WASI: lazy read sees the fixture's persisted title, not the staged
   // (unsaved) typed edit — this is the actual read/write divergence spec
   // caveat 3 describes; a frame-count comparison alone can't distinguish it
   // from "both backends return 1 frame for unrelated reasons."
-  assertEquals(results["wasi"], "Kiss");
+  expect(results["wasi"]).toStrictEqual("Kiss");
 });

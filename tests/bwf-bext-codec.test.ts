@@ -1,10 +1,8 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview Pure-TS unit + property tests for the EBU 3285 `bext` codec.
  */
 
-import { assertEquals } from "@std/assert";
+import { expect, it } from "vite-plus/test";
 import fc from "fast-check";
 import { decodeBext, encodeBext } from "../src/bwf/bext.ts";
 import type { BroadcastAudioExtension } from "../src/types/bwf.ts";
@@ -37,8 +35,8 @@ function buildV2Chunk(codingHistory = "A=PCM,F=48000\r\n"): Uint8Array {
   return bytes;
 }
 
-Deno.test("decodeBext: parses a v2 chunk field-by-field", () => {
-  assertEquals(decodeBext(buildV2Chunk()), {
+it("decodeBext: parses a v2 chunk field-by-field", () => {
+  expect(decodeBext(buildV2Chunk())).toStrictEqual({
     description: "Take 1",
     originator: "Recorder X",
     originatorReference: "REF-001",
@@ -56,33 +54,33 @@ Deno.test("decodeBext: parses a v2 chunk field-by-field", () => {
   });
 });
 
-Deno.test("decodeBext: a v0 chunk has no umid/loudness", () => {
+it("decodeBext: a v0 chunk has no umid/loudness", () => {
   const chunk = buildV2Chunk("");
   new DataView(chunk.buffer).setUint16(346, 0, true);
   const b = decodeBext(chunk)!;
-  assertEquals(b.version, 0);
-  assertEquals(b.umid, undefined);
-  assertEquals(b.loudnessValueDb, undefined);
+  expect(b.version).toStrictEqual(0);
+  expect(b.umid).toStrictEqual(undefined);
+  expect(b.loudnessValueDb).toStrictEqual(undefined);
 });
 
-Deno.test("decodeBext: a v1 chunk has umid but no loudness", () => {
+it("decodeBext: a v1 chunk has umid but no loudness", () => {
   const chunk = buildV2Chunk("");
   new DataView(chunk.buffer).setUint16(346, 1, true);
   const b = decodeBext(chunk)!;
-  assertEquals(b.version, 1);
-  assertEquals(b.umid, "060a" + "0".repeat(124));
-  assertEquals(b.loudnessValueDb, undefined);
+  expect(b.version).toStrictEqual(1);
+  expect(b.umid).toStrictEqual("060a" + "0".repeat(124));
+  expect(b.loudnessValueDb).toStrictEqual(undefined);
 });
 
-Deno.test("decodeBext: returns undefined for a chunk shorter than 348 bytes", () => {
-  assertEquals(decodeBext(new Uint8Array(347)), undefined);
+it("decodeBext: returns undefined for a chunk shorter than 348 bytes", () => {
+  expect(decodeBext(new Uint8Array(347))).toStrictEqual(undefined);
 });
 
-Deno.test("decodeBext: tolerates a missing CodingHistory", () => {
-  assertEquals(decodeBext(buildV2Chunk(""))!.codingHistory, "");
+it("decodeBext: tolerates a missing CodingHistory", () => {
+  expect(decodeBext(buildV2Chunk(""))!.codingHistory).toStrictEqual("");
 });
 
-Deno.test("encodeBext: round-trips a v2 struct unchanged", () => {
+it("encodeBext: round-trips a v2 struct unchanged", () => {
   const original: BroadcastAudioExtension = {
     description: "Take 1",
     originator: "Recorder X",
@@ -99,10 +97,10 @@ Deno.test("encodeBext: round-trips a v2 struct unchanged", () => {
     maxShortTermLoudnessDb: 3.45,
     codingHistory: "A=PCM,F=48000\r\nA=ANALOGUE,M=stereo\r\n",
   };
-  assertEquals(decodeBext(encodeBext(original)), original);
+  expect(decodeBext(encodeBext(original))).toStrictEqual(original);
 });
 
-Deno.test("encodeBext: buffer is always 602 + codingHistory bytes", () => {
+it("encodeBext: buffer is always 602 + codingHistory bytes", () => {
   const base = {
     description: "",
     originator: "",
@@ -113,15 +111,14 @@ Deno.test("encodeBext: buffer is always 602 + codingHistory bytes", () => {
     umid: "00".repeat(64),
     codingHistory: "",
   };
-  assertEquals(encodeBext({ ...base, version: 0 }).length, 602);
-  assertEquals(encodeBext({ ...base, version: 2 }).length, 602);
-  assertEquals(
+  expect(encodeBext({ ...base, version: 0 }).length).toStrictEqual(602);
+  expect(encodeBext({ ...base, version: 2 }).length).toStrictEqual(602);
+  expect(
     encodeBext({ ...base, version: 2, codingHistory: "x".repeat(7) }).length,
-    609,
-  );
+  ).toStrictEqual(609);
 });
 
-Deno.test("encodeBext: truncates over-long string fields to their widths", () => {
+it("encodeBext: truncates over-long string fields to their widths", () => {
   const b = decodeBext(encodeBext({
     description: "z".repeat(400),
     originator: "",
@@ -132,10 +129,10 @@ Deno.test("encodeBext: truncates over-long string fields to their widths", () =>
     version: 0,
     codingHistory: "",
   }))!;
-  assertEquals(b.description.length, 256);
+  expect(b.description.length).toStrictEqual(256);
 });
 
-Deno.test("encodeBext: loudness clamps at the Int16 edges; 0x7FFF is the not-set sentinel", () => {
+it("encodeBext: loudness clamps at the Int16 edges; 0x7FFF is the not-set sentinel", () => {
   const b = decodeBext(encodeBext({
     description: "",
     originator: "",
@@ -150,14 +147,14 @@ Deno.test("encodeBext: loudness clamps at the Int16 edges; 0x7FFF is the not-set
     maxTruePeakLevelDbtp: 9999, // clamps up to 0x7FFF == "not set" => decodes as undefined
     // maxMomentaryLoudnessDb / maxShortTermLoudnessDb omitted => written as 0x7FFF => undefined
   }))!;
-  assertEquals(b.loudnessValueDb, 327.66);
-  assertEquals(b.loudnessRangeDb, -327.68);
-  assertEquals(b.maxTruePeakLevelDbtp, undefined);
-  assertEquals(b.maxMomentaryLoudnessDb, undefined);
-  assertEquals(b.maxShortTermLoudnessDb, undefined);
+  expect(b.loudnessValueDb).toStrictEqual(327.66);
+  expect(b.loudnessRangeDb).toStrictEqual(-327.68);
+  expect(b.maxTruePeakLevelDbtp).toStrictEqual(undefined);
+  expect(b.maxMomentaryLoudnessDb).toStrictEqual(undefined);
+  expect(b.maxShortTermLoudnessDb).toStrictEqual(undefined);
 });
 
-Deno.test("bext: a v2 chunk with no loudness fields decodes them all as undefined", () => {
+it("bext: a v2 chunk with no loudness fields decodes them all as undefined", () => {
   const b = decodeBext(encodeBext({
     description: "x",
     originator: "",
@@ -169,15 +166,15 @@ Deno.test("bext: a v2 chunk with no loudness fields decodes them all as undefine
     umid: "00".repeat(64),
     codingHistory: "",
   }))!;
-  assertEquals(b.version, 2);
-  assertEquals(b.loudnessValueDb, undefined);
-  assertEquals(b.loudnessRangeDb, undefined);
-  assertEquals(b.maxTruePeakLevelDbtp, undefined);
-  assertEquals(b.maxMomentaryLoudnessDb, undefined);
-  assertEquals(b.maxShortTermLoudnessDb, undefined);
+  expect(b.version).toStrictEqual(2);
+  expect(b.loudnessValueDb).toStrictEqual(undefined);
+  expect(b.loudnessRangeDb).toStrictEqual(undefined);
+  expect(b.maxTruePeakLevelDbtp).toStrictEqual(undefined);
+  expect(b.maxMomentaryLoudnessDb).toStrictEqual(undefined);
+  expect(b.maxShortTermLoudnessDb).toStrictEqual(undefined);
 });
 
-Deno.test("encodeBext: version defaults to 2 when loudness fields are present", () => {
+it("encodeBext: version defaults to 2 when loudness fields are present", () => {
   const b = decodeBext(encodeBext({
     description: "",
     originator: "",
@@ -189,14 +186,14 @@ Deno.test("encodeBext: version defaults to 2 when loudness fields are present", 
     codingHistory: "",
     loudnessValueDb: 1,
   }))!;
-  assertEquals(b.version, 2);
+  expect(b.version).toStrictEqual(2);
 });
 
 function bigintReplacer(_k: string, v: unknown) {
   return typeof v === "bigint" ? `${v}n` : v;
 }
 
-Deno.test("property: decodeBext(encodeBext(b)) === b for arbitrary valid structs", () => {
+it("property: decodeBext(encodeBext(b)) === b for arbitrary valid structs", () => {
   const ascii = (max: number) =>
     fc.string({ maxLength: max }).map((s) =>
       s.replace(/[^\x20-\x7e]/g, "").slice(0, max)

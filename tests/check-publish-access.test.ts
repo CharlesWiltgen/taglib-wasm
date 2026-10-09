@@ -30,41 +30,38 @@
  * `--no-json` override it, exactly as npm does, so a guard that stops pinning the
  * output mode fails the `npm_config_json=true` cases here instead of on a release.
  *
- * Local-only by design, like the tool class in media-checksum-corpus.test.ts:
- * every workflow runs `deno test` with `--allow-read --allow-write --allow-env`
- * and none grants `--allow-run`, so this file skips in CI. The invocation that
- * runs it:
- *
- *     deno test --allow-read --allow-write --allow-env --allow-run \
- *       tests/check-publish-access.test.ts
+ * Under Deno this class was gated on `--allow-run`, which no workflow grants, so
+ * it skipped in CI. Node has no run-permission model, so the faithful analogue is
+ * to run it: the harness is hermetic, and the only remaining gate is the
+ * platform (the guard is a bash script, so Windows skips).
  *
  * `CHECK_PUBLISH_ACCESS_SCRIPT` points the harness at another revision's copy, so
  * a finding can be re-derived against the code that carried it:
  *
  *     git show acd6218:scripts/check-publish-access.sh > /tmp/guard.sh
- *     CHECK_PUBLISH_ACCESS_SCRIPT=/tmp/guard.sh deno test --allow-read \
- *       --allow-write --allow-env --allow-run tests/check-publish-access.test.ts
+ *     CHECK_PUBLISH_ACCESS_SCRIPT=/tmp/guard.sh npx vp test \
+ *       tests/check-publish-access.test.ts
  */
 
-import { assertEquals, assertStringIncludes } from "@std/assert";
-import { fromFileUrl, resolve } from "@std/path";
+import { spawn } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vite-plus/test";
 
 const WORKFLOW_FILE = "publish-everywhere.yml";
 const REPOSITORY = "CharlesWiltgen/TagLib-Wasm";
 
-const COMMITTED_GUARD = fromFileUrl(
+const COMMITTED_GUARD = fileURLToPath(
   new URL("../scripts/check-publish-access.sh", import.meta.url),
 );
 
 /** The guard under test. `CHECK_PUBLISH_ACCESS_SCRIPT` is the harness's one knob
  * (see the file comment); it is not read anywhere in the guard. */
 const GUARD = (() => {
-  try {
-    const override = Deno.env.get("CHECK_PUBLISH_ACCESS_SCRIPT");
-    if (override !== undefined && override.length > 0) return override;
-  } catch {
-    // No --allow-env: the committed script is the only thing we can run anyway.
-  }
+  const override = process.env.CHECK_PUBLISH_ACCESS_SCRIPT;
+  if (override !== undefined && override.length > 0) return override;
   return COMMITTED_GUARD;
 })();
 
@@ -358,26 +355,16 @@ esac
 `;
 
 /** Why the harness cannot run here, or `undefined` when it can. It drives a bash
- * script through a `npm` stub on a shimmed PATH, and the suite's CI invocation
- * grants neither `--allow-run` nor (on Windows) a stub script PATH lookup can
- * execute. Folding the reason into the test's name is the pattern
- * media-checksum-corpus.test.ts uses, since `ignore` takes only a boolean. */
+ * script through a `npm` stub on a shimmed PATH. Deno gated this on `--allow-run`
+ * for `bash`; Node has no run-permission model, so the only remaining gate is the
+ * platform — the guard is a bash script, so Windows skips. Folding the reason
+ * into the test's name is the pattern media-checksum-corpus.test.ts uses, since
+ * `skip` takes only a boolean. */
 function skipReason(): string | undefined {
-  if (Deno.build.os === "windows") {
+  if (process.platform === "win32") {
     return "POSIX-only harness: the guard is a bash script";
   }
-  let path: string | undefined;
-  try {
-    path = Deno.env.get("PATH");
-  } catch {
-    return "cannot read PATH (needs --allow-env)";
-  }
-  if (path === undefined || path.length === 0) return "PATH is unset";
-  const granted = Deno.permissions.querySync({
-    name: "run",
-    command: "bash",
-  }).state === "granted";
-  return granted ? undefined : "--allow-run not granted for: bash";
+  return undefined;
 }
 
 /** Runs the guard once, with the case's listing behind the stub. Answers the exit
@@ -387,66 +374,70 @@ async function runGuard(
   guard: string,
   testCase: Case,
 ): Promise<{ code: number; output: string }> {
-  const dir = await Deno.makeTempDir({ prefix: "taglib-guard-" });
+  const dir = await mkdtemp(join(tmpdir(), "taglib-guard-"));
   try {
-    await Deno.writeTextFile(resolve(dir, "npm"), STUB_NPM, { mode: 0o755 });
-    await Deno.writeTextFile(resolve(dir, "listing.txt"), testCase.listing);
-    await Deno.writeTextFile(
-      resolve(dir, "listing.json"),
+    await writeFile(join(dir, "npm"), STUB_NPM, { mode: 0o755 });
+    await writeFile(join(dir, "listing.txt"), testCase.listing);
+    await writeFile(
+      join(dir, "listing.json"),
       testCase.jsonListing ?? testCase.listing,
     );
-    const output = await new Deno.Command("bash", {
-      args: [guard],
-      clearEnv: true,
-      env: {
-        PATH: `${dir}${Deno.build.os === "windows" ? ";" : ":"}${
-          Deno.env.get("PATH") ?? ""
-        }`,
-        HOME: dir,
-        NPM_STUB_LISTING: resolve(dir, "listing.txt"),
-        NPM_STUB_JSON_LISTING: resolve(dir, "listing.json"),
-        ...testCase.env,
-      },
-      stdout: "piped",
-      stderr: "piped",
-    }).output();
-    const decoder = new TextDecoder();
-    return {
-      code: output.code,
-      output: decoder.decode(output.stdout) + decoder.decode(output.stderr),
-    };
+    const { code, output } = await new Promise<
+      { code: number; output: string }
+    >((resolvePromise) => {
+      const child = spawn("bash", [guard], {
+        env: {
+          PATH: `${dir}${process.platform === "win32" ? ";" : ":"}${
+            process.env.PATH ?? ""
+          }`,
+          HOME: dir,
+          NPM_STUB_LISTING: join(dir, "listing.txt"),
+          NPM_STUB_JSON_LISTING: join(dir, "listing.json"),
+          ...testCase.env,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      const chunks: Buffer[] = [];
+      child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+      child.stderr.on("data", (chunk: Buffer) => chunks.push(chunk));
+      child.on("close", (exitCode) => {
+        resolvePromise({
+          code: exitCode ?? -1,
+          output: Buffer.concat(chunks).toString("utf8"),
+        });
+      });
+    });
+    return { code, output };
   } finally {
-    await Deno.remove(dir, { recursive: true }).catch(() => {});
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
 const SKIP = skipReason();
 
-Deno.test({
-  name: SKIP === undefined
+describe(
+  SKIP === undefined
     ? "check-publish-access.sh verdicts over npm trust listing shapes"
     : `check-publish-access.sh verdicts [skipped: ${SKIP}]`,
-  ignore: SKIP !== undefined,
-  fn: async (t) => {
+  { skip: SKIP !== undefined },
+  () => {
     for (const testCase of CASES) {
-      await t.step(testCase.name, async () => {
+      it(testCase.name, async () => {
         const { code, output } = await runGuard(GUARD, testCase);
-        assertEquals(
+        expect(
           code,
-          testCase.code,
           `${testCase.name}: exit ${code}, wanted ${testCase.code}.\n${output}`,
-        );
+        ).toStrictEqual(testCase.code);
         for (const expected of testCase.includes ?? []) {
-          assertStringIncludes(output, expected);
+          expect(output).toContain(expected);
         }
         for (const unexpected of testCase.omits ?? []) {
-          assertEquals(
+          expect(
             output.includes(unexpected),
-            false,
             `${testCase.name}: output should not contain ${unexpected}.\n${output}`,
-          );
+          ).toStrictEqual(false);
         }
       });
     }
   },
-});
+);

@@ -1,7 +1,6 @@
-/// <reference lib="deno.ns" />
-
-import { assertEquals } from "@std/assert";
-import { join } from "@std/path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { expect, it } from "vite-plus/test";
 import { TagLib } from "../src/taglib.ts";
 
 const FIXTURE_DIR = join("tests", "test-files", "mp3", "bitrate-mode");
@@ -10,7 +9,7 @@ async function readBitrateMode(
   filename: string,
 ): Promise<string | undefined> {
   const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-  const buffer = await Deno.readFile(join(FIXTURE_DIR, filename));
+  const buffer = new Uint8Array(await readFile(join(FIXTURE_DIR, filename)));
   const file = await taglib.open(buffer);
   try {
     const props = file.audioProperties();
@@ -20,37 +19,37 @@ async function readBitrateMode(
   }
 }
 
-Deno.test("bitrateMode: CBR LAME file -> 'CBR'", async () => {
-  assertEquals(await readBitrateMode("cbr-lame.mp3"), "CBR");
+it("bitrateMode: CBR LAME file -> 'CBR'", async () => {
+  expect(await readBitrateMode("cbr-lame.mp3")).toStrictEqual("CBR");
 });
 
-Deno.test("bitrateMode: VBR LAME file -> 'VBR'", async () => {
-  assertEquals(await readBitrateMode("vbr-lame.mp3"), "VBR");
+it("bitrateMode: VBR LAME file -> 'VBR'", async () => {
+  expect(await readBitrateMode("vbr-lame.mp3")).toStrictEqual("VBR");
 });
 
-Deno.test("bitrateMode: ABR LAME file -> 'ABR'", async () => {
-  assertEquals(await readBitrateMode("abr-lame.mp3"), "ABR");
+it("bitrateMode: ABR LAME file -> 'ABR'", async () => {
+  expect(await readBitrateMode("abr-lame.mp3")).toStrictEqual("ABR");
 });
 
-Deno.test("bitrateMode: VBRI file -> 'VBR'", async () => {
-  assertEquals(await readBitrateMode("vbri.mp3"), "VBR");
+it("bitrateMode: VBRI file -> 'VBR'", async () => {
+  expect(await readBitrateMode("vbri.mp3")).toStrictEqual("VBR");
 });
 
-Deno.test("bitrateMode: no-Xing file -> undefined", async () => {
-  assertEquals(await readBitrateMode("no-xing.mp3"), undefined);
+it("bitrateMode: no-Xing file -> undefined", async () => {
+  expect(await readBitrateMode("no-xing.mp3")).toStrictEqual(undefined);
 });
 
 // Regression pin: kiss-snippet.mp3 lives at tests/test-files/mp3/ (one level up
 // from the bitrate-mode fixtures). Measured against the implementation.
-Deno.test("bitrateMode: kiss-snippet.mp3 regression -> 'VBR'", async () => {
+it("bitrateMode: kiss-snippet.mp3 regression -> 'VBR'", async () => {
   const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-  const buffer = await Deno.readFile(
-    join("tests", "test-files", "mp3", "kiss-snippet.mp3"),
+  const buffer = new Uint8Array(
+    await readFile(join("tests", "test-files", "mp3", "kiss-snippet.mp3")),
   );
   const file = await taglib.open(buffer);
   try {
     const props = file.audioProperties();
-    assertEquals(props?.bitrateMode, "VBR");
+    expect(props?.bitrateMode).toStrictEqual("VBR");
   } finally {
     file.dispose();
   }

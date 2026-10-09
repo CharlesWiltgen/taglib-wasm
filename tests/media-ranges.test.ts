@@ -1,4 +1,5 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { expect, it } from "vite-plus/test";
+import { readFileSync } from "node:fs";
 import type { ByteRange } from "../src/taglib/media-ranges.ts";
 import {
   flacStreamInfoMd5,
@@ -17,26 +18,28 @@ const ORACLE_DIR = "lib/taglib/tests/data";
 
 const FLAC_DIR = "tests/test-files/flac";
 
-Deno.test("MP3 payload ends exactly at TagLib's asserted last frame boundary", () => {
-  const bytes = Deno.readFileSync(`${ORACLE_DIR}/bladeenc.mp3`);
+it("MP3 payload ends exactly at TagLib's asserted last frame boundary", () => {
+  const bytes = new Uint8Array(readFileSync(`${ORACLE_DIR}/bladeenc.mp3`));
   const walk = walkMpeg(bytes);
-  assertEquals(walk.kind, "ranges");
-  assertEquals(walk.ranges, [{ offset: 0, length: 28422 }]);
+  expect(walk.kind).toStrictEqual("ranges");
+  expect(walk.ranges).toStrictEqual([{ offset: 0, length: 28422 }]);
 });
 
 // This is the ADTS rule's only end-to-end guard: `empty1s.aac` carries 12
 // frames that the MPEG arithmetic cannot see (layer bits 00), so a walk built
 // only on `mpegFrameLength` falls back here instead of answering 147.
-Deno.test("ADTS/AAC payload matches TagLib's asserted boundary", () => {
-  const bytes = Deno.readFileSync(`${ORACLE_DIR}/empty1s.aac`);
+it("ADTS/AAC payload matches TagLib's asserted boundary", () => {
+  const bytes = new Uint8Array(readFileSync(`${ORACLE_DIR}/empty1s.aac`));
   const walk = walkMpeg(bytes);
-  assertEquals(walk.kind, "ranges");
-  assertEquals(walk.ranges, [{ offset: 0, length: 147 }]);
+  expect(walk.kind).toStrictEqual("ranges");
+  expect(walk.ranges).toStrictEqual([{ offset: 0, length: 147 }]);
 });
 
-Deno.test("a tags-only file falls back instead of hashing a tail", () => {
-  const bytes = Deno.readFileSync("tests/test-files/mp3/tags-only.mp3");
-  assertEquals(walkMpeg(bytes).kind, "fallback");
+it("a tags-only file falls back instead of hashing a tail", () => {
+  const bytes = new Uint8Array(
+    readFileSync("tests/test-files/mp3/tags-only.mp3"),
+  );
+  expect(walkMpeg(bytes).kind).toStrictEqual("fallback");
 });
 
 // Two facts about one file. The trim finds the APEv2 + ID3v1 tags (start 8208 =
@@ -51,10 +54,10 @@ Deno.test("a tags-only file falls back instead of hashing a tail", () => {
 // start — the test constructs an MPEG::Header at it to read that length. The 58
 // bytes between the frame end and the tag start are not frame data, so they are
 // deliberately not hashed.
-Deno.test("APEv2 + ID3v1 trailers are excluded from the range", () => {
-  const bytes = Deno.readFileSync(`${ORACLE_DIR}/ape-id3v1.mp3`);
-  assertEquals(trailingTagStart(bytes), 8208);
-  assertEquals(walkMpeg(bytes).ranges, [{ offset: 0, length: 8150 }]);
+it("APEv2 + ID3v1 trailers are excluded from the range", () => {
+  const bytes = new Uint8Array(readFileSync(`${ORACLE_DIR}/ape-id3v1.mp3`));
+  expect(trailingTagStart(bytes)).toStrictEqual(8208);
+  expect(walkMpeg(bytes).ranges).toStrictEqual([{ offset: 0, length: 8150 }]);
 });
 
 /** sha256 over the walk's ranges — the assertion target for tag stability. */
@@ -79,8 +82,8 @@ async function payloadHash(
 // hashes to. Five tag layouts — ID3v2 in front (with and without the v2.4
 // footer), ID3v1 and APEv2 behind, and both trailing kinds — must all hash to
 // the untagged base's payload.
-Deno.test("FLAC tag variants produce identical payload ranges' bytes", async () => {
-  const base = Deno.readFileSync(`${FLAC_DIR}/kiss-snippet.flac`);
+it("FLAC tag variants produce identical payload ranges' bytes", async () => {
+  const base = new Uint8Array(readFileSync(`${FLAC_DIR}/kiss-snippet.flac`));
   const baseWalk = walkFlac(base);
   const baseHash = await payloadHash(base, baseWalk.ranges);
   for (
@@ -92,18 +95,21 @@ Deno.test("FLAC tag variants produce identical payload ranges' bytes", async () 
       "flac-both-tags.flac",
     ]
   ) {
-    const bytes = Deno.readFileSync(`${FLAC_DIR}/${name}`);
+    const bytes = new Uint8Array(readFileSync(`${FLAC_DIR}/${name}`));
     const walk = walkFlac(bytes);
-    assertEquals(walk.kind, "ranges", name);
-    assertEquals(await payloadHash(bytes, walk.ranges), baseHash, name);
+    expect(walk.kind, name).toStrictEqual("ranges");
+    expect(await payloadHash(bytes, walk.ranges), name).toStrictEqual(baseHash);
   }
 });
 
-Deno.test("the FLAC walk starts after the block chain and ends at EOF", () => {
-  const bytes = Deno.readFileSync(`${FLAC_DIR}/kiss-snippet.flac`);
+it("the FLAC walk starts after the block chain and ends at EOF", () => {
+  const bytes = new Uint8Array(readFileSync(`${FLAC_DIR}/kiss-snippet.flac`));
   // Measured during the spike: marker at 0, first audio byte after the metadata
   // block chain at 323, and no trailing tags, so the range ends at EOF.
-  assertEquals(walkFlac(bytes).ranges, [{ offset: 323, length: 245107 }]);
+  expect(walkFlac(bytes).ranges).toStrictEqual([{
+    offset: 323,
+    length: 245107,
+  }]);
 });
 
 // A boundary of the guarantee, pinned so a change to it is visible: an
@@ -112,46 +118,52 @@ Deno.test("the FLAC walk starts after the block chain and ends at EOF", () => {
 // ID3v2 is not at that location — it is part of the stream by the same rule,
 // and this feature's ground truth is TagLib. Exclude it and this test tells you
 // the trim changed; include it and editing that tag moves the hash.
-Deno.test("an appended ID3v2 tag stays inside the FLAC payload", () => {
-  const bytes = Deno.readFileSync(`${FLAC_DIR}/kiss-snippet.flac`);
+it("an appended ID3v2 tag stays inside the FLAC payload", () => {
+  const bytes = new Uint8Array(readFileSync(`${FLAC_DIR}/kiss-snippet.flac`));
   // A 20-byte ID3v2.4 header with a syncsafe size of 10 and no frames.
   const tag = [0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0, 0, 0, 10];
   const appended = new Uint8Array(bytes.length + 20);
   appended.set(bytes);
   appended.set(tag, bytes.length);
   // The base ends at 323 + 245107; the tag pushes the end out by all 20 bytes.
-  assertEquals(walkFlac(appended).ranges, [{ offset: 323, length: 245127 }]);
+  expect(walkFlac(appended).ranges).toStrictEqual([
+    { offset: 323, length: 245127 },
+  ]);
 });
 
-Deno.test("FLAC STREAMINFO digest matches metaflac", () => {
-  const bytes = Deno.readFileSync(`${FLAC_DIR}/kiss-snippet.flac`);
+it("FLAC STREAMINFO digest matches metaflac", () => {
+  const bytes = new Uint8Array(readFileSync(`${FLAC_DIR}/kiss-snippet.flac`));
   // Verified against `metaflac --show-md5sum` during the spike:
-  assertEquals(flacStreamInfoMd5(bytes), "ee39b52b9ee2fa1058ebce88297351a9");
+  expect(flacStreamInfoMd5(bytes)).toStrictEqual(
+    "ee39b52b9ee2fa1058ebce88297351a9",
+  );
 });
 
 const MP4_DIR = "tests/test-files/mp4";
 
-Deno.test("MP4 payload is every non-empty top-level mdat, header excluded", () => {
-  const bytes = Deno.readFileSync(`${MP4_DIR}/synth-multi-mdat.mp4`);
+it("MP4 payload is every non-empty top-level mdat, header excluded", () => {
+  const bytes = new Uint8Array(
+    readFileSync(`${MP4_DIR}/synth-multi-mdat.mp4`),
+  );
   // The generator writes seven atoms in this order: ftyp (whole 24), free
   // (whole 16), mdat (32 contents), a 64-bit-size mdat (24 contents), an empty
   // mdat (whole 8), moov (whole 24), mdat (16 contents). An atom's size field
   // counts its header, so the first mdat's contents start at 40 + 8, the 64-bit
   // one's at 80 + 16, and the last one's at 152 + 8 — while the empty mdat at
   // 120..128 contributes nothing.
-  assertEquals(walkMp4(bytes).ranges, [
+  expect(walkMp4(bytes).ranges).toStrictEqual([
     { offset: 48, length: 32 },
     { offset: 96, length: 24 },
     { offset: 160, length: 16 },
   ]);
 });
 
-Deno.test("a real m4a's single mdat is found at its measured offset", () => {
+it("a real m4a's single mdat is found at its measured offset", () => {
   // Measured during the spike on the repo's own fixture, and re-measured off
   // the atom headers before this test was written: ftyp(32) free(8) mdat(2696)
   // moov(685), so the one mdat's contents start at 48 and run 2688 bytes.
-  const bytes = Deno.readFileSync(`${MP4_DIR}/ac3.m4a`);
-  assertEquals(walkMp4(bytes).ranges, [{ offset: 48, length: 2688 }]);
+  const bytes = new Uint8Array(readFileSync(`${MP4_DIR}/ac3.m4a`));
+  expect(walkMp4(bytes).ranges).toStrictEqual([{ offset: 48, length: 2688 }]);
 });
 
 /** A top-level atom: big-endian size, 4-char type, then `body`. */
@@ -167,7 +179,7 @@ function atom(
   return bytes;
 }
 
-Deno.test("a size-0 mdat runs to end of file", () => {
+it("a size-0 mdat runs to end of file", () => {
   // ftyp (16 bytes) then a 16-byte mdat whose size field is 0: the atom's
   // declared length is everything left, so its contents are the 8 payload bytes
   // after the header.
@@ -175,7 +187,7 @@ Deno.test("a size-0 mdat runs to end of file", () => {
     ...atom(16, "ftyp", new Uint8Array(8)),
     ...atom(0, "mdat", new Uint8Array(8).fill(7)),
   ]);
-  assertEquals(walkMp4(bytes).ranges, [{ offset: 24, length: 8 }]);
+  expect(walkMp4(bytes).ranges).toStrictEqual([{ offset: 24, length: 8 }]);
 });
 
 // Every way the walk can lose track of the byte stream, each one breaking a
@@ -190,8 +202,10 @@ Deno.test("a size-0 mdat runs to end of file", () => {
 // That reason is part of the walk's returned contract: the caller threads it
 // into its own detail (`"${walked.detail} → whole file"`) rather than inventing
 // a message of its own.
-Deno.test("MP4 atoms the walk cannot fully account for fall back", () => {
-  const synth = Deno.readFileSync(`${MP4_DIR}/synth-multi-mdat.mp4`);
+it("MP4 atoms the walk cannot fully account for fall back", () => {
+  const synth = new Uint8Array(
+    readFileSync(`${MP4_DIR}/synth-multi-mdat.mp4`),
+  );
   const patch32 = (at: number, size: number): Uint8Array => {
     const copy = synth.slice();
     new DataView(copy.buffer).setUint32(at, size, false);
@@ -231,8 +245,8 @@ Deno.test("MP4 atoms the walk cannot fully account for fall back", () => {
   ];
   for (const [name, bytes, reason] of cases) {
     const walk = walkMp4(bytes);
-    assertEquals(walk.kind, "fallback", name);
-    assertStringIncludes(walk.detail, reason, name);
+    expect(walk.kind, name).toStrictEqual("fallback");
+    expect(walk.detail, name).toContain(reason);
   }
 });
 
@@ -242,34 +256,37 @@ const WAV_DIR = "tests/test-files/wav";
 // LIST (8+18), id3 (8+10), data (8+4096) — so the payload starts at 88. The
 // offset is known by construction, which is what makes it an assertion rather
 // than a measurement.
-Deno.test("WAV payload is the data chunk, found past tag chunks", () => {
-  const bytes = Deno.readFileSync(`${WAV_DIR}/synth-tags-before-data.wav`);
-  assertEquals(walkWav(bytes).ranges, [{ offset: 88, length: 4096 }]);
+it("WAV payload is the data chunk, found past tag chunks", () => {
+  const bytes = new Uint8Array(
+    readFileSync(`${WAV_DIR}/synth-tags-before-data.wav`),
+  );
+  expect(walkWav(bytes).ranges).toStrictEqual([{ offset: 88, length: 4096 }]);
 });
 
-Deno.test("inserting tag chunks before data does not change the payload hash", async () => {
+it("inserting tag chunks before data does not change the payload hash", async () => {
   // A matched pair from one 4096-byte payload: the plain synth has no tag
   // chunks, the tagged one has LIST + id3 before data (payload at 88). Equal
   // hashes are the guarantee; the two offsets are the check that the equality
   // rests on the payload rather than on two identically-wrong walks (a walk that
   // included the 8-byte `data` header would shift both files and still agree).
-  const plain = Deno.readFileSync(`${WAV_DIR}/synth-plain.wav`);
-  const tagged = Deno.readFileSync(`${WAV_DIR}/synth-tags-before-data.wav`);
+  const plain = new Uint8Array(readFileSync(`${WAV_DIR}/synth-plain.wav`));
+  const tagged = new Uint8Array(
+    readFileSync(`${WAV_DIR}/synth-tags-before-data.wav`),
+  );
   const plainWalk = walkWav(plain);
   const taggedWalk = walkWav(tagged);
-  assertEquals(plainWalk.ranges, [{ offset: 44, length: 4096 }]);
-  assertEquals(taggedWalk.ranges, [{ offset: 88, length: 4096 }]);
-  assertEquals(
+  expect(plainWalk.ranges).toStrictEqual([{ offset: 44, length: 4096 }]);
+  expect(taggedWalk.ranges).toStrictEqual([{ offset: 88, length: 4096 }]);
+  expect(
     await payloadHash(plain, plainWalk.ranges),
-    await payloadHash(tagged, taggedWalk.ranges),
-  );
+  ).toStrictEqual(await payloadHash(tagged, taggedWalk.ranges));
 });
 
-Deno.test("chunks after data do not narrow the range", () => {
+it("chunks after data do not narrow the range", () => {
   // The repo's own fixture carries LIST + id3 AFTER its 460708-byte data chunk.
   // A walk that let a later chunk move or clip the answer would fail here.
-  const bytes = Deno.readFileSync(`${WAV_DIR}/kiss-snippet.wav`);
-  assertEquals(walkWav(bytes).ranges, [{ offset: 44, length: 460708 }]);
+  const bytes = new Uint8Array(readFileSync(`${WAV_DIR}/kiss-snippet.wav`));
+  expect(walkWav(bytes).ranges).toStrictEqual([{ offset: 44, length: 460708 }]);
 });
 
 // The multi-`data` rule, and the only fixture that can see it: this is the only
@@ -282,19 +299,22 @@ Deno.test("chunks after data do not narrow the range", () => {
 // makes the assertion the join as well as the walk: a walk that answered both
 // ranges but joined them out of order would still fail it.
 
-Deno.test("WAV payload is every non-empty data chunk, in chunk order", async () => {
-  const bytes = Deno.readFileSync(`${WAV_DIR}/synth-multi-data.wav`);
+it("WAV payload is every non-empty data chunk, in chunk order", async () => {
+  const bytes = new Uint8Array(
+    readFileSync(`${WAV_DIR}/synth-multi-data.wav`),
+  );
   const walk = walkWav(bytes);
-  assertEquals(walk.kind, "ranges");
-  assertEquals(walk.ranges, [
+  expect(walk.kind).toStrictEqual("ranges");
+  expect(walk.ranges).toStrictEqual([
     { offset: 52, length: 16 },
     { offset: 76, length: 8 },
   ]);
   const joined = new Uint8Array(24);
   joined.set(bytes.subarray(52, 52 + 16), 0);
   joined.set(bytes.subarray(76, 76 + 8), 16);
-  assertEquals(
+  expect(
     await payloadHash(bytes, walk.ranges),
+  ).toStrictEqual(
     await payloadHash(joined, [{ offset: 0, length: joined.length }]),
   );
 });
@@ -304,45 +324,46 @@ Deno.test("WAV payload is every non-empty data chunk, in chunk order", async () 
 // sits after `data`. Without `+ (size % 2)` the walk reads that pad byte as a
 // chunk id, believes the misaligned size field, and falls back; every fixture
 // the generator builds has even-sized chunks, so nothing else pins this.
-Deno.test("an odd-sized chunk's pad byte is skipped", () => {
-  const bytes = Deno.readFileSync(`${WAV_DIR}/bext-ixml.wav`);
+it("an odd-sized chunk's pad byte is skipped", () => {
+  const bytes = new Uint8Array(readFileSync(`${WAV_DIR}/bext-ixml.wav`));
   const walk = walkWav(bytes);
-  assertEquals(walk.kind, "ranges");
-  assertEquals(walk.ranges, [{ offset: 44, length: 3200 }]);
+  expect(walk.kind).toStrictEqual("ranges");
+  expect(walk.ranges).toStrictEqual([{ offset: 44, length: 3200 }]);
 });
 
-Deno.test("an RF64 container falls back rather than reading 32-bit sizes", () => {
+it("an RF64 container falls back rather than reading 32-bit sizes", () => {
   // lib/taglib/tests/data/rf64.wav is RF64/BW64: its `data` size field reads
   // 0xFFFFFFFF and the real lengths live in the `ds64` chunk, so a walk that
   // accepted the magic would mis-size every range in the file. The 4-byte check
   // is therefore the whole rule, and its fallback is honest (whole file).
-  const bytes = Deno.readFileSync(`${ORACLE_DIR}/rf64.wav`);
+  const bytes = new Uint8Array(readFileSync(`${ORACLE_DIR}/rf64.wav`));
   const walk = walkWav(bytes);
-  assertEquals(walk.kind, "fallback");
-  assertStringIncludes(walk.detail, "not RIFF");
+  expect(walk.kind).toStrictEqual("fallback");
+  expect(walk.detail).toContain("not RIFF");
 });
 
-Deno.test("uncovered formats fall back to the whole file", () => {
+it("uncovered formats fall back to the whole file", () => {
   const bytes = new Uint8Array(64);
   const walk = mediaRanges("OGG", bytes);
-  assertEquals(walk.kind, "fallback");
-  assertEquals(walk.ranges, [{ offset: 0, length: 64 }]);
+  expect(walk.kind).toStrictEqual("fallback");
+  expect(walk.ranges).toStrictEqual([{ offset: 0, length: 64 }]);
 });
 
-Deno.test("the format key is case-insensitive", () => {
+it("the format key is case-insensitive", () => {
   // Callers pass extensions ("mp3"); the AudioFile reports "MP3". Both must
   // reach the walk — a fallback here still returns a checksum, just a weaker one.
-  const bytes = Deno.readFileSync(`${WAV_DIR}/kiss-snippet.wav`);
-  assertEquals(
-    mediaRanges("wav", bytes).ranges,
+  const bytes = new Uint8Array(readFileSync(`${WAV_DIR}/kiss-snippet.wav`));
+  expect(mediaRanges("wav", bytes).ranges).toStrictEqual(
     mediaRanges("WAV", bytes).ranges,
   );
-  assertEquals(mediaRanges("wav", bytes).kind, "ranges");
+  expect(mediaRanges("wav", bytes).kind).toStrictEqual("ranges");
 });
 
-Deno.test("a truncated container falls back to the whole file too", () => {
-  const bytes = Deno.readFileSync(`${WAV_DIR}/kiss-snippet.wav`).slice(0, 2000);
+it("a truncated container falls back to the whole file too", () => {
+  const bytes = new Uint8Array(
+    readFileSync(`${WAV_DIR}/kiss-snippet.wav`),
+  ).slice(0, 2000);
   const walk = mediaRanges("WAV", bytes); // the data chunk claims more bytes than exist
-  assertEquals(walk.kind, "fallback");
-  assertEquals(walk.ranges, [{ offset: 0, length: 2000 }]);
+  expect(walk.kind).toStrictEqual("fallback");
+  expect(walk.ranges).toStrictEqual([{ offset: 0, length: 2000 }]);
 });

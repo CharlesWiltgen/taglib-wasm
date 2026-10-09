@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview Chapter read/write tests across both Wasm backends.
  *
@@ -9,8 +7,10 @@
  * - mp4/chapters-both.m4a  — QuickTime track + Nero chpl atom (same 2 chapters)
  */
 
-import { assertEquals, assertThrows } from "@std/assert";
-import { join } from "@std/path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { expect, it } from "vite-plus/test";
+import { expectThrows } from "./_assert-helpers.ts";
 import fc from "fast-check";
 import { TagLib } from "../src/taglib.ts";
 import { UnsupportedFormatError } from "../src/errors.ts";
@@ -35,7 +35,7 @@ const BACKENDS = ["wasi", "emscripten"] as const;
 
 async function open(backend: typeof BACKENDS[number], path: string) {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
-  return taglib.open(await Deno.readFile(path));
+  return taglib.open(new Uint8Array(await readFile(path)));
 }
 
 /** Round-trip: setChapters → save → reopen the resulting buffer → getChapters. */
@@ -46,7 +46,7 @@ async function writeReadBack(
   options?: SetChaptersOptions,
 ): Promise<Chapter[]> {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
-  const file = await taglib.open(await Deno.readFile(path));
+  const file = await taglib.open(new Uint8Array(await readFile(path)));
   let out: Uint8Array;
   try {
     file.setChapters(chapters, options);
@@ -64,57 +64,59 @@ async function writeReadBack(
 }
 
 for (const backend of BACKENDS) {
-  Deno.test(`[${backend}] reads ID3v2 CHAP frames with explicit end times`, async () => {
+  it(`[${backend}] reads ID3v2 CHAP frames with explicit end times`, async () => {
     const file = await open(backend, FILES.id3);
     try {
       const ch = file.getChapters();
-      assertEquals(ch.length, 2);
-      assertEquals(ch.map((c) => c.source), ["id3", "id3"]);
-      assertEquals(ch.map((c) => c.title), ["Intro", "Chapter 1"]);
-      assertEquals(ch[0].endTimeMs, 2000);
-      assertEquals(ch[1].endTimeMs, 4000);
-      assertEquals(typeof ch[0].id, "string");
+      expect(ch.length).toStrictEqual(2);
+      expect(ch.map((c) => c.source)).toStrictEqual(["id3", "id3"]);
+      expect(ch.map((c) => c.title)).toStrictEqual(["Intro", "Chapter 1"]);
+      expect(ch[0].endTimeMs).toStrictEqual(2000);
+      expect(ch[1].endTimeMs).toStrictEqual(4000);
+      expect(typeof ch[0].id).toStrictEqual("string");
     } finally {
       file.dispose();
     }
   });
 
-  Deno.test(`[${backend}] reads MP4 QuickTime chapters; id undefined, end inferred`, async () => {
+  it(`[${backend}] reads MP4 QuickTime chapters; id undefined, end inferred`, async () => {
     const file = await open(backend, FILES.qt);
     try {
       const ch = file.getChapters();
-      assertEquals(ch.length, 2);
-      assertEquals(ch.map((c) => c.source), ["quicktime", "quicktime"]);
-      assertEquals(ch[0].id, undefined);
-      assertEquals(ch[0].endTimeMs, ch[1].startTimeMs); // interior: next start
-      assertEquals(ch[1].endTimeMs, file.audioProperties()?.durationMs); // last: track end
+      expect(ch.length).toStrictEqual(2);
+      expect(ch.map((c) => c.source)).toStrictEqual([
+        "quicktime",
+        "quicktime",
+      ]);
+      expect(ch[0].id).toStrictEqual(undefined);
+      expect(ch[0].endTimeMs).toStrictEqual(ch[1].startTimeMs); // interior: next start
+      expect(ch[1].endTimeMs).toStrictEqual(file.audioProperties()?.durationMs); // last: track end
     } finally {
       file.dispose();
     }
   });
 
-  Deno.test(`[${backend}] MP4 with both QuickTime and Nero chapters — QuickTime wins`, async () => {
+  it(`[${backend}] MP4 with both QuickTime and Nero chapters — QuickTime wins`, async () => {
     const file = await open(backend, FILES.both);
     try {
-      assertEquals(
+      expect(
         file.getChapters().every((c) => c.source === "quicktime"),
-        true,
-      );
+      ).toStrictEqual(true);
     } finally {
       file.dispose();
     }
   });
 
-  Deno.test(`[${backend}] files without chapters return []`, async () => {
+  it(`[${backend}] files without chapters return []`, async () => {
     const file = await open(backend, FILES.plainMp3);
     try {
-      assertEquals(file.getChapters(), []);
+      expect(file.getChapters()).toStrictEqual([]);
     } finally {
       file.dispose();
     }
   });
 
-  Deno.test(`[${backend}] MP3 round-trip; omitted endTimeMs is filled`, async () => {
+  it(`[${backend}] MP3 round-trip; omitted endTimeMs is filled`, async () => {
     const file = await open(backend, FILES.plainMp3);
     const trackEndMs = file.audioProperties()?.durationMs ?? 0;
     file.dispose();
@@ -122,41 +124,41 @@ for (const backend of BACKENDS) {
       { startTimeMs: 0, title: "A", id: "intro" },
       { startTimeMs: 1000, title: "B" },
     ]);
-    assertEquals(ch.map((c) => [c.startTimeMs, c.title, c.source]), [
+    expect(ch.map((c) => [c.startTimeMs, c.title, c.source])).toStrictEqual([
       [0, "A", "id3"],
       [1000, "B", "id3"],
     ]);
-    assertEquals(ch[0].id, "intro");
-    assertEquals(ch[0].endTimeMs, 1000); // filled from next chapter's start
-    assertEquals(ch[1].endTimeMs, trackEndMs); // filled from track length
+    expect(ch[0].id).toStrictEqual("intro");
+    expect(ch[0].endTimeMs).toStrictEqual(1000); // filled from next chapter's start
+    expect(ch[1].endTimeMs).toStrictEqual(trackEndMs); // filled from track length
   });
 
-  Deno.test(`[${backend}] MP4 setChapters default style is quicktime`, async () => {
+  it(`[${backend}] MP4 setChapters default style is quicktime`, async () => {
     const ch = await writeReadBack(backend, FILES.plainM4a, [
       { startTimeMs: 0, title: "X" },
       { startTimeMs: 1000, title: "Y" },
     ]);
-    assertEquals(ch.map((c) => [c.startTimeMs, c.title, c.source]), [
+    expect(ch.map((c) => [c.startTimeMs, c.title, c.source])).toStrictEqual([
       [0, "X", "quicktime"],
       [1000, "Y", "quicktime"],
     ]);
   });
 
-  Deno.test(`[${backend}] MP4 setChapters nero style; QuickTime track removed`, async () => {
+  it(`[${backend}] MP4 setChapters nero style; QuickTime track removed`, async () => {
     const ch = await writeReadBack(
       backend,
       FILES.plainM4a,
       [{ startTimeMs: 0, title: "N0" }, { startTimeMs: 2000, title: "N1" }],
       { mp4ChapterStyle: "nero" },
     );
-    assertEquals(ch.map((c) => [c.startTimeMs, c.title]), [[0, "N0"], [
-      2000,
-      "N1",
-    ]]);
-    assertEquals(ch.every((c) => c.source === "nero"), true);
+    expect(ch.map((c) => [c.startTimeMs, c.title])).toStrictEqual([
+      [0, "N0"],
+      [2000, "N1"],
+    ]);
+    expect(ch.every((c) => c.source === "nero")).toStrictEqual(true);
   });
 
-  Deno.test(`[${backend}] MP4 "both" with >255 chapters: QuickTime keeps all`, async () => {
+  it(`[${backend}] MP4 "both" with >255 chapters: QuickTime keeps all`, async () => {
     const many = Array.from({ length: 300 }, (_, i) => ({
       startTimeMs: i * 10,
       title: `c${i}`,
@@ -164,18 +166,18 @@ for (const backend of BACKENDS) {
     const ch = await writeReadBack(backend, FILES.plainM4a, many, {
       mp4ChapterStyle: "both",
     });
-    assertEquals(ch.length, 300); // getChapters prefers the QuickTime track
-    assertEquals(ch.every((c) => c.source === "quicktime"), true);
+    expect(ch.length).toStrictEqual(300); // getChapters prefers the QuickTime track
+    expect(ch.every((c) => c.source === "quicktime")).toStrictEqual(true);
   });
 
-  Deno.test(`[${backend}] setChapters([]) clears all chapters`, async () => {
-    assertEquals(await writeReadBack(backend, FILES.both, []), []);
+  it(`[${backend}] setChapters([]) clears all chapters`, async () => {
+    expect(await writeReadBack(backend, FILES.both, [])).toStrictEqual([]);
   });
 
-  Deno.test(`[${backend}] setChapters on an unsupported format throws`, async () => {
+  it(`[${backend}] setChapters on an unsupported format throws`, async () => {
     const file = await open(backend, FILES.flac);
     try {
-      assertThrows(
+      expectThrows(
         () => file.setChapters([{ startTimeMs: 0, title: "x" }]),
         UnsupportedFormatError,
       );
@@ -184,9 +186,9 @@ for (const backend of BACKENDS) {
     }
   });
 
-  Deno.test(`[${backend}] property: MP3 chapter list round-trips`, async () => {
+  it(`[${backend}] property: MP3 chapter list round-trips`, async () => {
     const taglib = await TagLib.initialize({ forceWasmType: backend });
-    const sourceBuffer = await Deno.readFile(FILES.plainMp3);
+    const sourceBuffer = new Uint8Array(await readFile(FILES.plainMp3));
     await fc.assert(
       fc.asyncProperty(
         fc.array(

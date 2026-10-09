@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview FLAC ID3 strip (taglib-y91).
  *
@@ -12,8 +10,9 @@
  * appending an ID3v1 trailer to tests/test-files/flac/kiss-snippet.flac.
  */
 
-import { assertEquals } from "@std/assert";
-import { join } from "@std/path";
+import { expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { TagLib } from "../src/taglib.ts";
 
 const PLAIN_FLAC = join("tests", "test-files", "flac", "kiss-snippet.flac");
@@ -82,7 +81,7 @@ function concatBytes(...parts: Uint8Array[]): Uint8Array {
 }
 
 async function loadPlainFlac(): Promise<Uint8Array> {
-  return await Deno.readFile(PLAIN_FLAC);
+  return new Uint8Array(await readFile(PLAIN_FLAC));
 }
 
 async function loadFlacWithId3(
@@ -97,34 +96,34 @@ async function loadFlacWithId3(
 }
 
 for (const backend of BACKENDS) {
-  Deno.test(
+  it(
     `[${backend}] FLAC: hasId3Tags returns {v1:false,v2:false} on plain FLAC`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
       using f = await taglib.open(await loadPlainFlac());
-      assertEquals(f.hasId3Tags(), { v1: false, v2: false });
+      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] FLAC: hasId3Tags detects both v1 and v2`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
       using f = await taglib.open(await loadFlacWithId3());
-      assertEquals(f.hasId3Tags(), { v1: true, v2: true });
+      expect(f.hasId3Tags()).toStrictEqual({ v1: true, v2: true });
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] FLAC: hasId3Tags detects only v2 when v1 absent`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
       using f = await taglib.open(await loadFlacWithId3({ v2: true }));
-      assertEquals(f.hasId3Tags(), { v1: false, v2: true });
+      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] FLAC: stripId3Tags() removes both`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
@@ -135,15 +134,15 @@ for (const backend of BACKENDS) {
         f.save();
         const out = f.getFileBuffer();
         using reopened = await taglib.open(out);
-        assertEquals(reopened.hasId3Tags(), { v1: false, v2: false });
-        assertEquals(reopened.tag().title, "kept");
+        expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
+        expect(reopened.tag().title).toStrictEqual("kept");
       } finally {
         f.dispose();
       }
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] FLAC: stripId3Tags({v1:true,v2:false}) removes only v1`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
@@ -153,37 +152,37 @@ for (const backend of BACKENDS) {
         f.save();
         const out = f.getFileBuffer();
         using reopened = await taglib.open(out);
-        assertEquals(reopened.hasId3Tags(), { v1: false, v2: true });
+        expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
       } finally {
         f.dispose();
       }
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] non-FLAC: hasId3Tags returns {v1:false,v2:false}`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
       const mp3Path = join("tests", "test-files", "mp3", "kiss-snippet.mp3");
-      using f = await taglib.open(await Deno.readFile(mp3Path));
-      assertEquals(f.hasId3Tags(), { v1: false, v2: false });
+      using f = await taglib.open(new Uint8Array(await readFile(mp3Path)));
+      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] FLAC: hasId3Tags reflects strip on the same handle (no reopen)`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
       using f = await taglib.open(await loadFlacWithId3());
-      assertEquals(f.hasId3Tags(), { v1: true, v2: true });
+      expect(f.hasId3Tags()).toStrictEqual({ v1: true, v2: true });
       f.stripId3Tags({ v1: true, v2: false });
-      assertEquals(f.hasId3Tags(), { v1: false, v2: true });
+      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
       f.stripId3Tags({ v1: false, v2: true });
-      assertEquals(f.hasId3Tags(), { v1: false, v2: false });
+      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] FLAC: two partial strips before save accumulate`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
@@ -194,19 +193,19 @@ for (const backend of BACKENDS) {
         f.save();
         const out = f.getFileBuffer();
         using reopened = await taglib.open(out);
-        assertEquals(reopened.hasId3Tags(), { v1: false, v2: false });
+        expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
       } finally {
         f.dispose();
       }
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] non-FLAC: stripId3Tags is a no-op and does not throw`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
       const mp3Path = join("tests", "test-files", "mp3", "kiss-snippet.mp3");
-      const original = await Deno.readFile(mp3Path);
+      const original = new Uint8Array(await readFile(mp3Path));
       const f = await taglib.open(original);
       try {
         f.stripId3Tags();
@@ -214,14 +213,14 @@ for (const backend of BACKENDS) {
         const out = f.getFileBuffer();
         using reopened = await taglib.open(out);
         // MP3's native ID3 tags must NOT be stripped by this API.
-        assertEquals(reopened.getFormat(), "MP3");
+        expect(reopened.getFormat()).toStrictEqual("MP3");
       } finally {
         f.dispose();
       }
     },
   );
 
-  Deno.test(
+  it(
     `[${backend}] FLAC without ID3: stripId3Tags is a no-op and preserves Vorbis Comments`,
     async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
@@ -232,8 +231,8 @@ for (const backend of BACKENDS) {
         f.save();
         const out = f.getFileBuffer();
         using reopened = await taglib.open(out);
-        assertEquals(reopened.hasId3Tags(), { v1: false, v2: false });
-        assertEquals(reopened.tag().title, "kept-after-noop-strip");
+        expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
+        expect(reopened.tag().title).toStrictEqual("kept-after-noop-strip");
       } finally {
         f.dispose();
       }

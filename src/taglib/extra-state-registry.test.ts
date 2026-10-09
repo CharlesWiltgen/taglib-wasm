@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { expect, it } from "vite-plus/test";
 import { EXTRA_FIELDS } from "./extra-state-registry.ts";
 import { PASSTHROUGH_KEYS } from "../msgpack/encoder.ts";
 
@@ -17,23 +17,22 @@ const CONTROL_KEYS = new Set([
   "_mp4ItemNames",
 ]);
 
-Deno.test("extra-state registry covers every passthrough data field", () => {
+it("extra-state registry covers every passthrough data field", () => {
   const registered = new Set(EXTRA_FIELDS.map((f) => f.name));
   const dataKeys = [...PASSTHROUGH_KEYS].filter((k) => !CONTROL_KEYS.has(k));
 
   for (const key of dataKeys) {
-    assert(
+    expect(
       registered.has(key),
       `extra-state registry is missing "${key}". A new passthrough metadata ` +
         `field must get an EXTRA_FIELDS entry, or it is silently dropped on ` +
         `partial-load / save-as reconstruct (the taglib-upg bug class).`,
-    );
+    ).toBeTruthy();
   }
 
   // No stray registry entries either — keeps the two in lock-step.
-  assertEquals(
+  expect(
     [...registered].sort(),
-    dataKeys.sort(),
     "EXTRA_FIELDS and PASSTHROUGH_KEYS (minus control keys) have diverged",
-  );
+  ).toStrictEqual(dataKeys.sort());
 });

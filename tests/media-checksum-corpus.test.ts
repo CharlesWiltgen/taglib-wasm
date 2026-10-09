@@ -15,30 +15,38 @@
  *
  * Two classes:
  *
- * 1. Always runs — pure byte construction, no tool and no `--allow-run`. Tag
- *    systems this repo's writers never produce (hand-written ID3v2.4 and 2.3,
- *    the extended header, the unsynchronisation flag, Lyrics3v2 + ID3v1, APEv2
- *    appended and prepended), an MP4 `free` atom spliced before the first
- *    `mdat`, a byte flipped inside a WAV's non-`data` chunk, two FLACs that
- *    differ only in padding, and the whole-file fallback's honesty.
+ * 1. Always runs — pure byte construction, no tool. Tag systems this repo's
+ *    writers never produce (hand-written ID3v2.4 and 2.3, the extended header,
+ *    the unsynchronisation flag, Lyrics3v2 + ID3v1, APEv2 appended and
+ *    prepended), an MP4 `free` atom spliced before the first `mdat`, a byte
+ *    flipped inside a WAV's non-`data` chunk, two FLACs that differ only in
+ *    padding, and the whole-file fallback's honesty.
  * 2. Tool-guarded — files written by one tool and re-tagged by another, which is
  *    where a producer's own invariants stop holding. Tools: `lame`, `ffmpeg`,
- *    `flac`, `metaflac`. These are **local-only by design**: every workflow runs
- *    `deno test` with `--allow-read --allow-write --allow-env` and none grants
- *    `--allow-run` (.github/workflows/ci.yml, sonarcloud.yml), so the tool class
- *    skips in CI and under `deno task test` — with the reason folded into the
- *    test's name. The on-demand invocation, which runs all of them:
- *    `deno test --allow-read --allow-write --allow-env --allow-run tests/media-checksum-corpus.test.ts`.
+ *    `flac`, `metaflac`. These are **local-only by design**: Deno gated them on
+ *    `--allow-run`, which neither CI nor `deno task test` ever grants, so the
+ *    class skips by default — with the reason folded into the test's name. Node
+ *    has no run-permission model, so the gate is now the `TAGLIB_CORPUS_TOOLS=1`
+ *    environment variable; the on-demand invocation that runs all of them:
+ *    `TAGLIB_CORPUS_TOOLS=1 npx vp test tests/media-checksum-corpus.test.ts`.
  *
- * Every generated artifact lives in a `Deno.makeTempDir()` directory removed in
- * a `finally`; nothing is written into the repo.
+ * Every generated artifact lives in an OS temp directory removed in a `finally`;
+ * nothing is written into the repo.
  */
 
-import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { resolve } from "@std/path";
+import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { readFileSync, statSync } from "node:fs";
+import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { promisify } from "node:util";
+import { expect, it } from "vite-plus/test";
 import type { MediaChecksum } from "../src/taglib/audio-file-checksum.ts";
 import { mediaRanges } from "../src/taglib/media-ranges.ts";
 import { readMediaChecksum } from "../src/simple/index.ts";
+
+const execFileAsync = promisify(execFile);
 
 const MP3 = "tests/test-files/mp3/kiss-snippet.mp3";
 const M4A = "tests/test-files/mp4/kiss-snippet.m4a";
@@ -160,10 +168,10 @@ function flacWithPadding(flac: Uint8Array, paddingBytes: number): Uint8Array {
  * fallback here is a mis-built case, not a valid answer. */
 function payloadBytes(format: string, bytes: Uint8Array): Uint8Array {
   const walk = mediaRanges(format, bytes);
-  assert(
+  expect(
     walk.kind === "ranges",
     `${format}: no payload ranges (${walk.detail})`,
-  );
+  ).toBeTruthy();
   const out = new Uint8Array(walk.ranges.reduce((n, r) => n + r.length, 0));
   let at = 0;
   for (const range of walk.ranges) {
@@ -177,9 +185,10 @@ function payloadBytes(format: string, bytes: Uint8Array): Uint8Array {
  * range: an edit only a payload writer can make. */
 function flipPayloadBit(bytes: Uint8Array, format: string): Uint8Array {
   const walk = mediaRanges(format, bytes);
-  assert(walk.kind === "ranges", `${format}: no payload ranges to mutate`);
+  expect(walk.kind === "ranges", `${format}: no payload ranges to mutate`)
+    .toBeTruthy();
   const range = walk.ranges[0];
-  assert(range.length > 0, `${format}: empty payload range`);
+  expect(range.length > 0, `${format}: empty payload range`).toBeTruthy();
   const out = bytes.slice();
   out[range.offset + Math.floor(range.length / 2)] ^= 0xff;
   return out;
@@ -202,8 +211,9 @@ async function assertPayloadIdentity(
   digest: MediaChecksum,
 ): Promise<void> {
   const payload = payloadBytes(format, bytes);
-  assertEquals(digest.bytesHashed, payload.length, `${label}: bytesHashed`);
-  assertEquals(digest.hex, await sha256Hex(payload), `${label}: hex`);
+  expect(digest.bytesHashed, `${label}: bytesHashed`)
+    .toStrictEqual(payload.length);
+  expect(digest.hex, `${label}: hex`).toStrictEqual(await sha256Hex(payload));
 }
 
 /** The input-form contract: a path, the same bytes, and a File must describe one
@@ -217,15 +227,16 @@ async function assertInputFormsAgree(
   format: string,
   label: string,
 ): Promise<void> {
-  const bytes = await Deno.readFile(path);
+  const bytes = new Uint8Array(await readFile(path));
   const byPath = await readMediaChecksum(path);
-  assertEquals(byPath.source, "audio-payload", `${label}: source`);
+  expect(byPath.source, `${label}: source`).toStrictEqual("audio-payload");
   await assertPayloadIdentity(label, format, bytes, byPath);
   const byBuffer = await readMediaChecksum(bytes);
   const byFile = await readMediaChecksum(new File([bytes], label));
-  assertEquals(byBuffer.hex, byPath.hex, `${label}: buffer vs path`);
-  assertEquals(byFile.hex, byPath.hex, `${label}: File vs path`);
-  assertEquals(byFile.bytesHashed, byPath.bytesHashed, `${label}: bytesHashed`);
+  expect(byBuffer.hex, `${label}: buffer vs path`).toStrictEqual(byPath.hex);
+  expect(byFile.hex, `${label}: File vs path`).toStrictEqual(byPath.hex);
+  expect(byFile.bytesHashed, `${label}: bytesHashed`)
+    .toStrictEqual(byPath.bytesHashed);
 }
 
 /** The fallback contract: the whole file, and honest about it. */
@@ -233,24 +244,23 @@ async function assertWholeFileFallback(
   path: string,
   label: string,
 ): Promise<void> {
-  const bytes = await Deno.readFile(path);
+  const bytes = new Uint8Array(await readFile(path));
   const digest = await readMediaChecksum(path);
-  assertEquals(digest.source, "file", `${label}: source`);
-  assertEquals(digest.algorithm, "sha256", `${label}: algorithm`);
-  assertEquals(digest.hex, await sha256Hex(bytes), `${label}: hex`);
-  assertEquals(
+  expect(digest.source, `${label}: source`).toStrictEqual("file");
+  expect(digest.algorithm, `${label}: algorithm`).toStrictEqual("sha256");
+  expect(digest.hex, `${label}: hex`).toStrictEqual(await sha256Hex(bytes));
+  expect(
     digest.bytesHashed,
-    bytes.length,
     `${label}: bytesHashed must be the file size`,
-  );
+  ).toStrictEqual(bytes.length);
 }
 
 async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
-  const dir = await Deno.makeTempDir({ prefix: "taglib-corpus-" });
+  const dir = await mkdtemp(join(tmpdir(), "taglib-corpus-"));
   try {
     return await fn(dir);
   } finally {
-    await Deno.remove(dir, { recursive: true }).catch(() => {});
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
@@ -261,72 +271,48 @@ async function writeTemp(
   bytes: Uint8Array,
 ): Promise<string> {
   const path = resolve(dir, name);
-  await Deno.writeFile(path, bytes);
+  await writeFile(path, bytes);
   return path;
 }
 
-/** Why the tool class cannot run here, or `undefined` when it can. Three gates,
- * each with its own reason, because a missing *permission* must not read as a
- * tool that is not installed — and must never fail the file instead of skipping
- * it: `--allow-env` is what makes the PATH readable, `--allow-read` is what makes
- * the entries stat-able, and `deno task test` grants neither `--allow-run` nor
- * anything the tool class needs. */
+/** Why the tool class cannot run here, or `undefined` when it can. The gates
+ * each have their own reason, because an absent tool must not read as "not
+ * permitted". Node has no run-permission model — Deno's `--allow-run` query has
+ * no analogue — so the opt-in is `TAGLIB_CORPUS_TOOLS=1`, which the default
+ * `npx vp test` gate never sets. */
 function toolSkipReason(tools: string[]): string | undefined {
-  let path: string | undefined;
-  try {
-    path = Deno.env.get("PATH");
-  } catch {
-    return "cannot read PATH (needs --allow-env)";
+  if (process.env.TAGLIB_CORPUS_TOOLS !== "1") {
+    return "set TAGLIB_CORPUS_TOOLS=1 to run the tool corpus";
   }
+  const path = process.env.PATH;
   if (path === undefined || path.length === 0) return "PATH is unset";
-  const dirs = path.split(Deno.build.os === "windows" ? ";" : ":");
-  let unreadable = false;
+  const dirs = path.split(process.platform === "win32" ? ";" : ":");
   const missing = tools.filter((tool) => {
-    const names = Deno.build.os === "windows"
+    const names = process.platform === "win32"
       ? [`${tool}.exe`, `${tool}.cmd`]
       : [tool];
     for (const dir of dirs) {
       for (const name of names) {
         try {
-          if (Deno.statSync(resolve(dir, name)).isFile) return false;
-        } catch (error) {
-          // A stat that never got to look is not a "not found". Deno answers a
-          // missing read grant with `NotCapable`, which is *not* a
-          // `PermissionDenied`.
-          if (
-            error instanceof Deno.errors.NotCapable ||
-            error instanceof Deno.errors.PermissionDenied
-          ) {
-            unreadable = true;
-          }
+          if (statSync(resolve(dir, name)).isFile()) return false;
+        } catch {
+          // Not present in this directory; keep searching.
         }
       }
     }
     return true;
   });
   if (missing.length > 0) {
-    return unreadable
-      ? `cannot search PATH (needs --allow-read): ${missing.join(", ")}`
-      : `not on PATH: ${missing.join(", ")}`;
-  }
-  const ungranted = tools.filter((tool) => {
-    const names = Deno.build.os === "windows" ? [tool, `${tool}.exe`] : [tool];
-    return !names.some((name) =>
-      Deno.permissions.querySync({ name: "run", command: name }).state ===
-        "granted"
-    );
-  });
-  if (ungranted.length > 0) {
-    return `--allow-run not granted for: ${ungranted.join(", ")}`;
+    return `not on PATH: ${missing.join(", ")}`;
   }
   return undefined;
 }
 
 /**
- * A tool-driven case. It runs when every named tool is on PATH and this
- * invocation granted `--allow-run` for it, and otherwise skips — with the reason
- * folded into the test's name, since `Deno.TestDefinition.ignore` takes a
- * boolean and a bare "ignored" says nothing about why.
+ * A tool-driven case. It runs when every named tool is on PATH and
+ * `TAGLIB_CORPUS_TOOLS=1` is set, and otherwise skips — with the reason folded
+ * into the test's name, because the framework's `skip` takes a boolean and a
+ * bare "skipped" says nothing about why.
  */
 function toolTest(
   name: string,
@@ -334,26 +320,30 @@ function toolTest(
   fn: () => Promise<void>,
 ): void {
   const reason = toolSkipReason(tools);
-  Deno.test({
-    name: reason === undefined ? name : `${name} [skipped: ${reason}]`,
-    ignore: reason !== undefined,
+  it(
+    reason === undefined ? name : `${name} [skipped: ${reason}]`,
+    { skip: reason !== undefined },
     fn,
-  });
+  );
 }
 
 /** Runs a tool to completion; a non-zero exit fails the case, with the tool's
  * own stderr as the message. */
 async function run(tool: string, args: string[]): Promise<void> {
-  const out = await new Deno.Command(tool, {
-    args,
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
-  if (!out.success) {
+  try {
+    await execFileAsync(tool, args);
+  } catch (error) {
+    const failure = error as {
+      code?: number | string;
+      stderr?: string;
+      message?: string;
+    };
+    const detail = (failure.stderr ?? failure.message ?? "").trim().slice(
+      0,
+      300,
+    );
     throw new Error(
-      `${tool} ${args.join(" ")} exited ${out.code}: ${
-        new TextDecoder().decode(out.stderr).trim().slice(0, 300)
-      }`,
+      `${tool} ${args.join(" ")} exited ${failure.code}: ${detail}`,
     );
   }
 }
@@ -388,7 +378,7 @@ async function ffmpegRetag(
     metadata,
     out,
   ]);
-  await Deno.rename(out, path);
+  await rename(out, path);
 }
 
 /** A 180 s 440 Hz sine, written by ffmpeg: the source for the real multi-minute
@@ -421,35 +411,34 @@ async function assertDigestFollowsPayload(
   path: string,
   edit: () => Promise<void>,
 ): Promise<void> {
-  const before = await Deno.readFile(path);
+  const before = new Uint8Array(await readFile(path));
   const digestBefore = await readMediaChecksum(path);
   await assertPayloadIdentity(`${label}: before`, format, before, digestBefore);
   await edit();
-  const after = await Deno.readFile(path);
+  const after = new Uint8Array(await readFile(path));
   const digestAfter = await readMediaChecksum(path);
   await assertPayloadIdentity(`${label}: after`, format, after, digestAfter);
   const payloadSame = bytesEqual(
     payloadBytes(format, before),
     payloadBytes(format, after),
   );
-  assertEquals(
+  expect(
     digestAfter.hex === digestBefore.hex,
-    payloadSame,
     `${label}: payload ${
       payloadSame ? "unchanged" : "changed"
     } but the digest ${
       digestAfter.hex === digestBefore.hex ? "did not move" : "moved"
     }`,
-  );
-  assertEquals(digestAfter.source, digestBefore.source, `${label}: source`);
+  ).toStrictEqual(payloadSame);
+  expect(digestAfter.source, `${label}: source`)
+    .toStrictEqual(digestBefore.source);
   // The other direction, on a copy: a payload edit must move the digest.
-  const mutatedPath = await Deno.makeTempFile({ dir, prefix: "mutation-" });
-  await Deno.writeFile(mutatedPath, flipPayloadBit(after, format));
-  assertNotEquals(
+  const mutatedPath = join(dir, `mutation-${randomUUID()}`);
+  await writeFile(mutatedPath, flipPayloadBit(after, format));
+  expect(
     (await readMediaChecksum(mutatedPath)).hex,
-    digestAfter.hex,
     `${label}: a payload edit must move the digest`,
-  );
+  ).not.toStrictEqual(digestAfter.hex);
 }
 
 /** A hand-written (non-TagLib) tag replacement: the frames are copied verbatim,
@@ -461,27 +450,25 @@ async function assertHandWrittenRetagIsInvisible(
   label: string,
   sourcePath: string,
 ): Promise<void> {
-  const original = await Deno.readFile(sourcePath);
+  const original = new Uint8Array(await readFile(sourcePath));
   const before = await readMediaChecksum(sourcePath);
-  assertEquals(before.source, "audio-payload", `${label}: source`);
+  expect(before.source, `${label}: source`).toStrictEqual("audio-payload");
   const retagged = replaceId3v2(original, `Hand-written tag for ${label}`);
   const path = await writeTemp(dir, `${label}-retagged.mp3`, retagged);
   const after = await readMediaChecksum(path);
-  assert(
+  expect(
     bytesEqual(payloadBytes("MP3", original), payloadBytes("MP3", retagged)),
     `${label}: a tag-only writer must not touch the frames`,
-  );
-  assertEquals(
-    after.hex,
-    before.hex,
-    `${label}: tag-only edit moved the digest`,
-  );
-  assertEquals(after.bytesHashed, before.bytesHashed, `${label}: bytesHashed`);
-  assertNotEquals(
+  ).toBeTruthy();
+  expect(after.hex, `${label}: tag-only edit moved the digest`)
+    .toStrictEqual(before.hex);
+  expect(after.bytesHashed, `${label}: bytesHashed`)
+    .toStrictEqual(before.bytesHashed);
+  expect(
     await sha256Hex(retagged),
-    before.hex,
     `${label}: the digest must not be the whole-file hash`,
-  );
+  )
+    .not.toStrictEqual(before.hex);
 }
 
 // ---------------------------------------------------------------- always runs
@@ -489,28 +476,27 @@ async function assertHandWrittenRetagIsInvisible(
 /** The corpus's base: the repo fixture with its tag stripped. A tag is not
  * audio, so the digest must not move — the fixture's frames are what every tag
  * system below is attached to. */
-Deno.test("stripping the fixture's ID3v2 tag does not move its digest", async () => {
+it("stripping the fixture's ID3v2 tag does not move its digest", async () => {
   await withTempDir(async (dir) => {
-    const fixture = Deno.readFileSync(MP3);
+    const fixture = new Uint8Array(readFileSync(MP3));
     const bare = stripId3v2(fixture);
-    assert(bare.length < fixture.length, "fixture must carry an ID3v2 tag");
+    expect(bare.length < fixture.length, "fixture must carry an ID3v2 tag")
+      .toBeTruthy();
     const digest = await readMediaChecksum(
       await writeTemp(dir, "bare.mp3", bare),
     );
     await assertPayloadIdentity("bare", "MP3", bare, digest);
-    assertEquals(
-      digest.hex,
+    expect(digest.hex, "the tag is not payload").toStrictEqual(
       (await readMediaChecksum(MP3)).hex,
-      "the tag is not payload",
     );
   });
 });
 
 // Shape guarded: tag systems no writer in this repo produces, all of them
 // tag-only, none of them TagLib's — the classic MP3 front layouts.
-Deno.test("foreign ID3v2 variants ahead of the frames leave the MP3 digest alone", async () => {
+it("foreign ID3v2 variants ahead of the frames leave the MP3 digest alone", async () => {
   await withTempDir(async (dir) => {
-    const bare = stripId3v2(Deno.readFileSync(MP3));
+    const bare = stripId3v2(new Uint8Array(readFileSync(MP3)));
     const base = await readMediaChecksum(
       await writeTemp(dir, "bare.mp3", bare),
     );
@@ -539,13 +525,15 @@ Deno.test("foreign ID3v2 variants ahead of the frames leave the MP3 digest alone
         await writeTemp(dir, `${name}.mp3`, bytes),
       );
       await assertPayloadIdentity(label, "MP3", bytes, digest);
-      assertEquals(digest.hex, base.hex, `${label}: the tag is not payload`);
-      assertEquals(digest.bytesHashed, bare.length, `${label}: bytesHashed`);
-      assertNotEquals(
+      expect(digest.hex, `${label}: the tag is not payload`)
+        .toStrictEqual(base.hex);
+      expect(digest.bytesHashed, `${label}: bytesHashed`)
+        .toStrictEqual(bare.length);
+      expect(
         await sha256Hex(bytes),
-        digest.hex,
         `${label}: the digest must not be the whole-file hash`,
-      );
+      )
+        .not.toStrictEqual(digest.hex);
     }
     // The half that keeps the invariance from being vacuous: the same shape with
     // one payload byte flipped must move.
@@ -553,19 +541,16 @@ Deno.test("foreign ID3v2 variants ahead of the frames leave the MP3 digest alone
     const mutated = await readMediaChecksum(
       await writeTemp(dir, "mutated.mp3", flipPayloadBit(tagged, "MP3")),
     );
-    assertNotEquals(
-      mutated.hex,
-      base.hex,
-      "a payload edit must move the digest",
-    );
+    expect(mutated.hex, "a payload edit must move the digest")
+      .not.toStrictEqual(base.hex);
   });
 });
 
 // Shape guarded: the MP3 tail — Lyrics3v2 in front of ID3v1, and a footer-only
 // APEv2 in front of ID3v1. Both are appended, so the payload ends before them.
-Deno.test("appended tag systems (Lyrics3v2, APEv2, ID3v1) leave the digest alone", async () => {
+it("appended tag systems (Lyrics3v2, APEv2, ID3v1) leave the digest alone", async () => {
   await withTempDir(async (dir) => {
-    const bare = stripId3v2(Deno.readFileSync(MP3));
+    const bare = stripId3v2(new Uint8Array(readFileSync(MP3)));
     const base = await readMediaChecksum(
       await writeTemp(dir, "bare.mp3", bare),
     );
@@ -597,8 +582,10 @@ Deno.test("appended tag systems (Lyrics3v2, APEv2, ID3v1) leave the digest alone
         await writeTemp(dir, `${name}.mp3`, bytes),
       );
       await assertPayloadIdentity(label, "MP3", bytes, digest);
-      assertEquals(digest.hex, base.hex, `${label}: the tail is not payload`);
-      assertEquals(digest.bytesHashed, bare.length, `${label}: bytesHashed`);
+      expect(digest.hex, `${label}: the tail is not payload`)
+        .toStrictEqual(base.hex);
+      expect(digest.bytesHashed, `${label}: bytesHashed`)
+        .toStrictEqual(bare.length);
     }
   });
 });
@@ -606,9 +593,9 @@ Deno.test("appended tag systems (Lyrics3v2, APEv2, ID3v1) leave the digest alone
 // Shape guarded: an APEv2 tag 4 KiB *ahead* of the frames. ID3v2 is the only
 // thing the walk skips by name, so the first frame is found by the bounded scan
 // — which is what makes this one reachable, and the 70 KiB sibling below not.
-Deno.test("a 4 KiB APEv2 tag in front of the frames is crossed by the scan", async () => {
+it("a 4 KiB APEv2 tag in front of the frames is crossed by the scan", async () => {
   await withTempDir(async (dir) => {
-    const bare = stripId3v2(Deno.readFileSync(MP3));
+    const bare = stripId3v2(new Uint8Array(readFileSync(MP3)));
     const base = await readMediaChecksum(
       await writeTemp(dir, "bare.mp3", bare),
     );
@@ -617,17 +604,12 @@ Deno.test("a 4 KiB APEv2 tag in front of the frames is crossed by the scan", asy
       await writeTemp(dir, "front-4k.mp3", bytes),
     );
     await assertPayloadIdentity("4 KiB front tag", "MP3", bytes, digest);
-    assertEquals(digest.source, "audio-payload", "4 KiB front tag: source");
-    assertEquals(
-      digest.hex,
-      base.hex,
-      "4 KiB front tag: the tag is not payload",
-    );
-    assertEquals(
-      digest.bytesHashed,
-      bare.length,
-      "4 KiB front tag: bytesHashed",
-    );
+    expect(digest.source, "4 KiB front tag: source")
+      .toStrictEqual("audio-payload");
+    expect(digest.hex, "4 KiB front tag: the tag is not payload")
+      .toStrictEqual(base.hex);
+    expect(digest.bytesHashed, "4 KiB front tag: bytesHashed")
+      .toStrictEqual(bare.length);
   });
 });
 
@@ -635,20 +617,19 @@ Deno.test("a 4 KiB APEv2 tag in front of the frames is crossed by the scan", asy
 // in front puts the first frame past it, so the walk gives up and the answer is
 // the whole file — the honest, weaker guarantee, still reported as such. Pinned
 // here because the bound is a deliberate choice, not an accident.
-Deno.test("a 70 KiB APEv2 tag in front falls back to the whole file", async () => {
+it("a 70 KiB APEv2 tag in front falls back to the whole file", async () => {
   await withTempDir(async (dir) => {
-    const bare = stripId3v2(Deno.readFileSync(MP3));
+    const bare = stripId3v2(new Uint8Array(readFileSync(MP3)));
     const base = await readMediaChecksum(
       await writeTemp(dir, "bare.mp3", bare),
     );
     const bytes = concat(apev2Blob(70_000), bare);
     const path = await writeTemp(dir, "front-70k.mp3", bytes);
     await assertWholeFileFallback(path, "70 KiB front tag");
-    assertNotEquals(
+    expect(
       (await readMediaChecksum(path)).hex,
-      base.hex,
       "70 KiB front tag: the fallback is weaker, and the test must show it",
-    );
+    ).not.toStrictEqual(base.hex);
   });
 });
 
@@ -659,10 +640,11 @@ Deno.test("a 70 KiB APEv2 tag in front falls back to the whole file", async () =
 // the metadata chain — the padding would be digested, and the two would diverge.
 // The limit of that inference: a range that swallowed only bytes the two files
 // share (the `fLaC` marker and STREAMINFO) would still pass.
-Deno.test("two flac files that differ only in padding hash the same payload", async () => {
+it("two flac files that differ only in padding hash the same payload", async () => {
   await withTempDir(async (dir) => {
-    const flac = Deno.readFileSync(FLAC);
-    assertEquals(flac[4] & 0x7f, 0, "fixture must lead with STREAMINFO");
+    const flac = new Uint8Array(readFileSync(FLAC));
+    expect(flac[4] & 0x7f, "fixture must lead with STREAMINFO")
+      .toStrictEqual(0);
     const small = flacWithPadding(flac, 4096);
     const large = flacWithPadding(flac, 65_536);
     const smallPath = await writeTemp(dir, "pad-4k.flac", small);
@@ -671,30 +653,25 @@ Deno.test("two flac files that differ only in padding hash the same payload", as
     const b = await readMediaChecksum(largePath);
     await assertPayloadIdentity("4 KiB padding", "FLAC", small, a);
     await assertPayloadIdentity("64 KiB padding", "FLAC", large, b);
-    assertEquals(
+    expect(
       b.hex,
-      a.hex,
       "the frames are the same bytes, so the payload digests must be equal",
-    );
-    assertEquals(
-      b.bytesHashed,
-      a.bytesHashed,
-      "bytesHashed must be the frames",
-    );
-    assertNotEquals(
+    ).toStrictEqual(a.hex);
+    expect(b.bytesHashed, "bytesHashed must be the frames")
+      .toStrictEqual(a.bytesHashed);
+    expect(
       await sha256Hex(large),
-      await sha256Hex(small),
       "the two files must differ outside the payload",
-    );
+    ).not.toStrictEqual(await sha256Hex(small));
   });
 });
 
 // Shape guarded: a filler atom no TagLib writer emits, spliced before the first
 // `mdat` — ffmpeg's own +faststart output carries one, so this is a real shape,
 // and the mdat *contents* are untouched: same payload, same digest.
-Deno.test("an MP4 `free` atom before the first mdat leaves the digest alone", async () => {
+it("an MP4 `free` atom before the first mdat leaves the digest alone", async () => {
   await withTempDir(async (dir) => {
-    const bytes = Deno.readFileSync(M4A);
+    const bytes = new Uint8Array(readFileSync(M4A));
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     let at = 0;
     let mdatAt = -1;
@@ -708,7 +685,7 @@ Deno.test("an MP4 `free` atom before the first mdat leaves the digest alone", as
       if (size < 8) break;
       at += size;
     }
-    assert(mdatAt > 0, "fixture has no top-level mdat");
+    expect(mdatAt > 0, "fixture has no top-level mdat").toBeTruthy();
     const free = new Uint8Array(16);
     new DataView(free.buffer).setUint32(0, 16, false);
     free.set(new TextEncoder().encode("free"), 4);
@@ -721,21 +698,17 @@ Deno.test("an MP4 `free` atom before the first mdat leaves the digest alone", as
     const before = await readMediaChecksum(M4A);
     const after = await readMediaChecksum(path);
     await assertPayloadIdentity("free atom", "MP4", spliced, after);
-    assert(
+    expect(
       bytesEqual(payloadBytes("MP4", bytes), payloadBytes("MP4", spliced)),
       "free atom: the mdat contents must be untouched",
-    );
-    assertEquals(after.hex, before.hex, "free atom: digest");
-    assertEquals(
-      after.bytesHashed,
-      before.bytesHashed,
-      "free atom: bytesHashed",
-    );
-    assertNotEquals(
+    ).toBeTruthy();
+    expect(after.hex, "free atom: digest").toStrictEqual(before.hex);
+    expect(after.bytesHashed, "free atom: bytesHashed")
+      .toStrictEqual(before.bytesHashed);
+    expect(
       await sha256Hex(spliced),
-      before.hex,
       "free atom: the file really changed, so this is not a no-op case",
-    );
+    ).not.toStrictEqual(before.hex);
   });
 });
 
@@ -743,9 +716,9 @@ Deno.test("an MP4 `free` atom before the first mdat leaves the digest alone", as
 // BWF fixture — the chunk list, not a name list, is what keeps it out of the
 // payload. The flip offset is asserted to be inside that chunk's declared
 // payload, so the case cannot pass by mutating the next chunk's header instead.
-Deno.test("a byte flipped inside a WAV's bext/iXML chunk leaves the digest alone", async () => {
+it("a byte flipped inside a WAV's bext/iXML chunk leaves the digest alone", async () => {
   await withTempDir(async (dir) => {
-    const bytes = Deno.readFileSync(BEXT_WAV);
+    const bytes = new Uint8Array(readFileSync(BEXT_WAV));
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     let at = 12;
     let chunkAt = -1;
@@ -762,16 +735,16 @@ Deno.test("a byte flipped inside a WAV's bext/iXML chunk leaves the digest alone
       }
       at += 8 + size + (size % 2);
     }
-    assert(chunkAt > 0, "fixture carries no bext/iXML chunk");
+    expect(chunkAt > 0, "fixture carries no bext/iXML chunk").toBeTruthy();
     // Five bytes into the payload: inside the chunk's 256-byte Description field
     // (the time reference is at payload offset 338) and inside the size the
     // chunk declares. A shorter chunk means this case is mutating something
     // other than what it claims (`iXML` is text, so it clears this by a wide
     // margin), and that must fail rather than pass silently.
-    assert(
+    expect(
       chunkSize > 5,
       `${chunkId} chunk declares ${chunkSize} bytes: too small to mutate inside it`,
-    );
+    ).toBeTruthy();
     const mutated = bytes.slice();
     mutated[chunkAt + 4] ^= 0xff;
     const before = await readMediaChecksum(BEXT_WAV);
@@ -779,28 +752,31 @@ Deno.test("a byte flipped inside a WAV's bext/iXML chunk leaves the digest alone
       await writeTemp(dir, "bext-mutated.wav", mutated),
     );
     await assertPayloadIdentity("bext flip", "WAV", mutated, after);
-    assertEquals(after.source, "audio-payload", "bext flip: source");
-    assertEquals(after.hex, before.hex, "bext flip: digest");
-    assertNotEquals(
+    expect(after.source, "bext flip: source").toStrictEqual("audio-payload");
+    expect(after.hex, "bext flip: digest").toStrictEqual(before.hex);
+    expect(
       await sha256Hex(mutated),
-      before.hex,
       "bext flip: the file really changed, so this is not a no-op case",
-    );
+    ).not.toStrictEqual(before.hex);
   });
 });
 
 // Shape guarded: a format with no payload rule. The promise is the weaker one,
 // stated rather than implied: the whole file, and `hex` equals `sha256(file)`.
-Deno.test("an Ogg file answers the whole file and says so", async () => {
+it("an Ogg file answers the whole file and says so", async () => {
   await assertWholeFileFallback(OGG, "ogg");
 });
 
 // Shape guarded: the input form must not change the answer — the digest belongs
 // to the file, not to how it was handed over. Small file, so nothing splices:
 // this is the contract itself, on a file that carries a tag.
-Deno.test("path, buffer and File describe the same file", async () => {
+it("path, buffer and File describe the same file", async () => {
   await withTempDir(async (dir) => {
-    const path = await writeTemp(dir, "forms.mp3", Deno.readFileSync(MP3));
+    const path = await writeTemp(
+      dir,
+      "forms.mp3",
+      new Uint8Array(readFileSync(MP3)),
+    );
     await assertInputFormsAgree(path, "MP3", "forms mp3");
   });
 });
@@ -1071,20 +1047,19 @@ toolTest("ffmpeg's mp2 output has no tag, so the whole file is payload", [
       "mp2",
       path,
     ]);
-    const bytes = await Deno.readFile(path);
+    const bytes = new Uint8Array(await readFile(path));
     const digest = await readMediaChecksum(path);
-    assertEquals(digest.source, "audio-payload", "mp2: source");
+    expect(digest.source, "mp2: source").toStrictEqual("audio-payload");
     await assertPayloadIdentity("mp2", "MP3", bytes, digest);
     const mutated = await writeTemp(
       dir,
       "fb-mutated.mp2",
       flipPayloadBit(bytes, "MP3"),
     );
-    assertNotEquals(
+    expect(
       (await readMediaChecksum(mutated)).hex,
-      digest.hex,
       "mp2: a payload edit must move the digest",
-    );
+    ).not.toStrictEqual(digest.hex);
   });
 });
 

@@ -2,12 +2,12 @@
 // root disc-folder.ts entry must export the pure grammar. The Wasm-free
 // property itself is enforced by the CI metafile guard in the bundle job —
 // this test defends the export surface.
-import { assertEquals } from "@std/assert";
+import { expect, it } from "vite-plus/test";
 import { discFolderInfo, groupAlbums } from "../disc-folder.ts";
 
-Deno.test("disc-folder subpath exports the pure grammar", () => {
-  assertEquals(typeof discFolderInfo, "function");
-  assertEquals(typeof groupAlbums, "function");
-  assertEquals(discFolderInfo("CD1")?.number, 1);
-  assertEquals(discFolderInfo("Greatest Hits"), undefined);
+it("disc-folder subpath exports the pure grammar", () => {
+  expect(typeof discFolderInfo).toStrictEqual("function");
+  expect(typeof groupAlbums).toStrictEqual("function");
+  expect(discFolderInfo("CD1")?.number).toStrictEqual(1);
+  expect(discFolderInfo("Greatest Hits")).toStrictEqual(undefined);
 });

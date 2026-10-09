@@ -1,13 +1,13 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview Cross-backend integration tests for BWF `bext` + iXML on WAV
  * and FLAC. Fixtures: tests/test-files/{wav,flac}/bext-ixml.* (regenerate with
  * tests/test-files/_gen/make-bwf-fixtures.sh --regen).
  */
 
-import { assertEquals, assertThrows } from "@std/assert";
-import { join } from "@std/path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { expect, it } from "vite-plus/test";
+import { expectThrows } from "./_assert-helpers.ts";
 import { TagLib } from "../src/taglib.ts";
 import { UnsupportedFormatError } from "../src/errors.ts";
 import type { BroadcastAudioExtension } from "../index.ts";
@@ -40,7 +40,7 @@ const SAMPLE_BEXT: BroadcastAudioExtension = {
 
 async function open(backend: typeof BACKENDS[number], path: string) {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
-  return taglib.open(await Deno.readFile(path));
+  return taglib.open(new Uint8Array(await readFile(path)));
 }
 
 async function reopened(
@@ -49,7 +49,7 @@ async function reopened(
   mutate: (f: Awaited<ReturnType<typeof open>>) => void,
 ) {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
-  const f = await taglib.open(await Deno.readFile(path));
+  const f = await taglib.open(new Uint8Array(await readFile(path)));
   let out: Uint8Array;
   try {
     mutate(f);
@@ -68,67 +68,71 @@ for (const backend of BACKENDS) {
   for (const fmt of ["wav", "flac"] as const) {
     const F = fmt.toUpperCase();
 
-    Deno.test(`[${backend}] ${F}: reads bext + iXML from a fixture`, async () => {
+    it(`[${backend}] ${F}: reads bext + iXML from a fixture`, async () => {
       const f = await open(backend, FILES[fmt]);
       try {
         const b = f.getBext()!;
-        assertEquals(b.description, "Test BWF");
-        assertEquals(b.version, 2);
-        assertEquals(b.loudnessValueDb, -14);
-        assertEquals(typeof f.getIxml(), "string");
-        assertEquals((f.getIxml() ?? "").includes("IXML_VERSION"), true);
-        assertEquals((f.getBextData()?.length ?? 0) >= 602, true);
+        expect(b.description).toStrictEqual("Test BWF");
+        expect(b.version).toStrictEqual(2);
+        expect(b.loudnessValueDb).toStrictEqual(-14);
+        expect(typeof f.getIxml()).toStrictEqual("string");
+        expect((f.getIxml() ?? "").includes("IXML_VERSION")).toStrictEqual(
+          true,
+        );
+        expect((f.getBextData()?.length ?? 0) >= 602).toStrictEqual(true);
       } finally {
         f.dispose();
       }
     });
 
-    Deno.test(`[${backend}] ${F}: setBext round-trips through save`, async () => {
+    it(`[${backend}] ${F}: setBext round-trips through save`, async () => {
       const f = await reopened(
         backend,
         plainOf(fmt),
         (x) => x.setBext(SAMPLE_BEXT),
       );
       try {
-        assertEquals(f.getBext(), SAMPLE_BEXT);
+        expect(f.getBext()).toStrictEqual(SAMPLE_BEXT);
       } finally {
         f.dispose();
       }
     });
 
-    Deno.test(`[${backend}] ${F}: setBextData(null) removes the chunk`, async () => {
+    it(`[${backend}] ${F}: setBextData(null) removes the chunk`, async () => {
       const f = await reopened(backend, FILES[fmt], (x) => x.setBextData(null));
       try {
-        assertEquals(f.getBextData(), undefined);
-        assertEquals(f.getBext(), undefined);
+        expect(f.getBextData()).toStrictEqual(undefined);
+        expect(f.getBext()).toStrictEqual(undefined);
       } finally {
         f.dispose();
       }
     });
 
-    Deno.test(`[${backend}] ${F}: setIxml(null) removes the chunk`, async () => {
+    it(`[${backend}] ${F}: setIxml(null) removes the chunk`, async () => {
       const f = await reopened(backend, FILES[fmt], (x) => x.setIxml(null));
       try {
-        assertEquals(f.getIxml(), undefined);
+        expect(f.getIxml()).toStrictEqual(undefined);
       } finally {
         f.dispose();
       }
     });
 
-    Deno.test(`[${backend}] ${F}: a plain file has no bext/iXML`, async () => {
+    it(`[${backend}] ${F}: a plain file has no bext/iXML`, async () => {
       const f = await open(backend, plainOf(fmt));
       try {
-        assertEquals(f.getBext(), undefined);
-        assertEquals(f.getBextData(), undefined);
-        assertEquals(f.getIxml(), undefined);
+        expect(f.getBext()).toStrictEqual(undefined);
+        expect(f.getBextData()).toStrictEqual(undefined);
+        expect(f.getIxml()).toStrictEqual(undefined);
       } finally {
         f.dispose();
       }
     });
 
-    Deno.test(`[${backend}] ${F}: write→read→write yields identical bextData`, async () => {
+    it(`[${backend}] ${F}: write→read→write yields identical bextData`, async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const f1 = await taglib.open(await Deno.readFile(plainOf(fmt)));
+      const f1 = await taglib.open(
+        new Uint8Array(await readFile(plainOf(fmt))),
+      );
       f1.setBext(SAMPLE_BEXT);
       f1.save();
       const buf1 = f1.getFileBuffer();
@@ -141,35 +145,35 @@ for (const backend of BACKENDS) {
       f2.dispose();
       const f3 = await taglib.open(buf2);
       try {
-        assertEquals(f3.getBextData(), data2);
+        expect(f3.getBextData()).toStrictEqual(data2);
       } finally {
         f3.dispose();
       }
     });
 
-    Deno.test(`[${backend}] ${F}: reading bext does not leak into properties()`, async () => {
+    it(`[${backend}] ${F}: reading bext does not leak into properties()`, async () => {
       const f = await open(backend, FILES[fmt]);
       try {
         const props = f.properties();
-        assertEquals("bextData" in props, false);
-        assertEquals("ixml" in props, false);
-        assertEquals("BEXTDATA" in props, false);
-        assertEquals("IXML" in props, false);
+        expect("bextData" in props).toStrictEqual(false);
+        expect("ixml" in props).toStrictEqual(false);
+        expect("BEXTDATA" in props).toStrictEqual(false);
+        expect("IXML" in props).toStrictEqual(false);
       } finally {
         f.dispose();
       }
     });
   }
 
-  Deno.test(`[${backend}] setBext/setBextData/setIxml throw on MP3`, async () => {
+  it(`[${backend}] setBext/setBextData/setIxml throw on MP3`, async () => {
     const f = await open(backend, FILES.mp3);
     try {
-      assertThrows(() => f.setBext(SAMPLE_BEXT), UnsupportedFormatError);
-      assertThrows(
+      expectThrows(() => f.setBext(SAMPLE_BEXT), UnsupportedFormatError);
+      expectThrows(
         () => f.setBextData(new Uint8Array(602)),
         UnsupportedFormatError,
       );
-      assertThrows(() => f.setIxml("<x/>"), UnsupportedFormatError);
+      expectThrows(() => f.setIxml("<x/>"), UnsupportedFormatError);
     } finally {
       f.dispose();
     }

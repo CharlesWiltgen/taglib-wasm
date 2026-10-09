@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * Browser entry-point contract (taglib-kgni).
  *
@@ -30,7 +28,8 @@
  *     edges `scripts/build-js.mjs`'s browserRedirectPlugin rewrites.
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { readFile, stat } from "node:fs/promises";
+import { expect, it } from "vite-plus/test";
 // Namespace imports so the export surface itself is the observable: the two
 // barrels are compared name by name, not called.
 import * as nodeEntry from "../index.ts";
@@ -165,7 +164,7 @@ async function declaredSurface(
 ): Promise<DeclaredSurface> {
   if (seen.has(path)) return { values: [], types: [] };
   seen.add(path);
-  const source = stripComments(await Deno.readTextFile(new URL(path, ROOT)));
+  const source = stripComments(await readFile(new URL(path, ROOT), "utf8"));
   const values = new Set<string>();
   const types = new Set<string>();
 
@@ -299,7 +298,7 @@ async function runtimeGraph(entry: string): Promise<RuntimeGraph> {
     modules.add(file);
     for (
       const spec of runtimeSpecifiers(
-        await Deno.readTextFile(new URL(file, ROOT)),
+        await readFile(new URL(file, ROOT), "utf8"),
       )
     ) {
       if (!spec.startsWith(".")) {
@@ -324,89 +323,82 @@ async function runtimeGraph(entry: string): Promise<RuntimeGraph> {
 // Tests
 // ---------------------------------------------------------------------------
 
-Deno.test("browser barrel exports every browser-capable Node export, and nothing else", async () => {
+it("browser barrel exports every browser-capable Node export, and nothing else", async () => {
   const node = Object.keys(nodeEntry).sort();
   const browser = Object.keys(browserEntry).sort();
 
   const missing = NODE_ONLY.filter((name) => browser.includes(name));
-  assertEquals(
+  expect(
     missing,
-    [],
     "Node-only exports must not be in the browser barrel — they would throw " +
       "or pull a node-only graph at runtime",
-  );
+  ).toStrictEqual([]);
 
   const absent = BROWSER_SAFE.filter((name) => !browser.includes(name));
-  assertEquals(
+  expect(
     absent,
-    [],
     "browser-capable exports are missing from index.browser.ts",
-  );
+  ).toStrictEqual([]);
 
-  assertEquals(
+  expect(
     node.filter((name) => !browser.includes(name)).sort(),
-    NODE_ONLY,
     "index.ts exports a runtime name that is neither browser-safe nor " +
       "listed as node-only in CLASSIFICATION",
-  );
-  assertEquals(
+  ).toStrictEqual(NODE_ONLY);
+  expect(
     browser.filter((name) => !node.includes(name)),
-    [],
     "index.browser.ts exports a runtime name index.ts does not",
-  );
+  ).toStrictEqual([]);
 
   // The three additions must be the real implementations, not stubs: each is
   // pure, so they run here without a Wasm instance.
-  assertEquals(typeof browserEntry.bwf.decodeBext, "function");
-  assertEquals(typeof browserEntry.bwf.encodeBext, "function");
-  assertEquals(typeof browserEntry.groupAlbums, "function");
-  assertEquals(browserEntry.discFolderInfo("CD1")?.number, 1);
-  assertEquals(browserEntry.discFolderInfo("Greatest Hits"), undefined);
-  assertEquals(typeof browserEntry.isDenoCompiled(), "boolean");
+  expect(typeof browserEntry.bwf.decodeBext).toStrictEqual("function");
+  expect(typeof browserEntry.bwf.encodeBext).toStrictEqual("function");
+  expect(typeof browserEntry.groupAlbums).toStrictEqual("function");
+  expect(browserEntry.discFolderInfo("CD1")?.number).toStrictEqual(1);
+  expect(browserEntry.discFolderInfo("Greatest Hits")).toStrictEqual(undefined);
+  expect(typeof browserEntry.isDenoCompiled()).toStrictEqual("boolean");
 });
 
-Deno.test("the browser barrel's declared surface matches the shipped runtime surface", async () => {
+it("the browser barrel's declared surface matches the shipped runtime surface", async () => {
   const browser = await declaredSurface("index.browser.ts");
-  assertEquals(
+  expect(
     browser.values,
-    Object.keys(browserEntry).sort(),
     "the parser and the live module disagree — the surface check below would " +
       "be policing text rather than behavior",
-  );
+  ).toStrictEqual(Object.keys(browserEntry).sort());
 });
 
-Deno.test("browser and Node barrels declare the same type surface", async () => {
+it("browser and Node barrels declare the same type surface", async () => {
   const node = await declaredSurface("index.ts");
   const browser = await declaredSurface("index.browser.ts");
 
-  assert(
+  expect(
     node.types.length >= 20,
     `expected the parser to find the Node barrel's type-only exports, saw ${node.types.length}`,
-  );
-  assertEquals(
+  ).toBeTruthy();
+  expect(
     browser.types,
-    node.types,
     "types describe data, which crosses networks: every type-only export of " +
       "index.ts belongs in index.browser.ts too",
-  );
+  ).toStrictEqual(node.types);
 });
 
-Deno.test("every browser-variant entry declares the same surface as its Node twin", async () => {
+it("every browser-variant entry declares the same surface as its Node twin", async () => {
   for (const name of ["simple", "web"]) {
     const node = await declaredSurface(`${name}.ts`);
     const browser = await declaredSurface(`${name}.browser.ts`);
-    assertEquals(
+    expect(
       browser.values,
-      node.values,
       `${name}.browser.ts must export what ${name}.ts does`,
-    );
-    assertEquals(browser.types, node.types);
+    ).toStrictEqual(node.values);
+    expect(browser.types).toStrictEqual(node.types);
   }
 });
 
-Deno.test("browser export conditions point at sources the build produces, and only the declared exceptions lack one", async () => {
+it("browser export conditions point at sources the build produces, and only the declared exceptions lack one", async () => {
   const pkg = JSON.parse(
-    await Deno.readTextFile(new URL("package.json", ROOT)),
+    await readFile(new URL("package.json", ROOT), "utf8"),
   ) as {
     exports: Record<
       string,
@@ -422,39 +414,44 @@ Deno.test("browser export conditions point at sources the build produces, and on
     }
     // A browser condition needs per-condition `types`: that is what makes a
     // Node-only import a compile error instead of a bundler error.
-    assert(
-      typeof target.browser.types === "string" &&
-        typeof target.browser.default === "string",
-      `${subpath} declares a browser condition without both types and default`,
-    );
-    for (const distPath of [target.browser.types, target.browser.default]) {
+    const browserCondition = target.browser;
+    if (
+      typeof browserCondition.types !== "string" ||
+      typeof browserCondition.default !== "string"
+    ) {
+      throw new Error(
+        `${subpath} declares a browser condition without both types and default`,
+      );
+    }
+    for (
+      const distPath of [browserCondition.types, browserCondition.default]
+    ) {
       const source =
         distPath.replace(/^\.\/dist\//, "").replace(/(?:\.d)?\.ts$|\.js$/, "") +
         ".ts";
       let built = true;
       try {
-        await Deno.stat(new URL(source, ROOT));
+        await stat(new URL(source, ROOT));
       } catch {
         built = false;
       }
-      assert(
+      expect(
         built,
         `${subpath}'s browser condition ships ${distPath}, built from ${source}, which the repository does not have`,
-      );
+      ).toBeTruthy();
     }
   }
 
-  assertEquals(
+  expect(
     withoutCondition.sort(),
-    NO_BROWSER_CONDITION,
     "every subpath is a browser decision: give it a browser condition with a " +
       "browser-targeted build, or add it to NO_BROWSER_CONDITION with a reason",
-  );
+  ).toStrictEqual(NO_BROWSER_CONDITION);
 });
 
-Deno.test("browser entries reach no Node-only module and no undeclared dependency", async () => {
+it("browser entries reach no Node-only module and no undeclared dependency", async () => {
   const pkg = JSON.parse(
-    await Deno.readTextFile(new URL("package.json", ROOT)),
+    await readFile(new URL("package.json", ROOT), "utf8"),
   ) as { dependencies: Record<string, string> };
   const declared = new Set(Object.keys(pkg.dependencies));
 
@@ -462,27 +459,25 @@ Deno.test("browser entries reach no Node-only module and no undeclared dependenc
     const { modules, bareSpecifiers } = await runtimeGraph(entry);
 
     const stray = modules.filter((m) => NODE_ONLY_MODULES.test(m));
-    assertEquals(
+    expect(
       stray,
-      [],
       `${entry} reaches Node-only modules`,
-    );
+    ).toStrictEqual([]);
 
     const builtins = [...bareSpecifiers].filter((s) => !declared.has(s));
-    assertEquals(
+    expect(
       builtins,
-      [],
       `${entry} imports ${
         builtins.join(", ")
       } — a runtime-provided specifier ` +
         `cannot be resolved by a browser bundler`,
-    );
+    ).toStrictEqual([]);
 
-    assert(
+    expect(
       modules.includes(LOADER_REDIRECT.to),
       `${entry} must reach ${LOADER_REDIRECT.to} (the Emscripten-only loader), ` +
         `which is what keeps taglib-wasi.wasm out of a browser bundle`,
-    );
+    ).toBeTruthy();
   }
 
   const indexGraph = await runtimeGraph("index.browser.ts");
@@ -494,10 +489,10 @@ Deno.test("browser entries reach no Node-only module and no undeclared dependenc
       "src/runtime/deno-detect.ts",
     ]
   ) {
-    assert(
+    expect(
       indexGraph.modules.includes(leaf),
       `${leaf} is classified browser-safe, so the browser bundle must carry ` +
         `it as a runtime module (a type-only re-export would not)`,
-    );
+    ).toBeTruthy();
   }
 });
