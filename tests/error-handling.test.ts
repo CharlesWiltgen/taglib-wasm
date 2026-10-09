@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import { TagLib } from "../src/taglib.ts";
+import { _resetPlatformIO, getPlatformIO } from "../src/runtime/platform-io.ts";
 import {
   type applyTags,
   readProperties,
@@ -12,6 +13,7 @@ import {
   setBufferMode,
 } from "../src/simple/index.ts";
 import {
+  EnvironmentError,
   FileOperationError,
   InvalidFormatError,
   type isFileOperationError,
@@ -93,11 +95,11 @@ describe("Error Handling", () => {
 
   it("environment errors indicate missing features", async () => {
     // Hiding every runtime global simulates an unsupported embedder: the
-    // detector finds no Deno/Bun/Node and returns the browser-shaped tail
-    // (src/runtime/detector.ts), so readTags must reject rather than
-    // pretend the runtime is usable. Measured: with all three hidden,
-    // detectRuntime() === "browser", getPlatformIO() throws EnvironmentError,
-    // and readTags("test.mp3") throws (RuntimeError: aborted wasm load).
+    // detector falls through to the browser-shaped tail, so filesystem access
+    // must throw EnvironmentError and readTags must reject. With the globals
+    // intact (and the memoized platform IO reset) the same fixture read
+    // succeeds, so these assertions can fail. Measured: readTags on the hidden
+    // path rejects while intact it resolves.
     const originalDeno = (globalThis as Record<string, unknown>).Deno;
     const originalProcess = (globalThis as Record<string, unknown>).process;
     const originalBun = (globalThis as Record<string, unknown>).Bun;
@@ -106,9 +108,17 @@ describe("Error Handling", () => {
       delete (globalThis as Record<string, unknown>).Deno;
       delete (globalThis as Record<string, unknown>).process;
       delete (globalThis as Record<string, unknown>).Bun;
+      // A prior case memoizes the Node IO; drop it so detection runs again.
+      _resetPlatformIO();
+
+      expectThrows(
+        () => getPlatformIO(),
+        EnvironmentError,
+        "does not support filesystem operations",
+      );
 
       await expectRejects(
-        async () => await readTags("test.mp3"),
+        async () => await readTags("tests/test-files/mp3/kiss-snippet.mp3"),
         Error,
       );
     } finally {
@@ -121,6 +131,7 @@ describe("Error Handling", () => {
       if (originalBun) {
         (globalThis as Record<string, unknown>).Bun = originalBun;
       }
+      _resetPlatformIO();
     }
   });
 
