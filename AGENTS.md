@@ -469,9 +469,15 @@ spelling wins when a file carries both; writes through setProperties normalize a
 try {
   using audioFile = await taglib.open(buffer);
 } catch (error) {
-  if (isUnsupportedFormatError(error)) { /* error.format */ }
-  if (isFileOperationError(error)) { /* error.operation, error.path */ }
-  if (isTagLibError(error)) { /* base error type */ }
+  if (isUnsupportedFormatError(error)) {
+    /* error.format */
+  }
+  if (isFileOperationError(error)) {
+    /* error.operation, error.path */
+  }
+  if (isTagLibError(error)) {
+    /* base error type */
+  }
 }
 ```
 
@@ -593,13 +599,34 @@ cd TagLib-Wasm
 
 ### Build & Test
 
+`npm` is the package manager. `vp` is Vite+'s task runner, **not** a package
+manager, so keep using `npm ci` / `npm install` — and run `npm ci` first,
+because `vp` loads `vite.config.ts` strictly and aborts without the `vite-plus`
+devDependency installed.
+
 ```bash
-deno task test              # Run the test suite (fast inner loop)
-deno task check:all         # Full pre-push gate: fmt, lint, typecheck, tests, build:ts
-deno task build             # Build TypeScript + both Wasm backends
-deno task build:wasm        # Rebuild both Wasm backends
-deno task build:wasm:wasi   # Rebuild WASI Wasm only (requires WASI SDK 34)
+npm ci                    # Install dependencies (required before any `vp` command)
+npx vp test               # Tests (Vitest): 94 files across tests/ and src/
+deno task test            # The four Deno-only test files (see below)
+npx vp fmt --check        # Format gate (`npx vp fmt` rewrites in place)
+npx vp lint --type-aware  # Lint gate (oxlint with the type-checked rules)
+npx tsc --noEmit -p tsconfig.check.json   # Type gate (includes tests/)
+npm run build:wasm        # Rebuild both Wasm backends
+npm run build:wasm:wasi   # Rebuild WASI Wasm only (requires WASI SDK 34)
 ```
+
+`npx vp test` is a **Vite+ built-in**, not the npm `test` script; use `vpr test`
+to run the npm script.
+
+**Two test gates.** `npx vp test` covers the 94 migrated files. Four files test
+Deno-only APIs and still run under `deno task test`:
+`tests/deno-detect.test.ts`, `tests/deno-compat-patches.test.ts`,
+`tests/wasi-fs-provider.test.ts`, `tests/offline-support.test.ts`. Run both.
+
+**Deno** is no longer the dev toolchain for tests, formatting, linting or type
+checking. It remains required for those four test files, the TypeScript bundle
+scripts (`scripts/build-js.mjs`, `scripts/postbuild.mjs`), and JSR publishing
+(`deno publish`) until phases 2-3 retire it.
 
 ### Architecture
 

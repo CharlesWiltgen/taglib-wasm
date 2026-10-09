@@ -12,8 +12,9 @@ software together.
 
 ### Prerequisites
 
-- **Deno 2.x** - Primary development runtime
-- **Node.js 24+** - For npm compatibility testing (Active LTS; matches the CI matrix)
+- **Node.js 24+** - Primary development runtime (Active LTS; matches the CI matrix)
+- **npm 11+** - The package manager; run `npm ci` before any `vp` command
+- **Deno 2.x** - Still required for the four Deno-only test files, the TypeScript bundle scripts, and JSR publishing (retired in phases 2-3)
 - **Emscripten SDK** - For building the Emscripten Wasm backend
 - **WASI SDK 34** - For building the WASI Wasm backend (optional for TS-only changes)
 - **Git** - With submodule support
@@ -44,10 +45,10 @@ software together.
 4. **Build the project**
 
    ```bash
-   deno task build                 # Build TypeScript + both Wasm backends
-   deno task build:wasm            # Rebuild both Wasm backends
-   deno task build:wasm:emscripten # Rebuild Emscripten Wasm only
-   deno task build:wasm:wasi       # Rebuild WASI Wasm only
+   npm ci                        # Install dependencies (Node 24+, npm)
+   npm run build:wasm            # Rebuild both Wasm backends
+   npm run build:wasm:emscripten # Rebuild Emscripten Wasm only
+   npm run build:wasm:wasi       # Rebuild WASI Wasm only
    ```
 
    > After changing `lib/taglib` or `src/capi/`, rebuild **both** backends and
@@ -55,19 +56,31 @@ software together.
    > from a different TagLib than the other is a silent cross-backend skew. CI's
    > `wasm-freshness` job fails a commit that moves `lib/taglib` without them.
 
-5. **Run the pre-push gate**
+5. **Run the pre-push gates**
+
    ```bash
-   deno task check:all      # format, lint, typecheck, tests, and build:ts bundle
-   deno task test           # tests only (fast inner loop)
+   npx vp fmt --check                        # format gate (`npx vp fmt` fixes)
+   npx vp lint --type-aware                  # lint gate
+   npx tsc --noEmit -p tsconfig.check.json   # type gate (tests included)
+   npx vp test                               # tests (Vitest)
+   deno task test                            # the four Deno-only test files
    ```
+
+   > `npm ci` must run before any `npx vp` command — `vp` loads
+   > `vite.config.ts` strictly and aborts without the `vite-plus`
+   > devDependency. `npx vp test` is a **Vite+ built-in**, not the npm `test`
+   > script (run that one with `vpr test`). Deno is no longer the dev toolchain
+   > for tests, formatting, linting or type checking; it remains for the four
+   > Deno-only test files, the TypeScript bundle scripts, and JSR publishing
+   > (`deno publish`) until phases 2-3.
 
 ## 📝 Development Guidelines
 
 ### Code Style
 
 - **TypeScript**: Strict mode enabled, no `any` types without justification
-- **Formatting**: Use Deno formatter (`deno fmt`)
-- **Linting**: Pass Deno linter (`deno lint`)
+- **Formatting**: Use the Vite+ formatter (`npx vp fmt` to fix, `npx vp fmt --check` to verify)
+- **Linting**: Pass `npx vp lint --type-aware`
 - **Comments**: JSDoc for all public APIs
 
 ### Project Structure
@@ -101,22 +114,25 @@ TagLib-Wasm/
 ### Running Tests
 
 ```bash
-# Pre-push gate: format, lint, typecheck, tests, and the build:ts bundle
-deno task check:all
-
-# Tests only (fast inner loop)
-deno task test
+# Tests (Vitest): 94 files across tests/ and src/
+npx vp test
 
 # Watch mode
-deno test --allow-read --allow-write --allow-env --v8-flags=--expose-gc --watch tests/
+npx vp test --watch
 
 # Run a specific test file
-deno test --allow-read --allow-write --allow-env tests/basic-tags.test.ts
+npx vp test tests/basic-tags.test.ts
+
+# The four Deno-only test files (runtime detection, Deno compat patches,
+# WASI fs provider, offline support) still run under Deno
+deno task test
 ```
 
 ### Writing Tests
 
-- Use BDD syntax (`describe`/`it`) from `@std/testing/bdd`
+- Import `describe`/`it`/`expect` from **`vite-plus/test`** (not `vitest`)
+- Use `tests/_assert-helpers.ts` for the assertion strengths Vitest's built-ins
+  do not cover (`expectDefined`, `expectThrows`, `expectRejects`)
 - Place tests in `tests/` directory
 - Follow existing test patterns
 - Test both success and error cases
@@ -125,8 +141,7 @@ deno test --allow-read --allow-write --allow-env tests/basic-tags.test.ts
 Example test:
 
 ```typescript
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("Feature", () => {
   it("description", async () => {
@@ -134,7 +149,7 @@ describe("Feature", () => {
     const audioFile = await taglib.open(testFile);
     try {
       // Test your feature
-      assertEquals(result, expected);
+      expect(result).toStrictEqual(expected);
     } finally {
       audioFile.dispose();
     }
@@ -163,12 +178,16 @@ describe("Feature", () => {
 4. **Test your changes**
 
    ```bash
-   deno task check:all  # format, lint, typecheck, tests, and build:ts bundle
+   npx vp fmt --check                        # format gate (`npx vp fmt` fixes)
+   npx vp lint --type-aware                  # lint gate
+   npx tsc --noEmit -p tsconfig.check.json   # type gate (tests included)
+   npx vp test                               # tests (Vitest)
+   deno task test                            # the four Deno-only test files
    ```
 
-   > `deno task test` runs the tests only. Use `check:all` before pushing — it
-   > also runs `build:ts`, catching bundler-resolution breaks (e.g. a JSR import
-   > that isn't an npm dep) that pass tests but break the shippable bundle.
+   > `npx vp test` runs the Vitest suite; `deno task test` runs only the four
+   > Deno-only files. Run both. `npm ci` must precede every `npx vp` command
+   > (`vp` loads `vite.config.ts` strictly).
 
 5. **Commit your changes**
    - Follow [Conventional Commits](https://www.conventionalcommits.org/)
@@ -216,10 +235,10 @@ chore: update TagLib to v2.1.1
 
 The project has two Wasm backends:
 
-| Backend    | Script                            | Used by           | C++ entry point            |
-| ---------- | --------------------------------- | ----------------- | -------------------------- |
-| Emscripten | `deno task build:wasm:emscripten` | Browsers, Workers | `build/taglib_embind.cpp`  |
-| WASI       | `deno task build:wasm:wasi`       | Deno, Node.js     | `src/capi/taglib_shim.cpp` |
+| Backend    | Script                          | Used by           | C++ entry point            |
+| ---------- | ------------------------------- | ----------------- | -------------------------- |
+| Emscripten | `npm run build:wasm:emscripten` | Browsers, Workers | `build/taglib_embind.cpp`  |
+| WASI       | `npm run build:wasm:wasi`       | Deno, Node.js     | `src/capi/taglib_shim.cpp` |
 
 After C++ changes, rebuild the affected backend and test thoroughly.
 
@@ -333,6 +352,9 @@ deno task release              # auto-increment patch version
 deno task release 2.3.0        # explicit version
 deno task release:quick 2.3.0  # same gates and same flow, but do not wait for the result
 ```
+
+> The release path still runs under Deno: `scripts/release-safe.sh` publishes to
+> JSR with `deno publish` until phase 3 replaces that leg.
 
 `scripts/release-safe.sh` runs the gates, bumps the version, pushes the bump
 commit, **waits for CI to pass on that commit**, verifies the npm publish path
