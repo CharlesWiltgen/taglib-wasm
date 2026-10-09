@@ -2,6 +2,10 @@
  * @fileoverview Shared test utilities and constants for TagLib-Wasm tests
  */
 
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 // Import PictureType from types
 import type { PictureType } from "../src/types.ts";
 
@@ -448,12 +452,12 @@ export const BLUE_JPEG = new Uint8Array([
 export async function createTestImages(): Promise<
   { red: string; blue: string; tempDir: string }
 > {
-  const tempDir = await Deno.makeTempDir();
+  const tempDir = await mkdtemp(join(tmpdir(), "taglib-test-"));
   const redPath = `${tempDir}/red.png`;
   const bluePath = `${tempDir}/blue.jpg`;
 
-  await Deno.writeFile(redPath, RED_PNG);
-  await Deno.writeFile(bluePath, BLUE_JPEG);
+  await writeFile(redPath, RED_PNG);
+  await writeFile(bluePath, BLUE_JPEG);
 
   return { red: redPath, blue: bluePath, tempDir };
 }
@@ -461,7 +465,7 @@ export async function createTestImages(): Promise<
 // Helper to cleanup temp directory
 export async function cleanupTestImages(tempDir: string) {
   try {
-    await Deno.remove(tempDir, { recursive: true });
+    await rm(tempDir, { recursive: true, force: true });
   } catch {
     // Ignore cleanup errors
   }
@@ -538,15 +542,15 @@ export async function withTempFile<T>(
   data: Uint8Array,
   fn: (path: string) => Promise<T>,
 ): Promise<T> {
-  const tempDir = await Deno.makeTempDir();
+  const tempDir = await mkdtemp(join(tmpdir(), "taglib-test-"));
   const filepath = `${tempDir}/${filename}`;
 
   try {
-    await Deno.writeFile(filepath, data);
+    await writeFile(filepath, data);
     return await fn(filepath);
   } finally {
     try {
-      await Deno.remove(tempDir, { recursive: true });
+      await rm(tempDir, { recursive: true, force: true });
     } catch {
       // Ignore cleanup errors
     }

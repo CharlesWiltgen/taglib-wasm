@@ -5,7 +5,8 @@
  * WASI and Emscripten test suites.
  */
 
-import { resolve } from "@std/path";
+import { statSync } from "node:fs";
+import { resolve } from "node:path";
 
 export const FORMATS = [
   "mp3",
@@ -25,7 +26,7 @@ export const FORMATS = [
 ] as const;
 export type Format = (typeof FORMATS)[number];
 
-const PROJECT_ROOT = resolve(Deno.cwd());
+const PROJECT_ROOT = resolve(process.cwd());
 const TEST_FILES_DIR = resolve(PROJECT_ROOT, "tests/test-files");
 
 export const FIXTURE_PATH: Record<Format, string> = {
@@ -241,7 +242,7 @@ export const TEST_FILES_DIR_PATH = TEST_FILES_DIR;
 
 export function fileExists(path: string): boolean {
   try {
-    Deno.statSync(path);
+    statSync(path);
     return true;
   } catch {
     return false;

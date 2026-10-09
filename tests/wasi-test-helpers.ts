@@ -2,6 +2,7 @@
  * @fileoverview Shared helpers for WASI host tests and benchmarks.
  */
 
+import { statSync } from "node:fs";
 import { WasmArena, type WasmExports } from "../src/runtime/wasi-memory.ts";
 import { decodeTagData } from "../src/msgpack/decoder.ts";
 import { encodeTagData } from "../src/msgpack/encoder.ts";
@@ -69,7 +70,7 @@ export const FORMAT_FILES: Record<string, { virtual: string; real: string }> = {
 
 export function fileExists(path: string): boolean {
   try {
-    Deno.statSync(path);
+    statSync(path);
     return true;
   } catch {
     return false;

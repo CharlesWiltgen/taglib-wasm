@@ -96,7 +96,8 @@
   "test": {
     "exclude": [
       "tests/bun-integration.test.ts",
-      "tests/cross-runtime/"
+      "tests/cross-runtime/",
+      "tests/_assert-helpers.test.ts"
     ]
   },
   "tasks": {
