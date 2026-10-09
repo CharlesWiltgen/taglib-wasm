@@ -134,11 +134,9 @@ describe("MessagePack Wire Format Compatibility", () => {
       console.log("MessagePack binary analysis:");
       console.log(`Size: ${encoded.length} bytes`);
       console.log(
-        `Header: ${
-          Array.from(encoded.slice(0, 4)).map((b) =>
-            `0x${b.toString(16).padStart(2, "0")}`
-          ).join(" ")
-        }`,
+        `Header: ${Array.from(encoded.slice(0, 4))
+          .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
+          .join(" ")}`,
       );
 
       // First byte should indicate a map type

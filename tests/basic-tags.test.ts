@@ -52,10 +52,7 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
       );
       expectDefined(modified, `${format}: writeTags returned null`);
 
-      const readBack = await adapter.readTags(
-        modified,
-        extForFormat(format),
-      );
+      const readBack = await adapter.readTags(modified, extForFormat(format));
       expect(readBack.title).toStrictEqual("Test Title");
       expect(readBack.artist).toStrictEqual("Test Artist");
       expect(readBack.album).toStrictEqual("Test Album");
@@ -85,11 +82,7 @@ forEachBackend("Basic Tags", (adapter: BackendAdapter) => {
       album: "专辑",
     };
 
-    const modified = await adapter.writeTags(
-      buffer,
-      unicodeTags,
-      "flac",
-    );
+    const modified = await adapter.writeTags(buffer, unicodeTags, "flac");
     expectDefined(modified);
 
     const readBack = await adapter.readTags(modified, "flac");

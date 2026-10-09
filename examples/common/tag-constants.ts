@@ -27,9 +27,7 @@ async function demonstrateEnhancedProperties() {
     const taglib = await TagLib.initialize();
 
     // Load a test file
-    const file = await taglib.open(
-      "./tests/test-files/mp3/kiss-snippet.mp3",
-    );
+    const file = await taglib.open("./tests/test-files/mp3/kiss-snippet.mp3");
 
     if (!file.isValid()) {
       throw new Error("Failed to load audio file");
@@ -110,14 +108,14 @@ async function demonstrateEnhancedProperties() {
     const invalidProperty = "INVALID_PROPERTY_NAME";
 
     console.log(
-      `Is "${validProperty}" a valid property? ${
-        isValidProperty(validProperty)
-      }`,
+      `Is "${validProperty}" a valid property? ${isValidProperty(
+        validProperty,
+      )}`,
     );
     console.log(
-      `Is "${invalidProperty}" a valid property? ${
-        isValidProperty(invalidProperty)
-      }`,
+      `Is "${invalidProperty}" a valid property? ${isValidProperty(
+        invalidProperty,
+      )}`,
     );
 
     // NEW: Format-specific property filtering

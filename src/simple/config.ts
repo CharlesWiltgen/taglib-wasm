@@ -12,7 +12,7 @@ export async function getTagLib(): Promise<TagLib> {
   if (!cachedTagLib) {
     const { TagLib } = await import("../taglib.ts");
     const initOptions = bufferModeEnabled
-      ? { forceWasmType: "emscripten" } as const
+      ? ({ forceWasmType: "emscripten" } as const)
       : undefined;
     cachedTagLib = await TagLib.initialize(initOptions);
   }

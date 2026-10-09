@@ -95,7 +95,7 @@ function detectFormat(buffer: Uint8Array): string {
   const magic = Array.from(buffer.slice(0, 8));
 
   // MP3
-  if (magic[0] === 0xFF && (magic[1] & 0xE0) === 0xE0) {
+  if (magic[0] === 0xff && (magic[1] & 0xe0) === 0xe0) {
     return "MP3";
   }
 
@@ -249,10 +249,7 @@ function checkMemory() {
 class FileLock {
   private locks = new Map<string, Promise<void>>();
 
-  async withLock<T>(
-    key: string,
-    operation: () => Promise<T>,
-  ): Promise<T> {
+  async withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
     // Wait for existing lock
     while (this.locks.has(key)) {
       await this.locks.get(key);
@@ -293,8 +290,9 @@ function sanitizeString(str: string): string {
 
   // Ensure valid UTF-8
   try {
-    return new TextDecoder("utf-8", { fatal: true })
-      .decode(new TextEncoder().encode(str));
+    return new TextDecoder("utf-8", { fatal: true }).decode(
+      new TextEncoder().encode(str),
+    );
   } catch {
     // Fallback to ASCII
     return str.replace(/[^\x20-\x7E\n]/g, "?");
@@ -568,10 +566,7 @@ const { TagLib } = await import("taglib-wasm");
 
 // 2. Use base64 embedded Wasm
 const wasmBase64 = "AGFzbQEAAAA...";
-const wasmBytes = Uint8Array.from(
-  atob(wasmBase64),
-  (c) => c.charCodeAt(0),
-);
+const wasmBytes = Uint8Array.from(atob(wasmBase64), (c) => c.charCodeAt(0));
 
 // 3. Bundle Wasm with webpack/vite
 // Configure bundler to handle .wasm files

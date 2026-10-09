@@ -102,8 +102,10 @@ describe("AudioFileImpl.getFileBuffer()", () => {
             );
           } else {
             const buf = file.getFileBuffer();
-            expect(buf.length > 0, "emscripten must serve in-memory bytes")
-              .toBeTruthy();
+            expect(
+              buf.length > 0,
+              "emscripten must serve in-memory bytes",
+            ).toBeTruthy();
           }
         } finally {
           file.dispose();
@@ -251,8 +253,9 @@ describe("AudioFileImpl.saveToFile()", () => {
       file.dispose();
 
       const reopened = await tl.open(buf);
-      got[backend] = (reopened as unknown as { handle: FileHandle }).handle
-        .getLyrics();
+      got[backend] = (
+        reopened as unknown as { handle: FileHandle }
+      ).handle.getLyrics();
       reopened.dispose();
     }
     expect(got.wasi).toStrictEqual(expected);
@@ -317,8 +320,10 @@ describe("AudioFileImpl.saveToFile()", () => {
       const title = reopened.tag().title;
       reopened.dispose();
 
-      expect(lyrics, `${backend}: lyrics must survive a text-only tag edit`)
-        .toStrictEqual(input);
+      expect(
+        lyrics,
+        `${backend}: lyrics must survive a text-only tag edit`,
+      ).toStrictEqual(input);
       expect(title, `${backend}: the tag edit must still apply`).toStrictEqual(
         "Edited Title",
       );
@@ -346,8 +351,10 @@ describe("AudioFileImpl.saveToFile()", () => {
       const lyrics = reopened.getLyrics();
       reopened.dispose();
 
-      expect(lyrics, `${backend}: clearTags() must remove lyrics`)
-        .toStrictEqual([]);
+      expect(
+        lyrics,
+        `${backend}: clearTags() must remove lyrics`,
+      ).toStrictEqual([]);
     }
   });
 
@@ -363,9 +370,15 @@ describe("AudioFileImpl.saveToFile()", () => {
       const seed = await tl.open(
         new Uint8Array(await readFile(FIXTURE_PATH.mp3)),
       );
-      seed.tag()
-        .setTitle("Title").setArtist("Artist").setAlbum("Album")
-        .setComment("Comment").setGenre("Genre").setYear(1999).setTrack(7);
+      seed
+        .tag()
+        .setTitle("Title")
+        .setArtist("Artist")
+        .setAlbum("Album")
+        .setComment("Comment")
+        .setGenre("Genre")
+        .setYear(1999)
+        .setTrack(7);
       seed.setProperty("ALBUMARTIST", "Various Artists");
       seed.setLyrics([{ text: "lyric" }]);
       seed.setRatings([{ rating: 0.8 }]);
@@ -390,17 +403,19 @@ describe("AudioFileImpl.saveToFile()", () => {
       };
       f.dispose();
 
-      expect(result, `${backend}: clearTags() must strip every metadata field`)
-        .toStrictEqual({
-          properties: {},
-          title: "",
-          year: 0,
-          track: 0,
-          lyrics: [],
-          ratings: [],
-          chapters: [],
-          pictures: [],
-        });
+      expect(
+        result,
+        `${backend}: clearTags() must strip every metadata field`,
+      ).toStrictEqual({
+        properties: {},
+        title: "",
+        year: 0,
+        track: 0,
+        lyrics: [],
+        ratings: [],
+        chapters: [],
+        pictures: [],
+      });
     }
   });
 
@@ -429,8 +444,10 @@ describe("AudioFileImpl.saveToFile()", () => {
       };
       f.dispose();
 
-      expect(result, `${backend}: clearTags() must strip bext + iXML on WAV`)
-        .toStrictEqual({ title: "", bext: undefined, ixml: undefined });
+      expect(
+        result,
+        `${backend}: clearTags() must strip bext + iXML on WAV`,
+      ).toStrictEqual({ title: "", bext: undefined, ixml: undefined });
     }
   });
 
@@ -451,8 +468,9 @@ describe("AudioFileImpl.saveToFile()", () => {
       file.dispose();
 
       const reopened = await wasi.open(new Uint8Array(await readFile(out)));
-      const got = (reopened as unknown as { handle: FileHandle }).handle
-        .getLyrics();
+      const got = (
+        reopened as unknown as { handle: FileHandle }
+      ).handle.getLyrics();
       reopened.dispose();
       expect(got).toStrictEqual(expected);
     } finally {
@@ -476,8 +494,10 @@ describe("AudioFileImpl.saveToFile()", () => {
       seed.dispose();
 
       const f = await wasi.open(withChapters);
-      expect(f.getChapters().length, "precondition: chapters present")
-        .toStrictEqual(1);
+      expect(
+        f.getChapters().length,
+        "precondition: chapters present",
+      ).toStrictEqual(1);
       f.setChapters([]); // explicit clear
       await f.saveToFile(out);
       f.dispose();
@@ -485,8 +505,10 @@ describe("AudioFileImpl.saveToFile()", () => {
       const g = await wasi.open(new Uint8Array(await readFile(out)));
       const remaining = g.getChapters().length;
       g.dispose();
-      expect(remaining, "explicit chapter clear not honored on save-as")
-        .toStrictEqual(0);
+      expect(
+        remaining,
+        "explicit chapter clear not honored on save-as",
+      ).toStrictEqual(0);
     } finally {
       await rm(srcPath).catch(() => {});
       await rm(withChapters).catch(() => {});
@@ -515,8 +537,10 @@ describe("AudioFileImpl.saveToFile()", () => {
       g.dispose();
       expect(chapters.length, "MP4 chapters lost on save-as").toStrictEqual(1);
       expect(chapters[0].title).toStrictEqual("Intro");
-      expect(chapters[0].source, "nero style downgraded on save-as")
-        .toStrictEqual("nero");
+      expect(
+        chapters[0].source,
+        "nero style downgraded on save-as",
+      ).toStrictEqual("nero");
     } finally {
       await rm(srcPath).catch(() => {});
       await rm(out).catch(() => {});

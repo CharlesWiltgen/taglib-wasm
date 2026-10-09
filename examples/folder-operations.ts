@@ -74,11 +74,11 @@ async function findDuplicateSongs() {
       console.log(`    - ${file.path}`);
       if (file.properties) {
         console.log(
-          `      Size: ${
-            (file.properties.duration * file.properties.bitrate * 125).toFixed(
-              0,
-            )
-          } bytes`,
+          `      Size: ${(
+            file.properties.duration *
+            file.properties.bitrate *
+            125
+          ).toFixed(0)} bytes`,
         );
       }
     }

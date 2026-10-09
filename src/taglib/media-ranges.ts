@@ -36,8 +36,10 @@ const fallback = (detail: string): RangeWalk => ({
  */
 function adtsFrameLength(bytes: Uint8Array, at: number): number {
   if (bytes.length < at + 7) return 0;
-  if (bytes[at] !== 0xFF || (bytes[at + 1] & 0xF6) !== 0xF0) return 0;
-  const length = ((bytes[at + 3] & 0x03) << 11) | (bytes[at + 4] << 3) |
+  if (bytes[at] !== 0xff || (bytes[at + 1] & 0xf6) !== 0xf0) return 0;
+  const length =
+    ((bytes[at + 3] & 0x03) << 11) |
+    (bytes[at + 4] << 3) |
     (bytes[at + 5] >> 5);
   return length >= 7 ? length : 0;
 }
@@ -144,8 +146,7 @@ export function walkMpeg(bytes: Uint8Array): RangeWalk {
   return {
     kind: "ranges",
     ranges: [{ offset: from, length: last.start + last.length - from }],
-    detail:
-      `first=${from} last=${last.start}+${last.length} frames=${last.frames}`,
+    detail: `first=${from} last=${last.start}+${last.length} frames=${last.frames}`,
   };
 }
 
@@ -161,8 +162,8 @@ export function flacStreamInfoMd5(bytes: Uint8Array): string | undefined {
   const header = marker + 4;
   if (header + 4 > bytes.length) return undefined;
   if ((bytes[header] & 0x7f) !== 0) return undefined;
-  const blockLength = (bytes[header + 1] << 16) | (bytes[header + 2] << 8) |
-    bytes[header + 3];
+  const blockLength =
+    (bytes[header + 1] << 16) | (bytes[header + 2] << 8) | bytes[header + 3];
   if (blockLength < 34) return undefined;
   const payload = header + 4;
   if (payload + 34 > bytes.length) return undefined;

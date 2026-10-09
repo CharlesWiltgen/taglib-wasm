@@ -81,10 +81,7 @@ export class TagLib {
    * @throws {TagLibInitializationError} If the module is not properly initialized.
    * @throws {InvalidFormatError} If the file is corrupted or unsupported.
    */
-  async open(
-    input: AudioFileInput,
-    options?: OpenOptions,
-  ): Promise<AudioFile> {
+  async open(input: AudioFileInput, options?: OpenOptions): Promise<AudioFile> {
     if (!this.module.createFileHandle) {
       throw new TagLibInitializationError(
         "TagLib module not properly initialized: createFileHandle not found. " +
@@ -93,9 +90,8 @@ export class TagLib {
     }
 
     const actualInput = isNamedAudioInput(input) ? input.data : input;
-    const sourcePath = typeof actualInput === "string"
-      ? actualInput
-      : undefined;
+    const sourcePath =
+      typeof actualInput === "string" ? actualInput : undefined;
 
     // WASI path-based I/O: skip buffer loading entirely
     if (typeof actualInput === "string" && this.module.isWasi) {
@@ -136,15 +132,16 @@ export class TagLib {
     // loadAudioData returns the same reference in that case and the
     // WASI adapter stores the buffer. For all other inputs (path, File,
     // ArrayBuffer), loadAudioData already returns an owned copy.
-    const uint8Array = actualInput instanceof Uint8Array &&
-        audioData.buffer === actualInput.buffer
-      ? new Uint8Array(
-        audioData.buffer.slice(
-          audioData.byteOffset,
-          audioData.byteOffset + audioData.byteLength,
-        ),
-      )
-      : audioData;
+    const uint8Array =
+      actualInput instanceof Uint8Array &&
+      audioData.buffer === actualInput.buffer
+        ? new Uint8Array(
+            audioData.buffer.slice(
+              audioData.byteOffset,
+              audioData.byteOffset + audioData.byteLength,
+            ),
+          )
+        : audioData;
     const rawHandle = this.module.createFileHandle();
     const fileHandle: WasmFileHandle = this.module.isWasi
       ? (rawHandle as WasmFileHandle) // WASI raw == library-owned (taglib-0te)

@@ -108,10 +108,8 @@ export async function openAudioPath(
       displayPath,
     );
   }
-  if (await getFileSize(hostPath) === 0) {
-    throw new InvalidFormatError(
-      `The file is empty. Path: ${displayPath}`,
-    );
+  if ((await getFileSize(hostPath)) === 0) {
+    throw new InvalidFormatError(`The file is empty. Path: ${displayPath}`);
   }
 
   const handle = backend.createFileHandle() as WasmFileHandle;
@@ -141,8 +139,10 @@ async function holdsAudio(
   wasiPath: string,
   handle: FileHandle,
 ): Promise<boolean> {
-  return statesAudioProperties(handle) ||
-    await hasRecognizableHead(backend, wasiPath);
+  return (
+    statesAudioProperties(handle) ||
+    (await hasRecognizableHead(backend, wasiPath))
+  );
 }
 
 /**
@@ -161,9 +161,14 @@ async function holdsAudio(
  */
 function statesAudioProperties(handle: FileHandle): boolean {
   const audio = handle.getAudioProperties();
-  return audio !== null &&
-    (audio.sampleRate > 0 || audio.channels > 0 || audio.bitrate > 0 ||
-      audio.duration > 0 || audio.bitsPerSample > 0);
+  return (
+    audio !== null &&
+    (audio.sampleRate > 0 ||
+      audio.channels > 0 ||
+      audio.bitrate > 0 ||
+      audio.duration > 0 ||
+      audio.bitsPerSample > 0)
+  );
 }
 
 /**
@@ -183,10 +188,7 @@ async function hasRecognizableHead(
   return detectsFormat(wasi, head) || opensAsBuffer(wasi, head);
 }
 
-function detectsFormat(
-  wasi: WasiModule,
-  head: Uint8Array,
-): boolean {
+function detectsFormat(wasi: WasiModule, head: Uint8Array): boolean {
   const ptr = wasi.malloc(Math.max(head.length, 1));
   try {
     new Uint8Array(wasi.memory.buffer).set(head, ptr);

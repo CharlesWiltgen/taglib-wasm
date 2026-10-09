@@ -65,43 +65,37 @@ async function waitForDisposal(handle: DisposableHandle): Promise<boolean> {
 }
 
 for (const wasmType of ["wasi", "emscripten"] as const) {
-  it(
-    `dropped wrapper is auto-disposed by the FinalizationRegistry [${wasmType}]`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: wasmType });
-      const handle = await openAndDrop(taglib, "mp3");
-      expect(handle.destroyed, "handle should start alive").toStrictEqual(
-        false,
-      );
-      const disposed = await waitForDisposal(handle);
-      expect(
-        disposed,
-        "FileHandle must be destroyed once the wrapper is unreachable",
-      ).toStrictEqual(true);
-    },
-  );
+  it(`dropped wrapper is auto-disposed by the FinalizationRegistry [${wasmType}]`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: wasmType });
+    const handle = await openAndDrop(taglib, "mp3");
+    expect(handle.destroyed, "handle should start alive").toStrictEqual(false);
+    const disposed = await waitForDisposal(handle);
+    expect(
+      disposed,
+      "FileHandle must be destroyed once the wrapper is unreachable",
+    ).toStrictEqual(true);
+  });
 }
 
-it(
-  "explicit dispose() destroys the handle and destroy() is idempotent",
-  async () => {
-    const taglib = await TagLib.initialize();
-    const wrapper = await taglib.open(await readFixture("mp3"));
-    const wrapperWithHandle = wrapper as unknown as {
-      fileHandle: DisposableHandle;
-    };
-    const handle = wrapperWithHandle.fileHandle;
-    wrapper.dispose();
-    expect(handle.destroyed, "explicit dispose destroys the handle")
-      .toStrictEqual(true);
-    // The double-destroy path is the contract that matters: a finalizer
-    // racing an explicit dispose, or the open()-failure path, may call
-    // destroy() twice. Both backends must be idempotent — no throw, state
-    // stays destroyed. (Unregister-then-destroy ordering is unobservable
-    // through this API because of that idempotency, so this asserts the
-    // invariant the ordering exists to protect.)
-    wrapper.dispose();
-    handle.destroy();
-    expect(handle.destroyed, "destroy() is idempotent").toStrictEqual(true);
-  },
-);
+it("explicit dispose() destroys the handle and destroy() is idempotent", async () => {
+  const taglib = await TagLib.initialize();
+  const wrapper = await taglib.open(await readFixture("mp3"));
+  const wrapperWithHandle = wrapper as unknown as {
+    fileHandle: DisposableHandle;
+  };
+  const handle = wrapperWithHandle.fileHandle;
+  wrapper.dispose();
+  expect(
+    handle.destroyed,
+    "explicit dispose destroys the handle",
+  ).toStrictEqual(true);
+  // The double-destroy path is the contract that matters: a finalizer
+  // racing an explicit dispose, or the open()-failure path, may call
+  // destroy() twice. Both backends must be idempotent — no throw, state
+  // stays destroyed. (Unregister-then-destroy ordering is unobservable
+  // through this API because of that idempotency, so this asserts the
+  // invariant the ordering exists to protect.)
+  wrapper.dispose();
+  handle.destroy();
+  expect(handle.destroyed, "destroy() is idempotent").toStrictEqual(true);
+});

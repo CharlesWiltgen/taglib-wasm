@@ -42,8 +42,10 @@ describe("Memory Management", () => {
         `Heap growth after 10 open/dispose cycles: ${growthMB.toFixed(2)}MB`,
       );
 
-      expect(growthMB < 1, `Excessive heap growth: ${growthMB.toFixed(2)}MB`)
-        .toStrictEqual(true);
+      expect(
+        growthMB < 1,
+        `Excessive heap growth: ${growthMB.toFixed(2)}MB`,
+      ).toStrictEqual(true);
     }
   });
 

@@ -10,10 +10,10 @@ function id3v2(declaredSize: number, flags = 0): Uint8Array {
   b.set(new TextEncoder().encode("ID3"), 0);
   b[3] = 3;
   b[5] = flags;
-  b[6] = (declaredSize >>> 21) & 0x7F;
-  b[7] = (declaredSize >>> 14) & 0x7F;
-  b[8] = (declaredSize >>> 7) & 0x7F;
-  b[9] = declaredSize & 0x7F;
+  b[6] = (declaredSize >>> 21) & 0x7f;
+  b[7] = (declaredSize >>> 14) & 0x7f;
+  b[8] = (declaredSize >>> 7) & 0x7f;
+  b[9] = declaredSize & 0x7f;
   return b;
 }
 
@@ -21,9 +21,9 @@ function id3v2(declaredSize: number, flags = 0): Uint8Array {
 function flacBlock(length: number, isLast: boolean, type = 1): Uint8Array {
   const b = new Uint8Array(4 + length);
   b[0] = (isLast ? 0x80 : 0) | type;
-  b[1] = (length >>> 16) & 0xFF;
-  b[2] = (length >>> 8) & 0xFF;
-  b[3] = length & 0xFF;
+  b[1] = (length >>> 16) & 0xff;
+  b[2] = (length >>> 8) & 0xff;
+  b[3] = length & 0xff;
   return b;
 }
 
@@ -33,7 +33,7 @@ function flacBlock(length: number, isLast: boolean, type = 1): Uint8Array {
  * refuses to vouch for an extent the buffer does not contain.
  */
 function id3v2Tag(declaredSize: number, flags = 0): Uint8Array {
-  const out = new Uint8Array(10 + declaredSize + ((flags & 0x10) ? 10 : 0));
+  const out = new Uint8Array(10 + declaredSize + (flags & 0x10 ? 10 : 0));
   out.set(id3v2(declaredSize, flags), 0);
   return out;
 }
@@ -52,10 +52,10 @@ function concat(...parts: Uint8Array[]): Uint8Array {
 function atom(type: string, payloadLength: number): Uint8Array {
   const size = 8 + payloadLength;
   const b = new Uint8Array(size);
-  b[0] = (size >>> 24) & 0xFF;
-  b[1] = (size >>> 16) & 0xFF;
-  b[2] = (size >>> 8) & 0xFF;
-  b[3] = size & 0xFF;
+  b[0] = (size >>> 24) & 0xff;
+  b[1] = (size >>> 16) & 0xff;
+  b[2] = (size >>> 8) & 0xff;
+  b[3] = size & 0xff;
   b.set(new TextEncoder().encode(type), 4);
   return b;
 }
@@ -154,11 +154,11 @@ describe("metadataFitsInHeader", () => {
     // this header (128 kbps / 44100 Hz) is 417, so the second frame starts at
     // byte 417 (taglib-rfwe requires the next frame to be consistent).
     const mp3 = new Uint8Array(417 + 4);
-    mp3[0] = 0xFF;
-    mp3[1] = 0xFB; // MPEG-1 Layer III
+    mp3[0] = 0xff;
+    mp3[1] = 0xfb; // MPEG-1 Layer III
     mp3[2] = 0x90; // 128 kbps, 44100 Hz — TagLib rejects a free/invalid index
-    mp3[417] = 0xFF;
-    mp3[418] = 0xFB;
+    mp3[417] = 0xff;
+    mp3[418] = 0xfb;
     mp3[419] = 0x90;
     expect(metadataFitsInHeader(mp3, LIMIT)).toStrictEqual(true);
   });
@@ -169,8 +169,8 @@ describe("metadataFitsInHeader", () => {
     // caught independently by three guards, so it exercised the sync-bit check
     // rather than the one it names.
     const notMp3 = new Uint8Array(64);
-    notMp3[0] = 0xFF;
-    notMp3[1] = 0xF8; // sync bits set, version 3, layer index 0 = reserved
+    notMp3[0] = 0xff;
+    notMp3[1] = 0xf8; // sync bits set, version 3, layer index 0 = reserved
     notMp3[2] = 0x90; // valid bitrate and sample-rate indices
     expect(metadataFitsInHeader(notMp3, LIMIT)).toStrictEqual(false);
   });
@@ -190,8 +190,9 @@ describe("metadataFitsInHeader", () => {
       flacBlock(34, false, 0),
       flacBlock(100, true, 6),
     );
-    expect(metadataFitsInHeader(concat(prefix, oversized), LIMIT))
-      .toStrictEqual(false);
+    expect(
+      metadataFitsInHeader(concat(prefix, oversized), LIMIT),
+    ).toStrictEqual(false);
     expect(metadataFitsInHeader(concat(prefix, modest), LIMIT)).toStrictEqual(
       true,
     );
@@ -201,7 +202,7 @@ describe("metadataFitsInHeader", () => {
     // Ogg::FLAC::File::scan() takes the comment from wherever block type 4
     // appears; only libFLAC's convention puts it second, and nothing enforces it.
     const flacInOgg = concat(
-      oggPage([5], [0x7F, ...new TextEncoder().encode("FLAC")]),
+      oggPage([5], [0x7f, ...new TextEncoder().encode("FLAC")]),
       oggPage([30]),
     );
     expect(metadataFitsInHeader(flacInOgg, LIMIT)).toStrictEqual(false);
@@ -211,13 +212,13 @@ describe("metadataFitsInHeader", () => {
     // MPEG::Header also requires a usable bitrate and sample-rate index, and
     // MPEG::File::findID3v2 keeps scanning for a tag when byte 0 is not a valid
     // frame — so a lax test here concludes "no ID3v2" for a file that has one.
-    const bogus = Uint8Array.from([0xFF, 0xFB, 0xFF, 0xFF, 0, 0, 0, 0]);
+    const bogus = Uint8Array.from([0xff, 0xfb, 0xff, 0xff, 0, 0, 0, 0]);
     expect(metadataFitsInHeader(bogus, LIMIT)).toStrictEqual(false);
     // "Valid" means a chained pair of frames: the first header alone cannot
     // vouch for "no metadata" any more (taglib-rfwe).
     const valid = new Uint8Array(417 + 4);
-    valid.set([0xFF, 0xFB, 0x90, 0x00], 0);
-    valid.set([0xFF, 0xFB, 0x90, 0x00], 417);
+    valid.set([0xff, 0xfb, 0x90, 0x00], 0);
+    valid.set([0xff, 0xfb, 0x90, 0x00], 417);
     expect(metadataFitsInHeader(valid, LIMIT)).toStrictEqual(true);
   });
 
@@ -231,7 +232,7 @@ describe("metadataFitsInHeader", () => {
     // Frame: FF FB 90 64 — MPEG-1 Layer III, bitrate index 9 (128 kbps),
     // sample-rate index 0 (44100 Hz) → frameLength 417; byte 417 lands inside
     // the ID3v2 tag, whose header fails the mask comparison.
-    const frame = Uint8Array.from([0xFF, 0xFB, 0x90, 0x64]);
+    const frame = Uint8Array.from([0xff, 0xfb, 0x90, 0x64]);
     const id3 = new Uint8Array(LIMIT * 2);
     id3.set(new TextEncoder().encode("ID3\x04\x00\x00"), 0);
     const tagged = concat(frame, id3);
@@ -242,7 +243,7 @@ describe("metadataFitsInHeader", () => {
     // exists for.
     const chain = new Uint8Array(417 + 4);
     chain.set(frame, 0);
-    chain.set(Uint8Array.from([0xFF, 0xFB, 0x90, 0x64]), 417);
+    chain.set(Uint8Array.from([0xff, 0xfb, 0x90, 0x64]), 417);
     expect(metadataFitsInHeader(chain, LIMIT)).toStrictEqual(true);
 
     // A frame whose chain is cut off by the end of the buffer cannot vouch for
@@ -290,8 +291,9 @@ describe("metadataFitsInHeader", () => {
   it("rejects malformed input rather than looping or overrunning", () => {
     // A zero/short atom size must not spin forever, and a truncated ID3v2
     // header must not be read past its end.
-    expect(metadataFitsInHeader(atom("ftyp", 0).slice(0, 8), LIMIT))
-      .toStrictEqual(false);
+    expect(
+      metadataFitsInHeader(atom("ftyp", 0).slice(0, 8), LIMIT),
+    ).toStrictEqual(false);
     expect(metadataFitsInHeader(id3v2(100).slice(0, 6), LIMIT)).toStrictEqual(
       false,
     );
@@ -307,10 +309,10 @@ describe("trailerFitsInFooter", () => {
     const tail = new Uint8Array(4096);
     const at = tail.length - 32 - (followedById3v1 ? 128 : 0);
     tail.set(new TextEncoder().encode("APETAGEX"), at);
-    tail[at + 12] = size & 0xFF;
-    tail[at + 13] = (size >>> 8) & 0xFF;
-    tail[at + 14] = (size >>> 16) & 0xFF;
-    tail[at + 15] = (size >>> 24) & 0xFF;
+    tail[at + 12] = size & 0xff;
+    tail[at + 13] = (size >>> 8) & 0xff;
+    tail[at + 14] = (size >>> 16) & 0xff;
+    tail[at + 15] = (size >>> 24) & 0xff;
     if (followedById3v1) {
       tail.set(new TextEncoder().encode("TAG"), tail.length - 128);
     }

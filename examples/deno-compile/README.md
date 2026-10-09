@@ -14,7 +14,7 @@ The simplest approach that leverages WebAssembly streaming compilation:
 
 # Run the compiled binary
 ./taglib-simple                    # Test with demo data
-./taglib-simple song.mp3           # Read tags from file  
+./taglib-simple song.mp3           # Read tags from file
 ./taglib-simple *.mp3              # Read tags from multiple files
 ```
 

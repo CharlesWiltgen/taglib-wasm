@@ -19,10 +19,10 @@ const PLAIN_FLAC = join("tests", "test-files", "flac", "kiss-snippet.flac");
 const BACKENDS = ["wasi", "emscripten"] as const;
 
 function syncsafeSize(out: Uint8Array, offset: number, size: number): void {
-  out[offset] = (size >> 21) & 0x7F;
-  out[offset + 1] = (size >> 14) & 0x7F;
-  out[offset + 2] = (size >> 7) & 0x7F;
-  out[offset + 3] = size & 0x7F;
+  out[offset] = (size >> 21) & 0x7f;
+  out[offset + 1] = (size >> 14) & 0x7f;
+  out[offset + 2] = (size >> 7) & 0x7f;
+  out[offset + 3] = size & 0x7f;
 }
 
 function makeId3v2(title: string, padding: number): Uint8Array {
@@ -65,7 +65,7 @@ function makeId3v1(title: string): Uint8Array {
   buf[2] = 0x47; // "TAG"
   const enc = new TextEncoder().encode(title);
   buf.set(enc.subarray(0, Math.min(30, enc.length)), 3);
-  buf[127] = 0xFF; // genre = none/unknown
+  buf[127] = 0xff; // genre = none/unknown
   return buf;
 }
 
@@ -96,146 +96,116 @@ async function loadFlacWithId3(
 }
 
 for (const backend of BACKENDS) {
-  it(
-    `[${backend}] FLAC: hasId3Tags returns {v1:false,v2:false} on plain FLAC`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      using f = await taglib.open(await loadPlainFlac());
-      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
-    },
-  );
+  it(`[${backend}] FLAC: hasId3Tags returns {v1:false,v2:false} on plain FLAC`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    using f = await taglib.open(await loadPlainFlac());
+    expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
+  });
 
-  it(
-    `[${backend}] FLAC: hasId3Tags detects both v1 and v2`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      using f = await taglib.open(await loadFlacWithId3());
-      expect(f.hasId3Tags()).toStrictEqual({ v1: true, v2: true });
-    },
-  );
+  it(`[${backend}] FLAC: hasId3Tags detects both v1 and v2`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    using f = await taglib.open(await loadFlacWithId3());
+    expect(f.hasId3Tags()).toStrictEqual({ v1: true, v2: true });
+  });
 
-  it(
-    `[${backend}] FLAC: hasId3Tags detects only v2 when v1 absent`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      using f = await taglib.open(await loadFlacWithId3({ v2: true }));
-      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
-    },
-  );
+  it(`[${backend}] FLAC: hasId3Tags detects only v2 when v1 absent`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    using f = await taglib.open(await loadFlacWithId3({ v2: true }));
+    expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
+  });
 
-  it(
-    `[${backend}] FLAC: stripId3Tags() removes both`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const f = await taglib.open(await loadFlacWithId3());
-      try {
-        f.tag().setTitle("kept");
-        f.stripId3Tags();
-        f.save();
-        const out = f.getFileBuffer();
-        using reopened = await taglib.open(out);
-        expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
-        expect(reopened.tag().title).toStrictEqual("kept");
-      } finally {
-        f.dispose();
-      }
-    },
-  );
+  it(`[${backend}] FLAC: stripId3Tags() removes both`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    const f = await taglib.open(await loadFlacWithId3());
+    try {
+      f.tag().setTitle("kept");
+      f.stripId3Tags();
+      f.save();
+      const out = f.getFileBuffer();
+      using reopened = await taglib.open(out);
+      expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
+      expect(reopened.tag().title).toStrictEqual("kept");
+    } finally {
+      f.dispose();
+    }
+  });
 
-  it(
-    `[${backend}] FLAC: stripId3Tags({v1:true,v2:false}) removes only v1`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const f = await taglib.open(await loadFlacWithId3());
-      try {
-        f.stripId3Tags({ v1: true, v2: false });
-        f.save();
-        const out = f.getFileBuffer();
-        using reopened = await taglib.open(out);
-        expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
-      } finally {
-        f.dispose();
-      }
-    },
-  );
-
-  it(
-    `[${backend}] non-FLAC: hasId3Tags returns {v1:false,v2:false}`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const mp3Path = join("tests", "test-files", "mp3", "kiss-snippet.mp3");
-      using f = await taglib.open(new Uint8Array(await readFile(mp3Path)));
-      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
-    },
-  );
-
-  it(
-    `[${backend}] FLAC: hasId3Tags reflects strip on the same handle (no reopen)`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      using f = await taglib.open(await loadFlacWithId3());
-      expect(f.hasId3Tags()).toStrictEqual({ v1: true, v2: true });
+  it(`[${backend}] FLAC: stripId3Tags({v1:true,v2:false}) removes only v1`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    const f = await taglib.open(await loadFlacWithId3());
+    try {
       f.stripId3Tags({ v1: true, v2: false });
-      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
+      f.save();
+      const out = f.getFileBuffer();
+      using reopened = await taglib.open(out);
+      expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
+    } finally {
+      f.dispose();
+    }
+  });
+
+  it(`[${backend}] non-FLAC: hasId3Tags returns {v1:false,v2:false}`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    const mp3Path = join("tests", "test-files", "mp3", "kiss-snippet.mp3");
+    using f = await taglib.open(new Uint8Array(await readFile(mp3Path)));
+    expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
+  });
+
+  it(`[${backend}] FLAC: hasId3Tags reflects strip on the same handle (no reopen)`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    using f = await taglib.open(await loadFlacWithId3());
+    expect(f.hasId3Tags()).toStrictEqual({ v1: true, v2: true });
+    f.stripId3Tags({ v1: true, v2: false });
+    expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: true });
+    f.stripId3Tags({ v1: false, v2: true });
+    expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
+  });
+
+  it(`[${backend}] FLAC: two partial strips before save accumulate`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    const f = await taglib.open(await loadFlacWithId3());
+    try {
+      f.stripId3Tags({ v1: true, v2: false });
       f.stripId3Tags({ v1: false, v2: true });
-      expect(f.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
-    },
-  );
+      f.save();
+      const out = f.getFileBuffer();
+      using reopened = await taglib.open(out);
+      expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
+    } finally {
+      f.dispose();
+    }
+  });
 
-  it(
-    `[${backend}] FLAC: two partial strips before save accumulate`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const f = await taglib.open(await loadFlacWithId3());
-      try {
-        f.stripId3Tags({ v1: true, v2: false });
-        f.stripId3Tags({ v1: false, v2: true });
-        f.save();
-        const out = f.getFileBuffer();
-        using reopened = await taglib.open(out);
-        expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
-      } finally {
-        f.dispose();
-      }
-    },
-  );
+  it(`[${backend}] non-FLAC: stripId3Tags is a no-op and does not throw`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    const mp3Path = join("tests", "test-files", "mp3", "kiss-snippet.mp3");
+    const original = new Uint8Array(await readFile(mp3Path));
+    const f = await taglib.open(original);
+    try {
+      f.stripId3Tags();
+      f.save();
+      const out = f.getFileBuffer();
+      using reopened = await taglib.open(out);
+      // MP3's native ID3 tags must NOT be stripped by this API.
+      expect(reopened.getFormat()).toStrictEqual("MP3");
+    } finally {
+      f.dispose();
+    }
+  });
 
-  it(
-    `[${backend}] non-FLAC: stripId3Tags is a no-op and does not throw`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const mp3Path = join("tests", "test-files", "mp3", "kiss-snippet.mp3");
-      const original = new Uint8Array(await readFile(mp3Path));
-      const f = await taglib.open(original);
-      try {
-        f.stripId3Tags();
-        f.save();
-        const out = f.getFileBuffer();
-        using reopened = await taglib.open(out);
-        // MP3's native ID3 tags must NOT be stripped by this API.
-        expect(reopened.getFormat()).toStrictEqual("MP3");
-      } finally {
-        f.dispose();
-      }
-    },
-  );
-
-  it(
-    `[${backend}] FLAC without ID3: stripId3Tags is a no-op and preserves Vorbis Comments`,
-    async () => {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const f = await taglib.open(await loadPlainFlac());
-      try {
-        f.tag().setTitle("kept-after-noop-strip");
-        f.stripId3Tags();
-        f.save();
-        const out = f.getFileBuffer();
-        using reopened = await taglib.open(out);
-        expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
-        expect(reopened.tag().title).toStrictEqual("kept-after-noop-strip");
-      } finally {
-        f.dispose();
-      }
-    },
-  );
+  it(`[${backend}] FLAC without ID3: stripId3Tags is a no-op and preserves Vorbis Comments`, async () => {
+    const taglib = await TagLib.initialize({ forceWasmType: backend });
+    const f = await taglib.open(await loadPlainFlac());
+    try {
+      f.tag().setTitle("kept-after-noop-strip");
+      f.stripId3Tags();
+      f.save();
+      const out = f.getFileBuffer();
+      using reopened = await taglib.open(out);
+      expect(reopened.hasId3Tags()).toStrictEqual({ v1: false, v2: false });
+      expect(reopened.tag().title).toStrictEqual("kept-after-noop-strip");
+    } finally {
+      f.dispose();
+    }
+  });
 }

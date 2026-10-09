@@ -111,8 +111,11 @@ export function decodeMessagePack<T = unknown>(
 }
 
 function isAudioProperties(obj: Record<string, unknown>): boolean {
-  return "bitrate" in obj && "sampleRate" in obj &&
-    ("length" in obj || "duration" in obj);
+  return (
+    "bitrate" in obj &&
+    "sampleRate" in obj &&
+    ("length" in obj || "duration" in obj)
+  );
 }
 
 function isPicture(obj: Record<string, unknown>): boolean {
@@ -126,8 +129,14 @@ function coercePictureData(obj: Record<string, unknown>): void {
 }
 
 function isTagLike(obj: Record<string, unknown>): boolean {
-  return "title" in obj || "artist" in obj || "album" in obj ||
-    "TITLE" in obj || "ARTIST" in obj || "ALBUM" in obj;
+  return (
+    "title" in obj ||
+    "artist" in obj ||
+    "album" in obj ||
+    "TITLE" in obj ||
+    "ARTIST" in obj ||
+    "ALBUM" in obj
+  );
 }
 
 function isPropertyMap(obj: Record<string, unknown>): boolean {

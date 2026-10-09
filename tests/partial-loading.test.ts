@@ -28,8 +28,8 @@ function oversizedTagMp3(payloadSize: number, frameCount: number): Uint8Array {
   );
   let audioStart = 0;
   if (String.fromCharCode(...src.slice(0, 3)) === "ID3") {
-    audioStart = 10 +
-      ((src[6]! << 21) | (src[7]! << 14) | (src[8]! << 7) | src[9]!);
+    audioStart =
+      10 + ((src[6]! << 21) | (src[7]! << 14) | (src[8]! << 7) | src[9]!);
   }
   const audio = src.slice(audioStart);
 
@@ -42,10 +42,10 @@ function oversizedTagMp3(payloadSize: number, frameCount: number): Uint8Array {
     payload.fill(0x41, 1 + desc.length);
     const frame = new Uint8Array(10 + payload.length);
     frame.set(new TextEncoder().encode("TXXX"), 0);
-    frame[4] = (payload.length >>> 24) & 0xFF;
-    frame[5] = (payload.length >>> 16) & 0xFF;
-    frame[6] = (payload.length >>> 8) & 0xFF;
-    frame[7] = payload.length & 0xFF;
+    frame[4] = (payload.length >>> 24) & 0xff;
+    frame[5] = (payload.length >>> 16) & 0xff;
+    frame[6] = (payload.length >>> 8) & 0xff;
+    frame[7] = payload.length & 0xff;
     frame.set(payload, 10);
     frames.push(frame);
   }
@@ -54,10 +54,10 @@ function oversizedTagMp3(payloadSize: number, frameCount: number): Uint8Array {
   const header = new Uint8Array(10);
   header.set(new TextEncoder().encode("ID3"), 0);
   header[3] = 3;
-  header[6] = (tagSize >>> 21) & 0x7F;
-  header[7] = (tagSize >>> 14) & 0x7F;
-  header[8] = (tagSize >>> 7) & 0x7F;
-  header[9] = tagSize & 0x7F;
+  header[6] = (tagSize >>> 21) & 0x7f;
+  header[7] = (tagSize >>> 14) & 0x7f;
+  header[8] = (tagSize >>> 7) & 0x7f;
+  header[9] = tagSize & 0x7f;
 
   const parts = [header, ...frames, audio];
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
@@ -96,9 +96,7 @@ describe("Partial Loading", () => {
   it("should work with File objects in browser-like environment", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const fileData = new Uint8Array(
-      await readFile(
-        join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3"),
-      ),
+      await readFile(join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3")),
     );
     const file = {
       size: fileData.byteLength,
@@ -174,8 +172,10 @@ describe("Partial Loading", () => {
     const savedSize = savedData.byteLength;
 
     const sizeDiff = Math.abs(savedSize - originalSize);
-    expect(sizeDiff < 10240, `File size changed too much: ${sizeDiff} bytes`)
-      .toBeTruthy();
+    expect(
+      sizeDiff < 10240,
+      `File size changed too much: ${sizeDiff} bytes`,
+    ).toBeTruthy();
 
     await rm(outputPath);
   });
@@ -354,9 +354,10 @@ describe("Partial Loading", () => {
         // full read against a full read and could not fail. A File input takes
         // the same loadAudioData branch on both backends, so it actually
         // exercises the gate under test.
-        const source = backend === "wasi"
-          ? new File([new Uint8Array(await readFile(path))], "oversized.mp3")
-          : path;
+        const source =
+          backend === "wasi"
+            ? new File([new Uint8Array(await readFile(path))], "oversized.mp3")
+            : path;
         const readWith = async (options?: { partial: boolean }) => {
           const f = await taglib.open(source, options);
           try {

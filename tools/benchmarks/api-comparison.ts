@@ -59,9 +59,8 @@ async function benchmark(
   }
 
   const memoryAfter = (performance as any).memory?.usedJSHeapSize;
-  const memoryUsed = memoryAfter && memoryBefore
-    ? memoryAfter - memoryBefore
-    : undefined;
+  const memoryUsed =
+    memoryAfter && memoryBefore ? memoryAfter - memoryBefore : undefined;
 
   // Calculate stats
   const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
@@ -209,14 +208,14 @@ for (const file of TEST_FILES) {
 const simpleBatchTime = performance.now() - batchStart2;
 
 console.log(
-  `| TagLib API                 | ${
-    taglibBatchTime.toFixed(2).padStart(8)
-  }ms |`,
+  `| TagLib API                 | ${taglibBatchTime
+    .toFixed(2)
+    .padStart(8)}ms |`,
 );
 console.log(
-  `| Simple API                 | ${
-    simpleBatchTime.toFixed(2).padStart(8)
-  }ms |`,
+  `| Simple API                 | ${simpleBatchTime
+    .toFixed(2)
+    .padStart(8)}ms |`,
 );
 console.log("-".repeat(70));
 
@@ -225,26 +224,27 @@ console.log("\n📈 Analysis:");
 
 const readTagsResults = results.filter((r) => r.name.includes("Read Tags"));
 const fastestRead = readTagsResults.reduce((min, r) =>
-  r.avgTime < min.avgTime ? r : min
+  r.avgTime < min.avgTime ? r : min,
 );
 const slowestRead = readTagsResults.reduce((max, r) =>
-  r.avgTime > max.avgTime ? r : max
+  r.avgTime > max.avgTime ? r : max,
 );
 
 console.log(
-  `\n🏆 Fastest tag reading: ${fastestRead.name} (${
-    fastestRead.avgTime.toFixed(3)
-  }ms avg)`,
+  `\n🏆 Fastest tag reading: ${fastestRead.name} (${fastestRead.avgTime.toFixed(
+    3,
+  )}ms avg)`,
 );
 console.log(
-  `🐌 Slowest tag reading: ${slowestRead.name} (${
-    slowestRead.avgTime.toFixed(3)
-  }ms avg)`,
+  `🐌 Slowest tag reading: ${slowestRead.name} (${slowestRead.avgTime.toFixed(
+    3,
+  )}ms avg)`,
 );
 console.log(
-  `⚡ Speed improvement: ${
-    ((slowestRead.avgTime / fastestRead.avgTime - 1) * 100).toFixed(1)
-  }% faster`,
+  `⚡ Speed improvement: ${(
+    (slowestRead.avgTime / fastestRead.avgTime - 1) *
+    100
+  ).toFixed(1)}% faster`,
 );
 
 // Recommendations

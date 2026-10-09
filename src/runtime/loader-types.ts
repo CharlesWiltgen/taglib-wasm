@@ -56,6 +56,8 @@ export function describeNonWasmBinary(
   const found = Array.from(bytes.slice(0, 4))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join(" ");
-  return "wasmBinary is not a WebAssembly module: expected magic bytes " +
-    `00 61 73 6d, found ${found || "(empty)"}. Size: ${bytes.length} bytes`;
+  return (
+    "wasmBinary is not a WebAssembly module: expected magic bytes " +
+    `00 61 73 6d, found ${found || "(empty)"}. Size: ${bytes.length} bytes`
+  );
 }

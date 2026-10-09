@@ -13,7 +13,7 @@ import type { Picture } from "../src/types.ts";
 
 function makePicture(
   overrides: Partial<Picture> & { data: Uint8Array } = {
-    data: new Uint8Array([0xFF, 0xD8, 0xFF]),
+    data: new Uint8Array([0xff, 0xd8, 0xff]),
   },
 ): Picture {
   return {
@@ -25,7 +25,7 @@ function makePicture(
 
 describe("pictureToDataURL", () => {
   it("should produce a valid data URL with correct MIME type", () => {
-    const picture = makePicture({ data: new Uint8Array([0x89, 0x50, 0x4E]) });
+    const picture = makePicture({ data: new Uint8Array([0x89, 0x50, 0x4e]) });
     const result = pictureToDataURL(picture);
 
     expect(result.startsWith("data:image/jpeg;base64,")).toStrictEqual(true);
@@ -60,7 +60,7 @@ describe("pictureToDataURL", () => {
   it("should encode image/png MIME type", () => {
     const picture = makePicture({
       mimeType: "image/png",
-      data: new Uint8Array([0x89, 0x50, 0x4E, 0x47]),
+      data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
     });
     const result = pictureToDataURL(picture);
 
@@ -83,7 +83,7 @@ describe("pictureToDataURL", () => {
   });
 
   it("should handle single byte data", () => {
-    const picture = makePicture({ data: new Uint8Array([0xFF]) });
+    const picture = makePicture({ data: new Uint8Array([0xff]) });
     const result = pictureToDataURL(picture);
 
     expect(result).toStrictEqual("data:image/jpeg;base64,/w==");
@@ -186,7 +186,7 @@ describe("dataURLToPicture", () => {
 
 describe("pictureToDataURL and dataURLToPicture roundtrip", () => {
   it("should preserve data through encode/decode cycle", () => {
-    const originalData = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]);
+    const originalData = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
     const original = makePicture({
       mimeType: "image/jpeg",
       data: originalData,
@@ -201,14 +201,7 @@ describe("pictureToDataURL and dataURLToPicture roundtrip", () => {
 
   it("should preserve PNG data through roundtrip", () => {
     const originalData = new Uint8Array([
-      0x89,
-      0x50,
-      0x4E,
-      0x47,
-      0x0D,
-      0x0A,
-      0x1A,
-      0x0A,
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
     ]);
     const original = makePicture({
       mimeType: "image/png",
@@ -258,7 +251,7 @@ describe("pictureToDataURL and dataURLToPicture roundtrip", () => {
 
 describe("imageFileToPicture", () => {
   it("should convert a File to a Picture with default type", async () => {
-    const fileData = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
+    const fileData = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
     const file = new File([fileData], "cover.jpg", { type: "image/jpeg" });
 
     const result = await imageFileToPicture(file);
@@ -270,7 +263,7 @@ describe("imageFileToPicture", () => {
   });
 
   it("should use provided type and description", async () => {
-    const fileData = new Uint8Array([0x89, 0x50, 0x4E, 0x47]);
+    const fileData = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
     const file = new File([fileData], "back.png", { type: "image/png" });
 
     const result = await imageFileToPicture(file, "BackCover", "Back cover");
@@ -301,9 +294,7 @@ describe("imageFileToPicture", () => {
 });
 
 describe("canvasToPicture", () => {
-  function mockCanvas(
-    blobData: Uint8Array | null,
-  ): HTMLCanvasElement {
+  function mockCanvas(blobData: Uint8Array | null): HTMLCanvasElement {
     return {
       toBlob(
         callback: (blob: Blob | null) => void,
@@ -322,7 +313,7 @@ describe("canvasToPicture", () => {
   }
 
   it("should convert canvas blob to Picture with defaults", async () => {
-    const pixelData = new Uint8Array([0xFF, 0x00, 0xFF]);
+    const pixelData = new Uint8Array([0xff, 0x00, 0xff]);
     const canvas = mockCanvas(pixelData);
 
     const result = await canvasToPicture(canvas);
@@ -407,7 +398,7 @@ describe("setCoverArtFromCanvas", () => {
 
 describe("displayPicture", () => {
   it("should set imgElement.src to a blob URL", () => {
-    const picture = makePicture({ data: new Uint8Array([0xFF, 0xD8]) });
+    const picture = makePicture({ data: new Uint8Array([0xff, 0xd8]) });
     const listeners: { event: string; fn: () => void }[] = [];
     const imgElement = {
       src: "",
@@ -435,7 +426,7 @@ describe("displayPicture", () => {
     };
 
     try {
-      const picture = makePicture({ data: new Uint8Array([0xFF]) });
+      const picture = makePicture({ data: new Uint8Array([0xff]) });
       const imgElement = {
         src: "blob:http://localhost/old-uuid",
         addEventListener() {},
@@ -443,8 +434,9 @@ describe("displayPicture", () => {
 
       displayPicture(picture, imgElement);
 
-      expect(revokedURLs.includes("blob:http://localhost/old-uuid"))
-        .toStrictEqual(true);
+      expect(
+        revokedURLs.includes("blob:http://localhost/old-uuid"),
+      ).toStrictEqual(true);
       expect(imgElement.src.startsWith("blob:")).toStrictEqual(true);
     } finally {
       URL.revokeObjectURL = originalRevoke;
@@ -459,7 +451,7 @@ describe("displayPicture", () => {
     };
 
     try {
-      const picture = makePicture({ data: new Uint8Array([0xFF]) });
+      const picture = makePicture({ data: new Uint8Array([0xff]) });
       const imgElement = {
         src: "https://example.com/image.jpg",
         addEventListener() {},
@@ -477,7 +469,7 @@ describe("displayPicture", () => {
 describe("createPictureDownloadURL", () => {
   it("should return a blob URL", () => {
     const picture = makePicture({
-      data: new Uint8Array([0xFF, 0xD8, 0xFF]),
+      data: new Uint8Array([0xff, 0xd8, 0xff]),
     });
 
     const url = createPictureDownloadURL(picture);
@@ -501,7 +493,7 @@ describe("createPictureDownloadURL", () => {
   it("should work with PNG MIME type", () => {
     const picture = makePicture({
       mimeType: "image/png",
-      data: new Uint8Array([0x89, 0x50, 0x4E, 0x47]),
+      data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
     });
 
     const url = createPictureDownloadURL(picture, "cover.png");

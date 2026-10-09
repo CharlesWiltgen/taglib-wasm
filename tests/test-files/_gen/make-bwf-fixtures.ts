@@ -25,7 +25,10 @@ const bext = {
 const ixml =
   "<BWFXML><IXML_VERSION>2.10</IXML_VERSION><PROJECT>taglib-wasm</PROJECT></BWFXML>";
 
-for (const [src, dst] of [[wavSrc, wavOut], [flacSrc, flacOut]] as const) {
+for (const [src, dst] of [
+  [wavSrc, wavOut],
+  [flacSrc, flacOut],
+] as const) {
   const f = await taglib.open(await Deno.readFile(src));
   f.setBext(bext);
   f.setIxml(ixml);

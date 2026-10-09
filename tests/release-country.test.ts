@@ -39,12 +39,12 @@ describe("RELEASECOUNTRY typed mapping (taglib-m0c2)", () => {
   });
 
   it("write: string and string[] forms both normalize", () => {
-    expect(normalizeTagInput({ releaseCountry: "US" }).releaseCountry)
-      .toStrictEqual([
-        "US",
-      ]);
-    expect(normalizeTagInput({ releaseCountry: ["US", "XW"] }).releaseCountry)
-      .toStrictEqual(["US", "XW"]);
+    expect(
+      normalizeTagInput({ releaseCountry: "US" }).releaseCountry,
+    ).toStrictEqual(["US"]);
+    expect(
+      normalizeTagInput({ releaseCountry: ["US", "XW"] }).releaseCountry,
+    ).toStrictEqual(["US", "XW"]);
   });
 
   it("absent when not present", () => {
@@ -69,9 +69,7 @@ async function roundTrip(
   format: keyof typeof FIXTURE_PATH & string,
 ): Promise<{ readBack: Record<string, string[]>; buffer: Uint8Array }> {
   const src = new Uint8Array(
-    await readFile(
-      FIXTURE_PATH[format as keyof typeof FIXTURE_PATH],
-    ),
+    await readFile(FIXTURE_PATH[format as keyof typeof FIXTURE_PATH]),
   );
   const tl = await TagLib.initialize({ forceWasmType: writeBackend });
   const file = await tl.open(new Uint8Array(src));

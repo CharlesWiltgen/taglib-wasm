@@ -283,7 +283,8 @@ resolves paths relative to the entry point or the library module.
 Support runtime configuration:
 
 ```typescript
-const WASM_URL = Deno.env.get("TAGLIB_WASM_URL") ||
+const WASM_URL =
+  Deno.env.get("TAGLIB_WASM_URL") ||
   "https://cdn.jsdelivr.net/npm/taglib-wasm@latest/dist/taglib-web.wasm";
 ```
 

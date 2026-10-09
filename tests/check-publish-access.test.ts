@@ -163,8 +163,7 @@ const CASES: Case[] = [
     listing: stale("1"),
     code: 1,
     includes: [
-      "no record naming " + WORKFLOW_FILE + " grants publish to " +
-      REPOSITORY,
+      "no record naming " + WORKFLOW_FILE + " grants publish to " + REPOSITORY,
       `id: 1`,
       "npm trust revoke",
     ],
@@ -193,8 +192,7 @@ const CASES: Case[] = [
     // record 2 has publish and another repository. Judging the listing as one
     // block would find both and pass — the cross-record vouching the guard's
     // comment and this file's docstring both promise cannot happen.
-    name:
-      "fields split across records: our repository staged, another's publish",
+    name: "fields split across records: our repository staged, another's publish",
     listing: staged("1") + stale("2"),
     code: 1,
     includes: ["no record naming " + WORKFLOW_FILE + " grants publish"],
@@ -268,8 +266,7 @@ const CASES: Case[] = [
     omits: ["returned the JSON trust listing"],
   },
   {
-    name:
-      "npm_config_json=true, wrong repository: judged from the human listing",
+    name: "npm_config_json=true, wrong repository: judged from the human listing",
     listing: stale("1"),
     jsonListing: jsonRecord({
       id: "1",
@@ -296,8 +293,7 @@ const CASES: Case[] = [
     includes: ["returned the JSON trust listing"],
   },
   {
-    name:
-      "JSON listing despite the mode pin, our repository: refused, not judged",
+    name: "JSON listing despite the mode pin, our repository: refused, not judged",
     listing: ours("1", "publish"),
     jsonListing: jsonRecord({
       id: "1",
@@ -382,9 +378,10 @@ async function runGuard(
       join(dir, "listing.json"),
       testCase.jsonListing ?? testCase.listing,
     );
-    const { code, output } = await new Promise<
-      { code: number; output: string }
-    >((resolvePromise) => {
+    const { code, output } = await new Promise<{
+      code: number;
+      output: string;
+    }>((resolvePromise) => {
       const child = spawn("bash", [guard], {
         env: {
           PATH: `${dir}${process.platform === "win32" ? ";" : ":"}${

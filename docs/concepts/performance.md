@@ -129,9 +129,10 @@ Understanding memory usage helps optimize performance:
 // - Per file overhead: ~2x file size
 // - Peak usage during save: ~3x file size
 
-function estimateMemoryUsage(
-  fileSizeMB: number,
-): { minimum: number; peak: number } {
+function estimateMemoryUsage(fileSizeMB: number): {
+  minimum: number;
+  peak: number;
+} {
   const baseOverhead = 4; // MB
   const fileOverhead = fileSizeMB * 2;
   const peakOverhead = fileSizeMB * 3;
@@ -717,10 +718,9 @@ for await (const result of streamProcess(files)) {
 const buffer = await Deno.readFile(path); // Efficient native read
 
 // Use Workers for CPU-intensive tasks
-const worker = new Worker(
-  new URL("./tag-worker.ts", import.meta.url).href,
-  { type: "module" },
-);
+const worker = new Worker(new URL("./tag-worker.ts", import.meta.url).href, {
+  type: "module",
+});
 
 worker.postMessage({ cmd: "process", buffer });
 
@@ -773,7 +773,8 @@ const worker = new Worker("tag-worker.js");
 // Process file uploads efficiently
 async function handleFileUpload(file: File) {
   // Use streams for large files
-  if (file.size > 50 * 1024 * 1024) { // > 50MB
+  if (file.size > 50 * 1024 * 1024) {
+    // > 50MB
     const reader = file.stream().getReader();
     const chunks: Uint8Array[] = [];
 
@@ -835,9 +836,7 @@ export default {
           properties: file.audioProperties(),
         };
 
-        await writer.write(
-          new TextEncoder().encode(JSON.stringify(metadata)),
-        );
+        await writer.write(new TextEncoder().encode(JSON.stringify(metadata)));
       } finally {
         await writer.close();
       }
@@ -858,10 +857,7 @@ export default {
 class PerformanceMonitor {
   private metrics = new Map<string, number[]>();
 
-  async measure<T>(
-    name: string,
-    operation: () => Promise<T>,
-  ): Promise<T> {
+  async measure<T>(name: string, operation: () => Promise<T>): Promise<T> {
     const start = performance.now();
 
     try {
@@ -1060,9 +1056,9 @@ async function analyzeAlbum(albumPath: string) {
       0,
     ),
     missingCoverArt: okItems.filter((r) => !r.data.hasCoverArt).length,
-    needsNormalization:
-      okItems.filter((r) => !r.data.dynamics?.replayGainTrackGain)
-        .length,
+    needsNormalization: okItems.filter(
+      (r) => !r.data.dynamics?.replayGainTrackGain,
+    ).length,
   };
 
   return analysis;
@@ -1165,9 +1161,8 @@ const tracker = new PerformanceTracker();
 
 const tags = await tracker.track("readTags", () => readTags("song.mp3"));
 
-const batchResult = await tracker.track(
-  "batchProcess",
-  () => readTagsBatch(files, { concurrency: 8 }),
+const batchResult = await tracker.track("batchProcess", () =>
+  readTagsBatch(files, { concurrency: 8 }),
 );
 
 // View performance stats

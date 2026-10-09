@@ -37,7 +37,7 @@ describe("loadPictureFromFile", () => {
   it("should load JPEG as Picture with correct MIME type", async () => {
     // Create a fake image file
     const imagePath = `${TEMP_DIR}/test-cover.jpg`;
-    const fakeImageData = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4]);
+    const fakeImageData = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
     await writeFile(imagePath, fakeImageData);
 
     const pic = await loadPictureFromFile(imagePath);
@@ -49,7 +49,7 @@ describe("loadPictureFromFile", () => {
 
   it("should detect PNG MIME type", async () => {
     const imagePath = `${TEMP_DIR}/test-cover.png`;
-    await writeFile(imagePath, new Uint8Array([0x89, 0x50, 0x4E, 0x47]));
+    await writeFile(imagePath, new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
 
     const pic = await loadPictureFromFile(imagePath);
     expect(pic.mimeType).toStrictEqual("image/png");
@@ -104,7 +104,7 @@ describe("loadPictureFromFile", () => {
 describe("savePictureToFile", () => {
   it("should write picture data to file", async () => {
     const imagePath = `${TEMP_DIR}/saved-picture.jpg`;
-    const pictureData = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 10, 20, 30]);
+    const pictureData = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 10, 20, 30]);
 
     await savePictureToFile(
       {
@@ -156,7 +156,7 @@ describe("findCoverArtFiles", () => {
     const musicDir = `${TEMP_DIR}/music-with-cover`;
     await mkdir(musicDir, { recursive: true });
     await writeFile(`${musicDir}/track.mp3`, new Uint8Array([1]));
-    await writeFile(`${musicDir}/cover.jpg`, new Uint8Array([0xFF, 0xD8]));
+    await writeFile(`${musicDir}/cover.jpg`, new Uint8Array([0xff, 0xd8]));
 
     const result = await findCoverArtFiles(`${musicDir}/track.mp3`);
     expect(result.front).toStrictEqual(`${musicDir}/cover.jpg`);
@@ -166,10 +166,7 @@ describe("findCoverArtFiles", () => {
     const musicDir = `${TEMP_DIR}/music-with-folder`;
     await mkdir(musicDir, { recursive: true });
     await writeFile(`${musicDir}/track.mp3`, new Uint8Array([1]));
-    await writeFile(
-      `${musicDir}/folder.png`,
-      new Uint8Array([0x89, 0x50]),
-    );
+    await writeFile(`${musicDir}/folder.png`, new Uint8Array([0x89, 0x50]));
 
     const result = await findCoverArtFiles(`${musicDir}/track.mp3`);
     expect(result.folder).toStrictEqual(`${musicDir}/folder.png`);
@@ -216,7 +213,7 @@ describe("importPictureWithType", () => {
     await copyFile(FIXTURE_PATH.mp3, tempAudio);
     await writeFile(
       tempImage,
-      new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]),
+      new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
     );
 
     await importPictureWithType(tempAudio, tempImage, "BackCover", {

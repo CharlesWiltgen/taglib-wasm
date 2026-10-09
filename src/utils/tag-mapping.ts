@@ -49,10 +49,7 @@ export function readExtendedTag(
   includeProperties?: string[],
 ): ExtendedTag {
   const props = audioFile.properties();
-  const tag = mapPropertiesToExtendedTag(props) as Record<
-    string,
-    unknown
-  >;
+  const tag = mapPropertiesToExtendedTag(props) as Record<string, unknown>;
 
   const pictures = audioFile.getPictures();
   if (pictures.length > 0) tag.pictures = pictures;
@@ -123,12 +120,10 @@ export function mapPropertiesToExtendedTag(props: PropertyMap): ExtendedTag {
   // (taglib-asg: the two backends disagreed, and the raw string is canonical
   // now), but `totalTracks`/`totalDiscs` remain useful, and deriving them here is
   // additive — `properties().trackNumber` keeps the raw "3/12".
-  for (
-    const [propKey, totalField] of [
-      ["trackNumber", "totalTracks"],
-      ["discNumber", "totalDiscs"],
-    ] as const
-  ) {
+  for (const [propKey, totalField] of [
+    ["trackNumber", "totalTracks"],
+    ["discNumber", "totalDiscs"],
+  ] as const) {
     if (tag[totalField] !== undefined) continue;
     const raw = props[propKey]?.[0];
     const slash = raw?.indexOf("/") ?? -1;
@@ -261,7 +256,8 @@ function reconcilePairFields(
     }
 
     // Only the bare number was given, so inherit the total the file already has.
-    const numericOnly = input[numericKey] !== undefined &&
+    const numericOnly =
+      input[numericKey] !== undefined &&
       input[rawKey as keyof TagInput] === undefined;
     if (!numericOnly || incoming === undefined) continue;
     const existing = currentProps[rawKey]?.[0];
@@ -272,19 +268,15 @@ function reconcilePairFields(
   }
 }
 
-export function normalizeTagInput(
-  input: Partial<TagInput>,
-): PropertyMap {
+export function normalizeTagInput(input: Partial<TagInput>): PropertyMap {
   const props: Record<string, string[]> = {};
-  for (
-    const field of [
-      "title",
-      "artist",
-      "album",
-      "comment",
-      "genre",
-    ] as const
-  ) {
+  for (const field of [
+    "title",
+    "artist",
+    "album",
+    "comment",
+    "genre",
+  ] as const) {
     const val = input[field];
     if (val === undefined) continue;
     props[field] = Array.isArray(val) ? val : [val];
@@ -354,12 +346,10 @@ export function normalizeTagInput(
   // `totalTracks`/`totalDiscs`: that would store the total twice (in the pair AND
   // in a separate tag) on a readTags() -> applyTags() round-trip, since the typed
   // read derives them. Raw wins, as it does for date-over-year (taglib-asg).
-  for (
-    const [rawField, totalField] of [
-      ["trackNumber", "totalTracks"],
-      ["discNumber", "totalDiscs"],
-    ] as const
-  ) {
+  for (const [rawField, totalField] of [
+    ["trackNumber", "totalTracks"],
+    ["discNumber", "totalDiscs"],
+  ] as const) {
     if (props[rawField]?.[0]?.includes("/")) delete props[totalField];
   }
 

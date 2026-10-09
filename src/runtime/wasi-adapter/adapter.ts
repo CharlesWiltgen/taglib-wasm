@@ -76,9 +76,7 @@ export class WasiToTagLibAdapter implements TagLibModule {
   _realloc(ptr: number, newSize: number): number {
     const newPtr = this.wasi.malloc(newSize);
     if (!newPtr) {
-      throw new MemoryError(
-        `realloc failed. Requested size: ${newSize} bytes`,
-      );
+      throw new MemoryError(`realloc failed. Requested size: ${newSize} bytes`);
     }
     if (ptr) {
       const oldData = this.heap.slice(ptr, ptr + newSize);
@@ -137,22 +135,14 @@ export class WasiToTagLibAdapter implements TagLibModule {
   }
 
   addFunction(_func: any): number {
-    throw new WasmerExecutionError(
-      "addFunction not supported in WASI mode",
-    );
+    throw new WasmerExecutionError("addFunction not supported in WASI mode");
   }
 
   removeFunction(_ptr: number): void {
-    throw new WasmerExecutionError(
-      "removeFunction not supported in WASI mode",
-    );
+    throw new WasmerExecutionError("removeFunction not supported in WASI mode");
   }
 
-  cwrap(
-    _name: string,
-    _returnType: string | null,
-    _argTypes: string[],
-  ): any {
+  cwrap(_name: string, _returnType: string | null, _argTypes: string[]): any {
     throw new WasmerExecutionError(
       "cwrap not supported in WASI mode - use direct exports",
     );

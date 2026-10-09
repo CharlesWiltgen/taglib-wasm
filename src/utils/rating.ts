@@ -160,8 +160,12 @@ export function clamp(rating: number): NormalizedRating {
  * @returns True if rating is valid
  */
 export function isValid(rating: number): rating is NormalizedRating {
-  return typeof rating === "number" && !Number.isNaN(rating) && rating >= 0 &&
-    rating <= 1;
+  return (
+    typeof rating === "number" &&
+    !Number.isNaN(rating) &&
+    rating >= 0 &&
+    rating <= 1
+  );
 }
 
 /**

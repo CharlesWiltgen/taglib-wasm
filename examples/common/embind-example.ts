@@ -24,9 +24,8 @@ async function main() {
 
   // Convert ArrayBuffer to binary string (required for Embind)
   const uint8Array = new Uint8Array(buffer);
-  const binaryString = Array.from(
-    uint8Array,
-    (byte) => String.fromCharCode(byte),
+  const binaryString = Array.from(uint8Array, (byte) =>
+    String.fromCharCode(byte),
   ).join("");
 
   // Load the file from buffer

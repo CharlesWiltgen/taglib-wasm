@@ -219,7 +219,7 @@ deno run --allow-read test-systematic.ts
 # Test with Bun
 bun run test-systematic.ts
 
-# Test with Node.js  
+# Test with Node.js
 npm test
 
 # Test in browser
@@ -287,12 +287,14 @@ const taglib = await initializeForDenoCompile();
 ### Manual WASM Embedding
 
 1. **Prepare the WASM file:**
+
    ```typescript
    import { prepareWasmForEmbedding } from "taglib-wasm";
    await prepareWasmForEmbedding("./taglib.wasm");
    ```
 
 2. **Initialize with embedded WASM:**
+
    ```typescript
    import { TagLib } from "taglib-wasm";
 

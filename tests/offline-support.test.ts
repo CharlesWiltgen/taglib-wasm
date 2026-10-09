@@ -114,7 +114,7 @@ describe("OfflineSupport", () => {
         loadTagLibModule({
           wasmBinary: wrongVersionWasm,
           forceWasmType: "emscripten",
-        })
+        }),
       );
     },
   });
@@ -126,7 +126,7 @@ describe("OfflineSupport", () => {
         loadTagLibModule({
           wasmBinary: new Uint8Array([0x00, 0x00, 0x00, 0x00]),
           forceWasmType: "emscripten",
-        })
+        }),
       );
       // Must name the problem rather than surfacing an Emscripten abort.
       assertEquals(
@@ -193,10 +193,10 @@ describe("OfflineSupport", () => {
     // copy there must not shadow a freshly built binary. Published packages
     // have no build/, so resolution falls through to dist/ unchanged.
     const buildIndex = WASM_EMBED_SEARCH_PATHS.findIndex((p) =>
-      p.includes("build/")
+      p.includes("build/"),
     );
     const distIndex = WASM_EMBED_SEARCH_PATHS.findIndex((p) =>
-      p.startsWith("../dist/")
+      p.startsWith("../dist/"),
     );
     assertEquals(buildIndex >= 0 && buildIndex < distIndex, true);
   });

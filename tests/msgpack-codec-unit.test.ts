@@ -96,7 +96,7 @@ describe("decodeTagData", () => {
 
   it("should throw on invalid data", () => {
     expectThrows(
-      () => decodeTagData(new Uint8Array([0xFF, 0xFF, 0xFF])),
+      () => decodeTagData(new Uint8Array([0xff, 0xff, 0xff])),
       Error,
       "Failed to decode",
     );
@@ -134,8 +134,9 @@ describe("decodeAudioProperties length migration", () => {
     });
     const decoded = decodeAudioProperties(oldFormat);
     expect(decoded.duration).toStrictEqual(240);
-    expect((decoded as unknown as Record<string, unknown>).length)
-      .toStrictEqual(undefined);
+    expect(
+      (decoded as unknown as Record<string, unknown>).length,
+    ).toStrictEqual(undefined);
   });
 
   it("should keep duration when both length and duration exist", () => {
@@ -154,7 +155,7 @@ describe("decodeAudioProperties length migration", () => {
 describe("decodeAudioProperties", () => {
   it("should throw on invalid data", () => {
     expectThrows(
-      () => decodeAudioProperties(new Uint8Array([0xFF, 0xFF])),
+      () => decodeAudioProperties(new Uint8Array([0xff, 0xff])),
       Error,
       "Failed to decode",
     );
@@ -178,7 +179,7 @@ describe("encodePropertyMap / decodePropertyMap", () => {
 
   it("should throw on invalid decode", () => {
     expectThrows(
-      () => decodePropertyMap(new Uint8Array([0xFF, 0xFF])),
+      () => decodePropertyMap(new Uint8Array([0xff, 0xff])),
       Error,
       "Failed to decode",
     );
@@ -189,7 +190,7 @@ describe("encodePicture / decodePicture", () => {
   it("should roundtrip picture data", () => {
     const pic: Picture = {
       mimeType: "image/jpeg",
-      data: new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]),
+      data: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]),
       type: "FrontCover" as PictureType,
       description: "Front Cover",
     };
@@ -203,7 +204,7 @@ describe("encodePicture / decodePicture", () => {
 
   it("should throw on invalid decode", () => {
     expectThrows(
-      () => decodePicture(new Uint8Array([0xFF, 0xFF])),
+      () => decodePicture(new Uint8Array([0xff, 0xff])),
       Error,
       "Failed to decode",
     );
@@ -233,7 +234,7 @@ describe("encodePictureArray / decodePictureArray", () => {
 
   it("should throw on invalid decode", () => {
     expectThrows(
-      () => decodePictureArray(new Uint8Array([0xFF, 0xFF])),
+      () => decodePictureArray(new Uint8Array([0xff, 0xff])),
       Error,
       "Failed to decode",
     );
@@ -266,7 +267,7 @@ describe("encodeMessagePack / decodeMessagePack", () => {
 
   it("should throw on invalid decode", () => {
     expectThrows(
-      () => decodeMessagePack(new Uint8Array([0xFF, 0xFF])),
+      () => decodeMessagePack(new Uint8Array([0xff, 0xff])),
       Error,
       "Failed to decode",
     );
@@ -352,7 +353,7 @@ describe("encodeFastTagData / decodeFastTagData", () => {
 
   it("should throw on invalid decode", () => {
     expectThrows(
-      () => decodeFastTagData(new Uint8Array([0xFF, 0xFF])),
+      () => decodeFastTagData(new Uint8Array([0xff, 0xff])),
       Error,
       "Failed to decode",
     );
@@ -413,8 +414,9 @@ describe("decodeMessagePackAuto", () => {
     });
     const decoded = decodeMessagePackAuto(oldProps) as AudioProperties;
     expect(decoded.duration).toStrictEqual(180);
-    expect((decoded as unknown as Record<string, unknown>).length)
-      .toStrictEqual(undefined);
+    expect(
+      (decoded as unknown as Record<string, unknown>).length,
+    ).toStrictEqual(undefined);
   });
 
   it("should detect picture data", () => {
@@ -453,7 +455,7 @@ describe("decodeMessagePackAuto", () => {
 
   it("should throw on invalid data", () => {
     expectThrows(
-      () => decodeMessagePackAuto(new Uint8Array([0xFF, 0xFF])),
+      () => decodeMessagePackAuto(new Uint8Array([0xff, 0xff])),
       Error,
       "Failed to decode",
     );
@@ -467,7 +469,7 @@ describe("isValidMessagePack", () => {
   });
 
   it("should return false for invalid data", () => {
-    expect(isValidMessagePack(new Uint8Array([0xFF, 0xFF]))).toStrictEqual(
+    expect(isValidMessagePack(new Uint8Array([0xff, 0xff]))).toStrictEqual(
       false,
     );
   });
@@ -530,7 +532,7 @@ describe("getMessagePackInfo", () => {
   });
 
   it("should return invalid for bad data", () => {
-    const info = getMessagePackInfo(new Uint8Array([0xFF, 0xFF]));
+    const info = getMessagePackInfo(new Uint8Array([0xff, 0xff]));
     expect(info.isValid).toStrictEqual(false);
   });
 });
@@ -556,13 +558,14 @@ describe("MessagePackUtils.safeDecodeAudioProperties", () => {
 
   it("should return null for invalid msgpack", () => {
     expect(
-      MessagePackUtils.safeDecodeAudioProperties(new Uint8Array([0xFF, 0xFF])),
+      MessagePackUtils.safeDecodeAudioProperties(new Uint8Array([0xff, 0xff])),
     ).toStrictEqual(null);
   });
 
   it("should return null for empty buffer", () => {
-    expect(MessagePackUtils.safeDecodeAudioProperties(new Uint8Array(0)))
-      .toStrictEqual(null);
+    expect(
+      MessagePackUtils.safeDecodeAudioProperties(new Uint8Array(0)),
+    ).toStrictEqual(null);
   });
 });
 
@@ -570,7 +573,7 @@ describe("MessagePackUtils.safeDecodePicture", () => {
   it("should decode valid picture data", () => {
     const pic: Picture = {
       mimeType: "image/jpeg",
-      data: new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]),
+      data: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]),
       type: "FrontCover" as PictureType,
       description: "Cover",
     };
@@ -581,8 +584,9 @@ describe("MessagePackUtils.safeDecodePicture", () => {
   });
 
   it("should return null for invalid msgpack", () => {
-    expect(MessagePackUtils.safeDecodePicture(new Uint8Array([0xFF, 0xFF])))
-      .toStrictEqual(null);
+    expect(
+      MessagePackUtils.safeDecodePicture(new Uint8Array([0xff, 0xff])),
+    ).toStrictEqual(null);
   });
 
   it("should return null for empty buffer", () => {
@@ -616,7 +620,7 @@ describe("MessagePackUtils.toJson", () => {
 
   it("should throw MetadataError for invalid msgpack", () => {
     const err = expectThrows(
-      () => MessagePackUtils.toJson(new Uint8Array([0xFF, 0xFF])),
+      () => MessagePackUtils.toJson(new Uint8Array([0xff, 0xff])),
       Error,
     );
     expect(err.message).toContain("Failed to convert to JSON");
@@ -643,12 +647,8 @@ describe("MessagePackUtils.fromJson", () => {
 
 describe("MessagePackUtils.batchDecode", () => {
   it("should decode multiple valid buffers", () => {
-    const tag1 = encodeTagData(
-      { title: "A" } as unknown as ExtendedTag,
-    );
-    const tag2 = encodeTagData(
-      { title: "B" } as unknown as ExtendedTag,
-    );
+    const tag1 = encodeTagData({ title: "A" } as unknown as ExtendedTag);
+    const tag2 = encodeTagData({ title: "B" } as unknown as ExtendedTag);
     const results = MessagePackUtils.batchDecode([tag1, tag2]);
     expect(results.length).toStrictEqual(2);
     expect(results[0].success).toStrictEqual(true);
@@ -659,10 +659,8 @@ describe("MessagePackUtils.batchDecode", () => {
   });
 
   it("should capture errors for invalid buffers", () => {
-    const valid = encodeTagData(
-      { title: "OK" } as unknown as ExtendedTag,
-    );
-    const invalid = new Uint8Array([0xFF, 0xFF]);
+    const valid = encodeTagData({ title: "OK" } as unknown as ExtendedTag);
+    const invalid = new Uint8Array([0xff, 0xff]);
     const results = MessagePackUtils.batchDecode([valid, invalid]);
     expect(results[0].success).toStrictEqual(true);
     expect(results[1].success).toStrictEqual(false);
@@ -694,10 +692,12 @@ describe("MessagePackUtils.isTagLibCompatible", () => {
   });
 
   it("should return true for picture objects", () => {
-    expect(MessagePackUtils.isTagLibCompatible({
-      mimeType: "image/jpeg",
-      data: new Uint8Array(0),
-    })).toStrictEqual(true);
+    expect(
+      MessagePackUtils.isTagLibCompatible({
+        mimeType: "image/jpeg",
+        data: new Uint8Array(0),
+      }),
+    ).toStrictEqual(true);
   });
 
   it("should return false for non-objects", () => {

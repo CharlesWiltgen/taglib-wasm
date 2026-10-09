@@ -71,9 +71,9 @@ async function main() {
   const sequentialTime = performance.now() - sequentialStart;
   console.log(`   Time: ${formatDuration(sequentialTime)}`);
   console.log(
-    `   Speed: ${
-      (fileCount / (sequentialTime / 1000)).toFixed(1)
-    } files/second`,
+    `   Speed: ${(fileCount / (sequentialTime / 1000)).toFixed(
+      1,
+    )} files/second`,
   );
 
   // Method 2: Batch processing with default concurrency (FAST)
@@ -84,9 +84,9 @@ async function main() {
 
   console.log(`   Time: ${formatDuration(batchDefaultTime)}`);
   console.log(
-    `   Speed: ${
-      (fileCount / (batchDefaultTime / 1000)).toFixed(1)
-    } files/second`,
+    `   Speed: ${(fileCount / (batchDefaultTime / 1000)).toFixed(
+      1,
+    )} files/second`,
   );
   console.log(
     `   Speedup: ${formatComparison(sequentialTime, batchDefaultTime)}`,
@@ -142,13 +142,12 @@ async function main() {
 
   console.log("Ranked by speed:");
   results.forEach((result, index) => {
-    const speedup = index === 0
-      ? ""
-      : ` (${formatComparison(sequentialTime, result.time)})`;
+    const speedup =
+      index === 0 ? "" : ` (${formatComparison(sequentialTime, result.time)})`;
     console.log(
-      `${index + 1}. ${result.method}: ${
-        formatDuration(result.time)
-      }${speedup}`,
+      `${index + 1}. ${result.method}: ${formatDuration(
+        result.time,
+      )}${speedup}`,
     );
   });
 
@@ -172,8 +171,10 @@ async function main() {
     console.log("\n" + "=".repeat(60));
     console.log("\n🎵 Sample Metadata (first 3 files):\n");
 
-    metadataResult.items.filter((i) => i.status === "ok").slice(0, 3).forEach(
-      (item) => {
+    metadataResult.items
+      .filter((i) => i.status === "ok")
+      .slice(0, 3)
+      .forEach((item) => {
         if (item.status !== "ok") return;
         console.log(`File: ${item.path}`);
         console.log(`  Artist: ${item.data.tags.artist || "Unknown"}`);
@@ -184,8 +185,7 @@ async function main() {
           console.log(`  Bitrate: ${item.data.properties.bitrate}kbps`);
         }
         console.log();
-      },
-    );
+      });
   }
 }
 

@@ -88,9 +88,10 @@ export function setIxml(
   return { ...tagData, ixml: data };
 }
 
-export function hasId3Tags(
-  tagData: Record<string, unknown> | null,
-): { v1: boolean; v2: boolean } {
+export function hasId3Tags(tagData: Record<string, unknown> | null): {
+  v1: boolean;
+  v2: boolean;
+} {
   const t = tagData?.id3Tags as { v1?: boolean; v2?: boolean } | undefined;
   return { v1: t?.v1 ?? false, v2: t?.v2 ?? false };
 }
@@ -131,9 +132,11 @@ export function stripId3Tags(
 export function getRatings(
   tagData: Record<string, unknown> | null,
 ): { rating: number; email: string; counter: number }[] {
-  return (tagData?.ratings as
-    | { rating: number; email: string; counter: number }[]
-    | undefined) ?? [];
+  return (
+    (tagData?.ratings as
+      | { rating: number; email: string; counter: number }[]
+      | undefined) ?? []
+  );
 }
 
 export function setRatings(
@@ -165,10 +168,10 @@ export function getLyrics(
     typeof entry === "string"
       ? { text: entry, description: "", language: "" }
       : {
-        text: (entry as RawLyrics)?.text ?? "",
-        description: (entry as RawLyrics)?.description ?? "",
-        language: (entry as RawLyrics)?.language ?? "",
-      }
+          text: (entry as RawLyrics)?.text ?? "",
+          description: (entry as RawLyrics)?.description ?? "",
+          language: (entry as RawLyrics)?.language ?? "",
+        },
   );
 }
 

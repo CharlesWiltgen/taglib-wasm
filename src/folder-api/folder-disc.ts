@@ -85,8 +85,7 @@ const SEP = String.raw`[\s._#-]*`;
 // label ("CD A", "Album (CD D)") parsed as a gated, numberless token.
 // Non-digit tokens need a right word boundary: without it, "Recordings 1"
 // matched "record" + the first letter of "ings" (2026-08-04 report).
-const NUM = String
-  .raw`(?:\d+|(?:[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[a-z])(?![a-z]))`;
+const NUM = String.raw`(?:\d+|(?:[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[a-z])(?![a-z]))`;
 
 /**
  * Parse a directory name as a disc folder. Returns undefined for non-disc
@@ -120,25 +119,25 @@ export function parseDiscName(name: string): DiscParse | undefined {
     // Multi-letter roman tokens must be plausible disc numbers: all-roman-
     // letter words ("Mic" = 1099, "Mix" = 1011) are titles, not numerals
     // (2026-08-04 review — same word-collision class as the Recordings bug).
-    if (
-      !sideLetter && /^[ivxlcdm]{2,}$/i.test(m[2]) && (number ?? 0) > 100
-    ) continue;
+    if (!sideLetter && /^[ivxlcdm]{2,}$/i.test(m[2]) && (number ?? 0) > 100)
+      continue;
 
     const isGated = GATED_MARKER_SET.has(marker.toLowerCase()) || sideLetter;
 
     // Title text = everything before the marker's first character.
     const markerStart = m.index! + m[1].length - marker.length;
     const rawPrefix = trimmed.slice(0, markerStart).trim();
-    const title = rawPrefix.replace(/[()[\]]/g, "").replace(/[\s._#-]+$/, "") ||
-      undefined;
+    const title =
+      rawPrefix.replace(/[()[\]]/g, "").replace(/[\s._#-]+$/, "") || undefined;
     const isExact = title === undefined;
 
     // Trailing text after the number becomes the disc title.
     const after = trimmed.slice(m.index! + m[0].length).trim();
-    const discTitle = after
-      .replace(/^[()[\],:;\-–—\s]+/, "")
-      .replace(/[)\]\[,:;\-–—\s]+$/, "")
-      .trim() || undefined;
+    const discTitle =
+      after
+        .replace(/^[()[\],:;\-–—\s]+/, "")
+        .replace(/[)\]\[,:;\-–—\s]+$/, "")
+        .trim() || undefined;
 
     // "of N" total from "CD 1 of 2".
     const ofMatch = after.trim().match(/^of\s+(\d+)\b/i);

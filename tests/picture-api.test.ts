@@ -48,20 +48,26 @@ describe("Core Picture API", () => {
 
     const mp3File = await taglib.open(TEST_FILES.mp3);
     const mp3Pictures = mp3File.getPictures();
-    expect(mp3Pictures.length, "MP3 should have no pictures initially")
-      .toStrictEqual(0);
+    expect(
+      mp3Pictures.length,
+      "MP3 should have no pictures initially",
+    ).toStrictEqual(0);
     mp3File.dispose();
 
     const flacFile = await taglib.open(TEST_FILES.flac);
     const flacPictures = flacFile.getPictures();
-    expect(flacPictures.length, "FLAC should have no pictures initially")
-      .toStrictEqual(0);
+    expect(
+      flacPictures.length,
+      "FLAC should have no pictures initially",
+    ).toStrictEqual(0);
     flacFile.dispose();
 
     const mp4File = await taglib.open(TEST_FILES.m4a);
     const mp4Pictures = mp4File.getPictures();
-    expect(mp4Pictures.length, "MP4 should have no pictures initially")
-      .toStrictEqual(0);
+    expect(
+      mp4Pictures.length,
+      "MP4 should have no pictures initially",
+    ).toStrictEqual(0);
     mp4File.dispose();
   });
 
@@ -77,8 +83,10 @@ describe("Core Picture API", () => {
       file.save();
 
       const pictures = file.getPictures();
-      expect(pictures.length, "Should have 1 picture after adding")
-        .toStrictEqual(1);
+      expect(
+        pictures.length,
+        "Should have 1 picture after adding",
+      ).toStrictEqual(1);
       expect(pictures[0].mimeType).toStrictEqual("image/png");
       expect(pictures[0].type).toStrictEqual("FrontCover");
       expect(pictures[0].description).toStrictEqual("Front cover");
@@ -142,8 +150,10 @@ describe("Core Picture API", () => {
     file.removePictures();
     file.save();
 
-    expect(file.getPictures().length, "Should have no pictures after removal")
-      .toStrictEqual(0);
+    expect(
+      file.getPictures().length,
+      "Should have no pictures after removal",
+    ).toStrictEqual(0);
 
     file.dispose();
   });
@@ -210,16 +220,20 @@ describe("Simple API Cover Art", () => {
     const bufferWithTwo = await applyPictures(modifiedBuffer, pictures);
 
     const frontCover = await readCoverArt(bufferWithTwo);
-    expect(frontCover, "Should return front cover when multiple pictures")
-      .toStrictEqual(RED_PNG);
+    expect(
+      frontCover,
+      "Should return front cover when multiple pictures",
+    ).toStrictEqual(RED_PNG);
   });
 
   it("picture functions", async () => {
     const testFile = TEST_FILES.mp3;
 
     const initialPics = await readPictures(testFile);
-    expect(initialPics.length, "Should have no pictures initially")
-      .toStrictEqual(0);
+    expect(
+      initialPics.length,
+      "Should have no pictures initially",
+    ).toStrictEqual(0);
 
     const pictures = [TEST_PICTURES.frontCover];
 
@@ -227,8 +241,10 @@ describe("Simple API Cover Art", () => {
     expectDefined(modifiedBuffer, "Should return modified buffer");
 
     const afterApply = await readPictures(modifiedBuffer);
-    expect(afterApply.length, "Should have 1 picture after apply")
-      .toStrictEqual(1);
+    expect(
+      afterApply.length,
+      "Should have 1 picture after apply",
+    ).toStrictEqual(1);
     expect(afterApply[0].description).toStrictEqual("Front cover");
 
     const bufferWithTwo = await addPicture(
@@ -242,8 +258,10 @@ describe("Simple API Cover Art", () => {
 
     const clearedBuffer = await clearPictures(bufferWithTwo);
     const afterClear = await readPictures(clearedBuffer);
-    expect(afterClear.length, "Should have no pictures after clear")
-      .toStrictEqual(0);
+    expect(
+      afterClear.length,
+      "Should have no pictures after clear",
+    ).toStrictEqual(0);
   });
 
   it("findPictureByType", async () => {
@@ -267,17 +285,16 @@ describe("Simple API Cover Art", () => {
     expect(backCover.description).toStrictEqual("Back cover");
 
     const notFound = findPictureByType(pictures, "BandLogo");
-    expect(notFound, "Should return undefined when type not found")
-      .toStrictEqual(undefined);
+    expect(
+      notFound,
+      "Should return undefined when type not found",
+    ).toStrictEqual(undefined);
   });
 
   it("replacePictureByType", async () => {
     const testFile = TEST_FILES.flac;
 
-    const initialPictures = [
-      TEST_PICTURES.frontCover,
-      TEST_PICTURES.backCover,
-    ];
+    const initialPictures = [TEST_PICTURES.frontCover, TEST_PICTURES.backCover];
 
     const bufferWithPics = await applyPictures(testFile, initialPictures);
 
@@ -303,8 +320,10 @@ describe("Simple API Cover Art", () => {
 
     const backCover = findPictureByType(pictures, "BackCover");
     expectDefined(backCover);
-    expect(backCover.description, "Back cover should be unchanged")
-      .toStrictEqual("Back cover");
+    expect(
+      backCover.description,
+      "Back cover should be unchanged",
+    ).toStrictEqual("Back cover");
   });
 
   it("readPictureMetadata", async () => {
@@ -455,11 +474,7 @@ describe("Web Utils", () => {
     const dataURL = pictureToDataURL(picture);
     expect(dataURL.startsWith("data:image/png;base64,")).toBeTruthy();
 
-    const converted = dataURLToPicture(
-      dataURL,
-      "BackCover",
-      "Converted",
-    );
+    const converted = dataURLToPicture(dataURL, "BackCover", "Converted");
     expect(converted.mimeType).toStrictEqual("image/png");
     expect(converted.type).toStrictEqual("BackCover");
     expect(converted.description).toStrictEqual("Converted");
@@ -498,24 +513,26 @@ describe("setPictures cross-backend parity (taglib-1dr)", () => {
       const picsB = b.getPictures();
       b.dispose();
 
-      expect({
-        count2: picsA.length,
-        types2: picsA.map((p) => p.type),
-        frontData: picsA.find((p) => p.type === "FrontCover")?.data.length,
-        backData: picsA.find((p) => p.type === "BackCover")?.data.length,
-        count1: picsB.length,
-        type1: picsB[0]?.type,
-        data1: picsB[0]?.data.length,
-      }, `${backend}: setPictures must replace and round-trip through save`)
-        .toStrictEqual({
-          count2: 2,
-          types2: ["FrontCover", "BackCover"],
-          frontData: RED_PNG.length,
-          backData: BLUE_JPEG.length,
-          count1: 1,
-          type1: "BackCover",
-          data1: BLUE_JPEG.length,
-        });
+      expect(
+        {
+          count2: picsA.length,
+          types2: picsA.map((p) => p.type),
+          frontData: picsA.find((p) => p.type === "FrontCover")?.data.length,
+          backData: picsA.find((p) => p.type === "BackCover")?.data.length,
+          count1: picsB.length,
+          type1: picsB[0]?.type,
+          data1: picsB[0]?.data.length,
+        },
+        `${backend}: setPictures must replace and round-trip through save`,
+      ).toStrictEqual({
+        count2: 2,
+        types2: ["FrontCover", "BackCover"],
+        frontData: RED_PNG.length,
+        backData: BLUE_JPEG.length,
+        count1: 1,
+        type1: "BackCover",
+        data1: BLUE_JPEG.length,
+      });
     });
   }
 });
@@ -540,12 +557,15 @@ describe("MP4 covr picture-type parity (taglib-cvr)", () => {
       const pics = file.getPictures();
       file.dispose();
 
-      expect({
-        count: pics.length,
-        type: pics[0]?.type,
-        mimeType: pics[0]?.mimeType,
-        dataLength: pics[0]?.data.length,
-      }, `${backend}: m4a covr must map to FrontCover on read`).toStrictEqual({
+      expect(
+        {
+          count: pics.length,
+          type: pics[0]?.type,
+          mimeType: pics[0]?.mimeType,
+          dataLength: pics[0]?.data.length,
+        },
+        `${backend}: m4a covr must map to FrontCover on read`,
+      ).toStrictEqual({
         count: 1,
         type: "FrontCover",
         mimeType: "image/png",
@@ -567,16 +587,18 @@ describe("MP4 covr picture-type parity (taglib-cvr)", () => {
       const pics = file.getPictures();
       file.dispose();
 
-      expect({
-        count: pics.length,
-        types: pics.map((p) => p.type),
-        dataLengths: pics.map((p) => p.data.length),
-      }, `${backend}: all m4a covr atoms must map to FrontCover on read`)
-        .toStrictEqual({
-          count: 2,
-          types: ["FrontCover", "FrontCover"],
-          dataLengths: [RED_PNG.length, BLUE_JPEG.length],
-        });
+      expect(
+        {
+          count: pics.length,
+          types: pics.map((p) => p.type),
+          dataLengths: pics.map((p) => p.data.length),
+        },
+        `${backend}: all m4a covr atoms must map to FrontCover on read`,
+      ).toStrictEqual({
+        count: 2,
+        types: ["FrontCover", "FrontCover"],
+        dataLengths: [RED_PNG.length, BLUE_JPEG.length],
+      });
     });
   }
 });

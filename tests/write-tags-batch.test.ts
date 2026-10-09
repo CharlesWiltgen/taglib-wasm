@@ -107,7 +107,7 @@ function runScenarios(): void {
           { path: mp3, tags: { title: "OK" } },
         ],
         { continueOnError: false },
-      )
+      ),
     ).rejects.toThrow();
   });
 
@@ -141,9 +141,8 @@ function runScenarios(): void {
 
   it("editTagsBatch mutator variant applies per-file edits and saves", async () => {
     const { mp3, flac } = await makeTempFiles();
-    const result = await editTagsBatch(
-      [mp3, flac],
-      (audioFile) => audioFile.tag().setTitle("Mutated"),
+    const result = await editTagsBatch([mp3, flac], (audioFile) =>
+      audioFile.tag().setTitle("Mutated"),
     );
     expect(result.items.length).toStrictEqual(2);
     expect(result.items.every((i) => i.status === "ok")).toStrictEqual(true);

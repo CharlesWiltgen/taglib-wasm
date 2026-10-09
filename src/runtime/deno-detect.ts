@@ -6,7 +6,9 @@
  */
 
 export function isDenoCompiled(): boolean {
-  return typeof Deno !== "undefined" &&
+  return (
+    typeof Deno !== "undefined" &&
     typeof Deno.mainModule === "string" &&
-    Deno.mainModule.includes("deno-compile://");
+    Deno.mainModule.includes("deno-compile://")
+  );
 }

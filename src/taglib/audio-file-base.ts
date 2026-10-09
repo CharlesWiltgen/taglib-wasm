@@ -158,9 +158,9 @@ export abstract class BaseAudioFileImpl {
     // returns ALL values for the key; `undefined` means absent. The scalar
     // convenience lives in the typed accessors (tag().title). Materializing
     // the map per call is consistent with the Simple family's read path.
-    const values = this.handle.getProperties()[wireKey]?.filter((v) =>
-      v !== ""
-    );
+    const values = this.handle
+      .getProperties()
+      [wireKey]?.filter((v) => v !== "");
     if (values !== undefined && values.length > 0) return values;
     // MP4 only: this is the sole format whose PropertyMap key can differ from our
     // wire key, and materializing the whole map on every miss would otherwise
@@ -174,8 +174,9 @@ export abstract class BaseAudioFileImpl {
     // Empty strings are dropped throughout ("cleared" reads as absent,
     // taglib-yc1x).
     if (!this.isMP4()) return undefined;
-    const remapped = (this.properties() as Record<string, string[]>)[key]
-      ?.filter((v) => v !== "");
+    const remapped = (this.properties() as Record<string, string[]>)[
+      key
+    ]?.filter((v) => v !== "");
     return remapped !== undefined && remapped.length > 0 ? remapped : undefined;
   }
 
@@ -251,9 +252,10 @@ export abstract class BaseAudioFileImpl {
     // Int/StringList/Bool/Byte but not IntPair, so `trkn`/`disk` read back as
     // empty (taglib-uj2b).
     const wireKey = mp4AtomWireKey(key);
-    const value = wireKey !== undefined
-      ? this.handle.getProperty(wireKey)
-      : this.handle.getMP4Item(key);
+    const value =
+      wireKey !== undefined
+        ? this.handle.getProperty(wireKey)
+        : this.handle.getMP4Item(key);
     return value === "" ? undefined : value;
   }
 

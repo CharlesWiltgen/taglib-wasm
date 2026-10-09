@@ -42,10 +42,7 @@ export function assembleDiscs(
       }
       const evidence = acc.evidence.get(item.path);
       const tagCommon = dirTagCommon.get(dir);
-      resolvedByFile.set(
-        item.path,
-        tagCommon ?? evidence?.folderDiscNumber,
-      );
+      resolvedByFile.set(item.path, tagCommon ?? evidence?.folderDiscNumber);
     }
 
     const discs = new Map<string, AlbumDisc>();
@@ -58,9 +55,8 @@ export function assembleDiscs(
         continue;
       }
       const resolved = resolvedByFile.get(item.path);
-      const discKey = resolved === undefined
-        ? `dir:${dirname(item.path)}`
-        : String(resolved);
+      const discKey =
+        resolved === undefined ? `dir:${dirname(item.path)}` : String(resolved);
       let disc = discs.get(discKey);
       if (!disc) {
         disc = {
@@ -112,9 +108,10 @@ export function assembleDiscs(
       const tagged = disc.items
         .map((i) => i.tags.discNumber)
         .filter((d): d is number => d !== undefined && d > 0);
-      const common = tagged.length > 0 && tagged.every((d) => d === tagged[0])
-        ? tagged[0]
-        : undefined;
+      const common =
+        tagged.length > 0 && tagged.every((d) => d === tagged[0])
+          ? tagged[0]
+          : undefined;
       disc.tagDiscNumber = common;
       disc.discNumber = common ?? disc.folderDiscNumber;
       for (const item of disc.items) item.discNumber = disc.discNumber;
@@ -124,18 +121,19 @@ export function assembleDiscs(
     const albumTaggedTotals = acc.items
       .map((i) => i.tags.totalDiscs)
       .filter((t): t is number => t !== undefined && t > 0);
-    const commonTotal = albumTaggedTotals.length > 0 &&
-        albumTaggedTotals.every((t) => t === albumTaggedTotals[0])
-      ? albumTaggedTotals[0]
-      : undefined;
-    const ofN = [...discs.values()].map((d) => d.totalDiscs).find((t) =>
-      t !==
-        undefined
-    );
-    const maxSibling = [...discs.values()]
-      .map((d) => d.discNumber)
-      .filter((n): n is number => n !== undefined)
-      .reduce((a, b) => Math.max(a, b), 0) || undefined;
+    const commonTotal =
+      albumTaggedTotals.length > 0 &&
+      albumTaggedTotals.every((t) => t === albumTaggedTotals[0])
+        ? albumTaggedTotals[0]
+        : undefined;
+    const ofN = [...discs.values()]
+      .map((d) => d.totalDiscs)
+      .find((t) => t !== undefined);
+    const maxSibling =
+      [...discs.values()]
+        .map((d) => d.discNumber)
+        .filter((n): n is number => n !== undefined)
+        .reduce((a, b) => Math.max(a, b), 0) || undefined;
     for (const disc of discs.values()) {
       disc.totalDiscs = commonTotal ?? ofN ?? maxSibling;
     }
@@ -160,9 +158,10 @@ export function assembleDiscs(
     const flags = acc.items
       .map((i) => i.tags.compilation)
       .filter((c): c is boolean => c !== undefined);
-    const compilation = flags.length > 0 && flags.every((f) => f === flags[0])
-      ? flags[0]
-      : undefined;
+    const compilation =
+      flags.length > 0 && flags.every((f) => f === flags[0])
+        ? flags[0]
+        : undefined;
 
     // The album's directory: the common directory of the items' resolved
     // albumDirs when they share one; folder-derived albums fall back to

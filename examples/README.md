@@ -12,7 +12,7 @@ in our documentation for detailed instructions and code samples.
 # Run with Deno
 deno run --allow-read examples/common/basic-usage.ts
 
-# Run with Node.js  
+# Run with Node.js
 npx tsx examples/common/basic-usage.ts
 
 # Run with Bun

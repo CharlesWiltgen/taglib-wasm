@@ -60,11 +60,10 @@ export class InvalidFormatError extends TagLibError {
       }
     }
 
-    super(
-      "INVALID_FORMAT",
-      errorDetails.join(". "),
-      { ...details, bufferSize },
-    );
+    super("INVALID_FORMAT", errorDetails.join(". "), {
+      ...details,
+      bufferSize,
+    });
     this.name = "InvalidFormatError";
     Object.setPrototypeOf(this, InvalidFormatError.prototype);
   }
@@ -87,9 +86,9 @@ export class UnsupportedFormatError extends TagLibError {
   ) {
     super(
       "UNSUPPORTED_FORMAT",
-      `Unsupported audio format: ${format}. Supported formats: ${
-        supportedFormats.join(", ")
-      }`,
+      `Unsupported audio format: ${format}. Supported formats: ${supportedFormats.join(
+        ", ",
+      )}`,
       { ...details, format, supportedFormats },
     );
     this.name = "UnsupportedFormatError";
@@ -120,11 +119,11 @@ export class FileOperationError extends TagLibError {
     }
     errorDetails.push(message);
 
-    super(
-      "FILE_OPERATION",
-      errorDetails.join(". "),
-      { ...details, operation, path },
-    );
+    super("FILE_OPERATION", errorDetails.join(". "), {
+      ...details,
+      operation,
+      path,
+    });
     this.name = "FileOperationError";
     Object.setPrototypeOf(this, FileOperationError.prototype);
   }
@@ -153,11 +152,11 @@ export class MetadataError extends TagLibError {
     }
     errorDetails.push(message);
 
-    super(
-      "METADATA",
-      errorDetails.join(". "),
-      { ...details, operation, field },
-    );
+    super("METADATA", errorDetails.join(". "), {
+      ...details,
+      operation,
+      field,
+    });
     this.name = "MetadataError";
     Object.setPrototypeOf(this, MetadataError.prototype);
   }

@@ -51,9 +51,8 @@ export async function copyCoverArt(
     }
 
     const pictures = await readPictures(sourcePath);
-    const coverPicture = pictures.find((p: Picture) =>
-      p.type === "FrontCover"
-    ) ?? pictures[0];
+    const coverPicture =
+      pictures.find((p: Picture) => p.type === "FrontCover") ?? pictures[0];
 
     const modifiedBuffer = await applyCoverArt(
       targetPath,
@@ -105,9 +104,7 @@ async function findCoverFile(
  * }
  * ```
  */
-export async function findCoverArtFiles(
-  audioPath: string,
-): Promise<{
+export async function findCoverArtFiles(audioPath: string): Promise<{
   front?: string;
   back?: string;
   folder?: string;
@@ -124,11 +121,7 @@ export async function findCoverArtFiles(
   );
   if (frontPath) found.front = frontPath;
 
-  const folderPath = await findCoverFile(
-    dir,
-    ["folder", "Folder"],
-    extensions,
-  );
+  const folderPath = await findCoverFile(dir, ["folder", "Folder"], extensions);
   if (folderPath) found.folder = folderPath;
 
   const otherNames = ["album", "artwork", "Album", "Artwork"];

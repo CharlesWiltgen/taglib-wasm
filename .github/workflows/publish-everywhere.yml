@@ -477,11 +477,7 @@ jobs:
 
   publish-github:
     name: Publish to GitHub Packages
-    needs: [
-      prepare-and-build,
-      publish-jsr,
-      publish-npm,
-    ] # Depends on both JSR and NPM
+    needs: [prepare-and-build, publish-jsr, publish-npm] # Depends on both JSR and NPM
     if: needs.prepare-and-build.outputs.should-publish == 'true' && needs.publish-jsr.outputs.published == 'true' && needs.publish-npm.outputs.published == 'true'
     permissions:
       contents: read
@@ -646,13 +642,8 @@ jobs:
 
   finalize:
     name: Finalize Release
-    needs: [
-      prepare-and-build,
-      publish-jsr,
-      verify-jsr,
-      publish-npm,
-      publish-github,
-    ] # verify-jsr is listed so a failed post-publish check cannot produce a
+    needs:
+      [prepare-and-build, publish-jsr, verify-jsr, publish-npm, publish-github] # verify-jsr is listed so a failed post-publish check cannot produce a
     # tag/release (review findings SEC-04 / rkx0 review finding 2).
     if: always() && needs.prepare-and-build.outputs.should-publish == 'true'
     runs-on: ubuntu-latest

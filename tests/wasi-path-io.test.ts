@@ -54,8 +54,9 @@ describe.skipIf(!WASI_AVAILABLE)("WASI path-based I/O", () => {
         readTagsFromWasmPath(wasi, "/test/nonexistent.mp3");
       } catch (e) {
         threw = true;
-        expect((e as Error).message.includes("/test/nonexistent.mp3"))
-          .toStrictEqual(true);
+        expect(
+          (e as Error).message.includes("/test/nonexistent.mp3"),
+        ).toStrictEqual(true);
       }
       expect(threw).toStrictEqual(true);
     });
@@ -80,15 +81,14 @@ describe.skipIf(!WASI_AVAILABLE)("WASI path-based I/O", () => {
         };
         writeTagsToWasmPath(wasi, "/tmp/path-write-test.mp3", tags);
 
-        const result = readTagsFromWasmPath(
-          wasi,
-          "/tmp/path-write-test.mp3",
-        );
+        const result = readTagsFromWasmPath(wasi, "/tmp/path-write-test.mp3");
         expectDefined(result);
       } finally {
         try {
           await rm(tmpPath);
-        } catch { /* cleanup */ }
+        } catch {
+          /* cleanup */
+        }
       }
     });
   });
@@ -141,7 +141,9 @@ describe.skipIf(!WASI_AVAILABLE)("WASI path-based I/O", () => {
       } finally {
         try {
           await rm(tmpPath);
-        } catch { /* cleanup */ }
+        } catch {
+          /* cleanup */
+        }
       }
     });
   });
@@ -171,7 +173,9 @@ describe.skipIf(!WASI_AVAILABLE)("WASI path-based I/O", () => {
       } finally {
         try {
           await rm(tmpPath);
-        } catch { /* cleanup */ }
+        } catch {
+          /* cleanup */
+        }
       }
     });
   });

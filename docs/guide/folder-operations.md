@@ -227,7 +227,8 @@ let lastUpdate = Date.now();
 const result = await scanFolder("/music", {
   onProgress: (processed, total, file) => {
     const now = Date.now();
-    if (now - lastUpdate > 1000) { // Update every second
+    if (now - lastUpdate > 1000) {
+      // Update every second
       const percent = ((processed / total) * 100).toFixed(1);
       console.log(`Progress: ${percent}% (${processed}/${total})`);
       console.log(`Current: ${file}`);
@@ -268,10 +269,9 @@ for (const file of result.items) {
 // Find and fix missing metadata
 const result = await scanFolder("/music");
 
-const needsFixing = result.items.filter((file) =>
-  !file.tags.artist?.[0] ||
-  !file.tags.title?.[0] ||
-  !file.tags.album?.[0]
+const needsFixing = result.items.filter(
+  (file) =>
+    !file.tags.artist?.[0] || !file.tags.title?.[0] || !file.tags.album?.[0],
 );
 
 console.log(`Found ${needsFixing.length} files with missing metadata`);
@@ -282,8 +282,8 @@ const updates = needsFixing.map((file) => ({
   tags: {
     artist: file.tags.artist?.[0] || "Unknown Artist",
     album: file.tags.album?.[0] || "Unknown Album",
-    title: file.tags.title?.[0] ||
-      path.basename(file.path, path.extname(file.path)),
+    title:
+      file.tags.title?.[0] || path.basename(file.path, path.extname(file.path)),
   },
 }));
 
@@ -298,8 +298,8 @@ const duplicates = await findDuplicates("/music");
 
 for (const group of duplicates) {
   // Sort by quality (highest bitrate first)
-  const sorted = group.files.sort((a, b) =>
-    (b.properties?.bitrate || 0) - (a.properties?.bitrate || 0)
+  const sorted = group.files.sort(
+    (a, b) => (b.properties?.bitrate || 0) - (a.properties?.bitrate || 0),
   );
 
   const [keep, ...remove] = sorted;

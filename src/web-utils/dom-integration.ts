@@ -46,9 +46,13 @@ export function displayPicture(
 
   imgElement.src = objectURL;
 
-  imgElement.addEventListener("load", () => {
-    setTimeout(() => URL.revokeObjectURL(objectURL), 100);
-  }, { once: true });
+  imgElement.addEventListener(
+    "load",
+    () => {
+      setTimeout(() => URL.revokeObjectURL(objectURL), 100);
+    },
+    { once: true },
+  );
 }
 
 /**

@@ -22,10 +22,7 @@ export function basename(path: string): string {
 
 /** Join path segments with the OS-appropriate separator. */
 export function joinPath(...segments: string[]): string {
-  return segments
-    .filter(Boolean)
-    .join("/")
-    .replaceAll(/\/+/g, "/");
+  return segments.filter(Boolean).join("/").replaceAll(/\/+/g, "/");
 }
 
 /**

@@ -30,9 +30,7 @@ async function demonstrateBunUsage() {
 
     // Load a real file if available, otherwise show the API
     try {
-      const file = await taglib.open(
-        "./tests/test-files/mp3/kiss-snippet.mp3",
-      );
+      const file = await taglib.open("./tests/test-files/mp3/kiss-snippet.mp3");
 
       if (file.isValid()) {
         console.log("✅ File loaded successfully");

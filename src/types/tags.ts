@@ -281,8 +281,7 @@ export interface ExtendedTag extends Tag {
   /** Popularity/rating data. Same shape as {@link AudioFile.getRatings}. */
   readonly ratings?: import("../constants/complex-properties.ts").Rating[];
   /** Unsynchronized lyrics. Same shape as {@link AudioFile.getLyrics}. */
-  readonly lyrics?:
-    import("../constants/complex-properties.ts").UnsyncedLyrics[];
+  readonly lyrics?: import("../constants/complex-properties.ts").UnsyncedLyrics[];
   /**
    * Chapter markers. Populated from ID3v2 CHAP frames (MP3), QuickTime chapter
    * tracks, or Nero `chpl` atoms (MP4). See {@link Chapter}.
@@ -321,6 +320,6 @@ export interface ExtendedTag extends Tag {
  * };
  * ```
  */
-export type PropertyMap =
-  & { [K in PropertyKey]?: string[] }
-  & { [key: string]: string[] | undefined };
+export type PropertyMap = { [K in PropertyKey]?: string[] } & {
+  [key: string]: string[] | undefined;
+};

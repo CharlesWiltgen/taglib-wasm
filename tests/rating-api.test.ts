@@ -52,8 +52,9 @@ describe("RatingAPI", () => {
     expect(ratings.length).toStrictEqual(1);
     // Check rating value (may be slightly different due to POPM 0-255 conversion)
     expect(typeof ratings[0].rating).toStrictEqual("number");
-    expect(ratings[0].rating >= 0.75 && ratings[0].rating <= 0.85)
-      .toStrictEqual(true);
+    expect(
+      ratings[0].rating >= 0.75 && ratings[0].rating <= 0.85,
+    ).toStrictEqual(true);
 
     file.dispose();
   });

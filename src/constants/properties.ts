@@ -33,10 +33,13 @@ export type PropertyKey = keyof typeof PROPERTIES;
  * Currently all properties are strings, but this allows for future expansion.
  */
 export type PropertyValue<K extends PropertyKey> =
-  typeof PROPERTIES[K]["type"] extends "string" ? string
-    : typeof PROPERTIES[K]["type"] extends "number" ? number
-    : typeof PROPERTIES[K]["type"] extends "boolean" ? boolean
-    : string;
+  (typeof PROPERTIES)[K]["type"] extends "string"
+    ? string
+    : (typeof PROPERTIES)[K]["type"] extends "number"
+      ? number
+      : (typeof PROPERTIES)[K]["type"] extends "boolean"
+        ? boolean
+        : string;
 
 // Build bidirectional lookup maps from PROPERTIES
 const _toTagLib: Record<string, string> = {};

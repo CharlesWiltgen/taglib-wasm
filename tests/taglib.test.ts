@@ -56,10 +56,12 @@ describe("Full API", () => {
       expect(file.isValid(), `${format} file should be valid`).toStrictEqual(
         true,
       );
-      expect(file.getFormat(), `Should detect ${format} format correctly`)
-        .toStrictEqual(
-          EXPECTED_FORMATS[format as keyof typeof EXPECTED_FORMATS],
-        );
+      expect(
+        file.getFormat(),
+        `Should detect ${format} format correctly`,
+      ).toStrictEqual(
+        EXPECTED_FORMATS[format as keyof typeof EXPECTED_FORMATS],
+      );
 
       file.dispose();
     }
@@ -169,8 +171,10 @@ describe("Full API", () => {
     let fileRef: AudioFile | null = null;
     {
       using file = await taglib.open(audioData.buffer);
-      expect(file.isValid(), "File should be valid inside using block")
-        .toBeTruthy();
+      expect(
+        file.isValid(),
+        "File should be valid inside using block",
+      ).toBeTruthy();
       fileRef = file;
     }
     let threw = false;
@@ -179,8 +183,10 @@ describe("Full API", () => {
     } catch {
       threw = true;
     }
-    expect(threw, "Calling isValid() on disposed file should throw")
-      .toBeTruthy();
+    expect(
+      threw,
+      "Calling isValid() on disposed file should throw",
+    ).toBeTruthy();
   });
 
   it("Double disposal is safe", async () => {
@@ -230,10 +236,12 @@ describe("Simple API", () => {
   it("Format Detection", async () => {
     for (const [format, path] of Object.entries(TEST_FILES)) {
       const detectedFormat = await readFormat(path);
-      expect(detectedFormat, `Should detect ${format} format correctly`)
-        .toStrictEqual(
-          EXPECTED_FORMATS[format as keyof typeof EXPECTED_FORMATS],
-        );
+      expect(
+        detectedFormat,
+        `Should detect ${format} format correctly`,
+      ).toStrictEqual(
+        EXPECTED_FORMATS[format as keyof typeof EXPECTED_FORMATS],
+      );
     }
   });
 
@@ -241,8 +249,10 @@ describe("Simple API", () => {
     const tags = await readTags(TEST_FILES.mp3);
     expectDefined(tags, "Should return tags object");
     expect(Array.isArray(tags.title), "Title should be string[]").toBeTruthy();
-    expect(Array.isArray(tags.artist), "Artist should be string[]")
-      .toBeTruthy();
+    expect(
+      Array.isArray(tags.artist),
+      "Artist should be string[]",
+    ).toBeTruthy();
     expect(Array.isArray(tags.album), "Album should be string[]").toBeTruthy();
     expect(typeof tags.year, "Year should be number").toStrictEqual("number");
     expect(typeof tags.track, "Track should be number").toStrictEqual("number");
@@ -264,8 +274,10 @@ describe("Simple API", () => {
       comment: "Modified by Simple API",
     });
 
-    expect(modifiedBuffer.length > 0, "Modified buffer should have content")
-      .toBeTruthy();
+    expect(
+      modifiedBuffer.length > 0,
+      "Modified buffer should have content",
+    ).toBeTruthy();
     expect(modifiedBuffer.length > 0, "Should return a buffer").toBeTruthy();
   });
 
@@ -286,8 +298,10 @@ describe("Simple API", () => {
     const tagsFromBuffer = await readTags(buffer);
     expectDefined(tagsFromBuffer, "Should read tags from buffer");
 
-    expect(tagsFromPath.genre, "Genre should match between path and buffer")
-      .toStrictEqual(tagsFromBuffer.genre);
+    expect(
+      tagsFromPath.genre,
+      "Genre should match between path and buffer",
+    ).toStrictEqual(tagsFromBuffer.genre);
   });
 });
 
@@ -423,8 +437,10 @@ describe("Format Tests", () => {
           `${format} should have valid header`,
         ).toBeTruthy();
       } else if (format === "m4a") {
-        expect(audioData.length > 0, `${format} should have content`)
-          .toBeTruthy();
+        expect(
+          audioData.length > 0,
+          `${format} should have content`,
+        ).toBeTruthy();
       } else {
         expect(
           header.startsWith(expectedHeaders[format]),
@@ -541,8 +557,10 @@ describe("Integration", () => {
         const modified = await applyTags(path, {
           title: `${format} Test`,
         });
-        expect(modified.length > 0, `${format} should support writing`)
-          .toBeTruthy();
+        expect(
+          modified.length > 0,
+          `${format} should support writing`,
+        ).toBeTruthy();
       } catch {
         console.log(`Note: ${format} might not support tag writing`);
       }
@@ -550,12 +568,10 @@ describe("Integration", () => {
   });
 
   it("Music Library Processing", async () => {
-    const { applyTags, readTags, applyCoverArt } = await import(
-      "../src/simple/index.ts"
-    );
-    const { RED_PNG, createTestFiles, measureTime } = await import(
-      "./test-utils.ts"
-    );
+    const { applyTags, readTags, applyCoverArt } =
+      await import("../src/simple/index.ts");
+    const { RED_PNG, createTestFiles, measureTime } =
+      await import("./test-utils.ts");
 
     const albumFiles = await createTestFiles(5, "mp3");
     const albumMetadata = {
@@ -592,9 +608,7 @@ describe("Integration", () => {
   });
 
   it("Batch Tag Updates", async () => {
-    const { applyTags, readTags } = await import(
-      "../src/simple/index.ts"
-    );
+    const { applyTags, readTags } = await import("../src/simple/index.ts");
     const { createTestFiles } = await import("./test-utils.ts");
 
     const files = await createTestFiles(10, "flac");
@@ -618,17 +632,12 @@ describe("Integration", () => {
   });
 
   it("Cross-Format Tag Transfer", async () => {
-    const { readTags, applyTags } = await import(
-      "../src/simple/index.ts"
-    );
+    const { readTags, applyTags } = await import("../src/simple/index.ts");
     const { readFileData } = await import("../src/utils/file.ts");
     const { TEST_TAGS } = await import("./test-utils.ts");
 
     const sourceBuffer = await readFileData(TEST_FILES.mp3);
-    const sourceWithTags = await applyTags(
-      sourceBuffer,
-      TEST_TAGS.basic,
-    );
+    const sourceWithTags = await applyTags(sourceBuffer, TEST_TAGS.basic);
     const sourceTags = await readTags(sourceWithTags);
 
     const targetBuffer = await readFileData(TEST_FILES.flac);
@@ -640,44 +649,39 @@ describe("Integration", () => {
     expect(targetTags.album).toStrictEqual(sourceTags.album);
   });
 
-  it.skipIf(process.env.CI === "true")(
-    "Concurrent Operations",
-    async () => {
-      let taglib: TagLib | undefined;
-      try {
-        taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-        const { createTestFiles, measureTime } = await import(
-          "./test-utils.ts"
+  it.skipIf(process.env.CI === "true")("Concurrent Operations", async () => {
+    let taglib: TagLib | undefined;
+    try {
+      taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
+      const { createTestFiles, measureTime } = await import("./test-utils.ts");
+
+      const files = await createTestFiles(20, "mp3");
+
+      const { timeMs } = await measureTime(async () => {
+        await Promise.all(
+          files.map(async (buffer) => {
+            const file = await taglib!.open(buffer);
+            try {
+              const tag = file.tag();
+              tag.setTitle(`Concurrent ${Math.random()}`);
+              file.save();
+            } finally {
+              file.dispose();
+            }
+          }),
         );
+      });
 
-        const files = await createTestFiles(20, "mp3");
-
-        const { timeMs } = await measureTime(async () => {
-          await Promise.all(
-            files.map(async (buffer) => {
-              const file = await taglib!.open(buffer);
-              try {
-                const tag = file.tag();
-                tag.setTitle(`Concurrent ${Math.random()}`);
-                file.save();
-              } finally {
-                file.dispose();
-              }
-            }),
-          );
-        });
-
-        const timeLimit = 4000;
-        expect(
-          timeMs < timeLimit,
-          `Concurrent operations took ${timeMs}ms (limit: ${timeLimit}ms)`,
-        ).toBeTruthy();
-      } catch (error) {
-        console.error("Error in concurrent operations test:", error);
-        throw error;
-      }
-    },
-  );
+      const timeLimit = 4000;
+      expect(
+        timeMs < timeLimit,
+        `Concurrent operations took ${timeMs}ms (limit: ${timeLimit}ms)`,
+      ).toBeTruthy();
+    } catch (error) {
+      console.error("Error in concurrent operations test:", error);
+      throw error;
+    }
+  });
 
   it("readMetadataBatch - includes cover art and dynamics data", async () => {
     const { readMetadataBatch } = await import("../src/simple/index.ts");
@@ -727,16 +731,12 @@ describe("Integration", () => {
   });
 
   it("readMetadataBatch - processes files with dynamics metadata", async () => {
-    const { readMetadataBatch } = await import(
-      "../src/simple/index.ts"
-    );
+    const { readMetadataBatch } = await import("../src/simple/index.ts");
     const { TagLib } = await import("../src/taglib.ts");
 
     const tempFile = await createTempFile(".mp3");
     const testData = new Uint8Array(
-      await readFile(
-        "./tests/test-files/mp3/kiss-snippet.mp3",
-      ),
+      await readFile("./tests/test-files/mp3/kiss-snippet.mp3"),
     );
     await writeFile(tempFile, testData);
 

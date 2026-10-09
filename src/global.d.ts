@@ -48,38 +48,30 @@ declare global {
       options?: { recursive?: boolean },
     ): Promise<void>;
     mkdir(path: string | URL, options?: { recursive?: boolean }): Promise<void>;
-    makeTempFile(
-      options?: { dir?: string; prefix?: string; suffix?: string },
-    ): Promise<string>;
+    makeTempFile(options?: {
+      dir?: string;
+      prefix?: string;
+      suffix?: string;
+    }): Promise<string>;
     makeTempDir(options?: { dir?: string; prefix?: string }): Promise<string>;
-    stat(
-      path: string | URL,
-    ): Promise<
-      {
-        size: number;
-        isFile: boolean;
-        isDirectory: boolean;
-        isSymlink: boolean;
-      }
-    >;
-    statSync(
-      path: string | URL,
-    ): {
+    stat(path: string | URL): Promise<{
+      size: number;
+      isFile: boolean;
+      isDirectory: boolean;
+      isSymlink: boolean;
+    }>;
+    statSync(path: string | URL): {
       size: number;
       isFile: boolean;
       isDirectory: boolean;
       isSymlink: boolean;
     };
-    readDir(
-      path: string | URL,
-    ): AsyncIterable<
-      {
-        name: string;
-        isFile: boolean;
-        isDirectory: boolean;
-        isSymlink: boolean;
-      }
-    >;
+    readDir(path: string | URL): AsyncIterable<{
+      name: string;
+      isFile: boolean;
+      isDirectory: boolean;
+      isSymlink: boolean;
+    }>;
     open(path: string | URL, options?: Deno.OpenOptions): Promise<Deno.FsFile>;
     openSync(path: string | URL, options?: Deno.OpenOptions): Deno.FsFile;
     cwd(): string;

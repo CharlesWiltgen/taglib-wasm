@@ -48,10 +48,8 @@ export const PATCHES = [
     // not insert a second definition. Every `find` here must do that or match
     // its output exactly; that is what keeps the set idempotent.
     name: "deno-environment-detection",
-    find:
-      /var\s+ENVIRONMENT_IS_NODE\s*=\s*globalThis\.process\?\.versions\?\.node\s*&&\s*globalThis\.process\?\.type\s*!=\s*"renderer"(?!\s*&&\s*!ENVIRONMENT_IS_DENO)/,
-    replace:
-      `var ENVIRONMENT_IS_DENO=typeof Deno!=="undefined";var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer"&&!ENVIRONMENT_IS_DENO`,
+    find: /var\s+ENVIRONMENT_IS_NODE\s*=\s*globalThis\.process\?\.versions\?\.node\s*&&\s*globalThis\.process\?\.type\s*!=\s*"renderer"(?!\s*&&\s*!ENVIRONMENT_IS_DENO)/,
+    replace: `var ENVIRONMENT_IS_DENO=typeof Deno!=="undefined";var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer"&&!ENVIRONMENT_IS_DENO`,
     applied: /var\s+ENVIRONMENT_IS_DENO\s*=/,
   },
   {
@@ -65,15 +63,12 @@ export const PATCHES = [
         GAP +
         `var\\s+require\\s*=\\s*createRequire\\(\\s*import\\.meta\\.url\\s*\\)\\s*;?\\s*\\}`,
     ),
-    replace:
-      `if(ENVIRONMENT_IS_NODE){const{createRequire}=await import("module");var require=createRequire(import.meta.url)}`,
+    replace: `if(ENVIRONMENT_IS_NODE){const{createRequire}=await import("module");var require=createRequire(import.meta.url)}`,
   },
   {
     name: "deno-file-reading",
-    find:
-      /var\s+readAsync\s*,\s*readBinary\s*;\s*if\s*\(\s*ENVIRONMENT_IS_NODE\s*\)\s*\{/,
-    replace:
-      `var readAsync,readBinary;if(ENVIRONMENT_IS_DENO){readBinary=async filename=>{if(filename instanceof URL||filename.startsWith("http")){const resp=await fetch(filename);return new Uint8Array(await resp.arrayBuffer())}else{return await Deno.readFile(filename)}};readAsync=readBinary}else if(ENVIRONMENT_IS_NODE){`,
+    find: /var\s+readAsync\s*,\s*readBinary\s*;\s*if\s*\(\s*ENVIRONMENT_IS_NODE\s*\)\s*\{/,
+    replace: `var readAsync,readBinary;if(ENVIRONMENT_IS_DENO){readBinary=async filename=>{if(filename instanceof URL||filename.startsWith("http")){const resp=await fetch(filename);return new Uint8Array(await resp.arrayBuffer())}else{return await Deno.readFile(filename)}};readAsync=readBinary}else if(ENVIRONMENT_IS_NODE){`,
     applied:
       /var\s+readAsync\s*,\s*readBinary\s*;\s*if\s*\(\s*ENVIRONMENT_IS_DENO\s*\)/,
   },
@@ -97,8 +92,7 @@ export const PATCHES = [
     // `var imports={<key>:wasmImports` to compare the glue's key against the
     // wasm's import module, and a quoted key would slip past it.
     name: "jsr-import-unfurl-alias",
-    find:
-      /var\s+imports\s*=\s*\{\s*("?)([A-Za-z_$][\w$]*)\1\s*:\s*wasmImports\s*\}/,
+    find: /var\s+imports\s*=\s*\{\s*("?)([A-Za-z_$][\w$]*)\1\s*:\s*wasmImports\s*\}/,
     replace: (_match, _quote, key) =>
       `var imports={${key}:wasmImports,"./${key}":wasmImports}`,
     applied: /var\s+imports\s*=\s*\{[^}]*"\.\/[^"]*"\s*:\s*wasmImports/,

@@ -38,13 +38,13 @@ const SAMPLE_BEXT: BroadcastAudioExtension = {
   codingHistory: "A=PCM,F=44100\r\n",
 };
 
-async function open(backend: typeof BACKENDS[number], path: string) {
+async function open(backend: (typeof BACKENDS)[number], path: string) {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
   return taglib.open(new Uint8Array(await readFile(path)));
 }
 
 async function reopened(
-  backend: typeof BACKENDS[number],
+  backend: (typeof BACKENDS)[number],
   path: string,
   mutate: (f: Awaited<ReturnType<typeof open>>) => void,
 ) {
@@ -86,10 +86,8 @@ for (const backend of BACKENDS) {
     });
 
     it(`[${backend}] ${F}: setBext round-trips through save`, async () => {
-      const f = await reopened(
-        backend,
-        plainOf(fmt),
-        (x) => x.setBext(SAMPLE_BEXT),
+      const f = await reopened(backend, plainOf(fmt), (x) =>
+        x.setBext(SAMPLE_BEXT),
       );
       try {
         expect(f.getBext()).toStrictEqual(SAMPLE_BEXT);

@@ -61,11 +61,13 @@ describe("encodeTagData key transformation", () => {
   it("should preserve pictures and ratings keys as-is", () => {
     const tag = {
       title: "Test",
-      pictures: [{
-        mimeType: "image/jpeg",
-        data: new Uint8Array([1, 2, 3]),
-        type: 3,
-      }],
+      pictures: [
+        {
+          mimeType: "image/jpeg",
+          data: new Uint8Array([1, 2, 3]),
+          type: 3,
+        },
+      ],
       ratings: [{ rating: 0.8, email: "", counter: 0 }],
     } as Record<string, unknown>;
     const encoded = decode(
@@ -206,7 +208,7 @@ describe("encodePicture", () => {
   it("should encode a picture with Uint8Array data", () => {
     const pic: Picture = {
       mimeType: "image/jpeg",
-      data: new Uint8Array([0xFF, 0xD8, 0xFF]),
+      data: new Uint8Array([0xff, 0xd8, 0xff]),
       type: "FrontCover",
     };
     const result = encodePicture(pic);
@@ -217,7 +219,7 @@ describe("encodePicture", () => {
   });
 
   it("should convert ArrayBuffer data to Uint8Array", () => {
-    const bytes = new Uint8Array([0xFF, 0xD8]);
+    const bytes = new Uint8Array([0xff, 0xd8]);
     const pic = {
       mimeType: "image/png",
       data: bytes.buffer,
@@ -262,7 +264,7 @@ describe("encodePictureArray", () => {
   });
 
   it("should convert ArrayBuffer data to Uint8Array", () => {
-    const bytes = new Uint8Array([0xFF, 0xD8]);
+    const bytes = new Uint8Array([0xff, 0xd8]);
     const pics = [
       { mimeType: "image/png", data: bytes.buffer, type: "FrontCover" },
     ] as unknown as Picture[];
@@ -328,9 +330,13 @@ describe("encodeMessagePackStream", () => {
   it("should yield encoded chunks for each item", () => {
     const items = [{ a: 1 }, { b: 2 }, { c: 3 }];
     const chunks = [...encodeMessagePackStream(items)];
-    expect(chunks.map((c) => decode(c))).toStrictEqual([{ a: 1 }, { b: 2 }, {
-      c: 3,
-    }]);
+    expect(chunks.map((c) => decode(c))).toStrictEqual([
+      { a: 1 },
+      { b: 2 },
+      {
+        c: 3,
+      },
+    ]);
   });
 
   it("should handle empty iterable", () => {

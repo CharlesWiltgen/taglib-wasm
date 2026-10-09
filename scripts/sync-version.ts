@@ -45,12 +45,13 @@ async function writeJsonFile(path: string, data: unknown): Promise<void> {
 /**
  * Parse semantic version string
  */
-function parseVersion(
-  version: string,
-): { major: number; minor: number; patch: number; prerelease?: string } {
-  const match = version.match(
-    /^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9.]+))?$/,
-  );
+function parseVersion(version: string): {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease?: string;
+} {
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9.]+))?$/);
   if (!match) {
     throw new Error(
       `Invalid version format: ${version}. Expected: major.minor.patch[-prerelease]`,
@@ -103,7 +104,8 @@ async function checkVersions(): Promise<boolean> {
     // sonar-project.properties not found
   }
 
-  const allMatch = packageJson.version === denoJson.version &&
+  const allMatch =
+    packageJson.version === denoJson.version &&
     (!versionTsVersion || versionTsVersion === packageJson.version) &&
     (!sonarVersion || sonarVersion === packageJson.version);
 

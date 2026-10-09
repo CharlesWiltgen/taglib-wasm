@@ -171,9 +171,9 @@ export function buildAlbumIdentity(
       unmatched.push(item.metadata);
       continue;
     }
-    const key = `${identity.titleSource}::${
-      normalizeKey(identity.title)
-    }` as AlbumGroupKey;
+    const key = `${identity.titleSource}::${normalizeKey(
+      identity.title,
+    )}` as AlbumGroupKey;
     let acc = albums.get(key);
     if (!acc) {
       acc = {
@@ -206,10 +206,12 @@ export function buildAlbumIdentity(
       if (other === acc || other.source !== "tags") continue;
       if (normalizeKey(other.album) !== normalizeKey(acc.album)) continue;
       const albumDir = acc.directory;
-      const sharesChain = albumDir !== undefined && other.items.some((o) => {
-        const od = dirname(o.path);
-        return od === albumDir || od.startsWith(albumDir + "/");
-      });
+      const sharesChain =
+        albumDir !== undefined &&
+        other.items.some((o) => {
+          const od = dirname(o.path);
+          return od === albumDir || od.startsWith(albumDir + "/");
+        });
       if (!sharesChain) continue;
       for (const item of acc.items) {
         other.items.push(item);

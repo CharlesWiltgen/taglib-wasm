@@ -5,9 +5,7 @@ import { TagLib } from "../src/taglib.ts";
 
 const FIXTURE_DIR = join("tests", "test-files", "mp3", "bitrate-mode");
 
-async function readBitrateMode(
-  filename: string,
-): Promise<string | undefined> {
+async function readBitrateMode(filename: string): Promise<string | undefined> {
   const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
   const buffer = new Uint8Array(await readFile(join(FIXTURE_DIR, filename)));
   const file = await taglib.open(buffer);

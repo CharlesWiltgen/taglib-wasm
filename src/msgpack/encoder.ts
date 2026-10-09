@@ -122,9 +122,10 @@ export function encodePicture(picture: Picture): Uint8Array {
   try {
     const cleanedPicture = {
       ...picture,
-      data: picture.data instanceof Uint8Array
-        ? picture.data
-        : new Uint8Array(picture.data),
+      data:
+        picture.data instanceof Uint8Array
+          ? picture.data
+          : new Uint8Array(picture.data),
     };
     return encode(cleanedPicture, MSGPACK_ENCODE_OPTIONS);
   } catch (error) {
@@ -139,9 +140,10 @@ export function encodePictureArray(pictures: Picture[]): Uint8Array {
   try {
     const cleanedPictures = pictures.map((picture) => ({
       ...picture,
-      data: picture.data instanceof Uint8Array
-        ? picture.data
-        : new Uint8Array(picture.data),
+      data:
+        picture.data instanceof Uint8Array
+          ? picture.data
+          : new Uint8Array(picture.data),
     }));
     return encode(cleanedPictures, MSGPACK_ENCODE_OPTIONS);
   } catch (error) {

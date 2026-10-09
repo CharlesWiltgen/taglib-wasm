@@ -88,8 +88,10 @@ export function getProperties(
     } else if (typeof value === "object") {
       continue;
     } else if (
-      typeof value === "string" || typeof value === "number" ||
-      typeof value === "boolean" || typeof value === "bigint" ||
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      typeof value === "bigint" ||
       typeof value === "symbol"
     ) {
       result[propKey] = [String(value)];

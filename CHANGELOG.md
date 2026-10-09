@@ -815,6 +815,7 @@
   tag at all. taglib-wasm now performs the ID3v1 sync itself, skipping only the
   two guards that destroy, so both directions of the sync still happen. Non-MPEG
   containers (FLAC, AIFF, WAV) were never affected.
+
 - **`properties()` now reports MP3 values held only in ID3v1, and a save no
   longer erases them (data loss).** A field in a file's ID3v1 tag but not its
   ID3v2 tag was invisible to `properties()`, because `TagUnion::properties()`

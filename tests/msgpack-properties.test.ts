@@ -56,8 +56,9 @@ describe("MessagePack", () => {
           for (const [key, value] of Object.entries(tagData)) {
             if (value === undefined || value === null || value === "") {
               // Undefined/null/empty values should be omitted
-              expect(!(key in decoded) || decoded[key] === undefined)
-                .toBeTruthy();
+              expect(
+                !(key in decoded) || decoded[key] === undefined,
+              ).toBeTruthy();
             } else {
               expect(decoded[key]).toStrictEqual(value);
             }
@@ -141,8 +142,9 @@ describe("MessagePack", () => {
 
           // Numeric properties should be preserved exactly or very close
           if (props.duration !== undefined) {
-            expect(Math.abs(decoded.duration - props.duration) < 0.001)
-              .toBeTruthy();
+            expect(
+              Math.abs(decoded.duration - props.duration) < 0.001,
+            ).toBeTruthy();
           }
           expect(decoded.bitrate).toStrictEqual(props.bitrate);
           expect(decoded.sampleRate).toStrictEqual(props.sampleRate);
@@ -242,10 +244,12 @@ describe("MessagePack", () => {
           comment: fc.string({ minLength: 20, maxLength: 200 }),
         }),
         (tagData) => {
-          const msgpackSize =
-            encodeTagData(tagData as unknown as ExtendedTag).length;
-          const jsonSize =
-            new TextEncoder().encode(JSON.stringify(tagData)).length;
+          const msgpackSize = encodeTagData(
+            tagData as unknown as ExtendedTag,
+          ).length;
+          const jsonSize = new TextEncoder().encode(
+            JSON.stringify(tagData),
+          ).length;
 
           // MessagePack should typically be smaller or similar size
           // Allow up to 20% larger for edge cases
@@ -273,15 +277,17 @@ describe("MessagePack", () => {
           // Empty strings and undefined should be omitted
           // Null values are preserved
           if (tagData.title === "" || tagData.title === undefined) {
-            expect(!("title" in decoded) || decoded.title === undefined)
-              .toBeTruthy();
+            expect(
+              !("title" in decoded) || decoded.title === undefined,
+            ).toBeTruthy();
           } else if (tagData.title === null) {
             expect(decoded.title).toStrictEqual(null);
           }
 
           if (tagData.artist === "" || tagData.artist === undefined) {
-            expect(!("artist" in decoded) || decoded.artist === undefined)
-              .toBeTruthy();
+            expect(
+              !("artist" in decoded) || decoded.artist === undefined,
+            ).toBeTruthy();
           } else if (tagData.artist === null) {
             expect(decoded.artist).toStrictEqual(null);
           }
@@ -325,11 +331,7 @@ describe("MessagePack", () => {
   it("field order independence", () => {
     fc.assert(
       fc.property(
-        fc.tuple(
-          fc.string(),
-          fc.string(),
-          fc.integer(),
-        ),
+        fc.tuple(fc.string(), fc.string(), fc.integer()),
         (inputs) => {
           const [title, artist, year] = inputs;
 

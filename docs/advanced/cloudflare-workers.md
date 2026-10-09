@@ -58,10 +58,7 @@ async function handleMetadata(request: Request): Promise<Response> {
       duration: props?.duration,
     });
   } catch (error) {
-    return Response.json(
-      { error: (error as Error).message },
-      { status: 500 },
-    );
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 ```
@@ -123,25 +120,26 @@ interface BatchRequest {
 async function handleBatch(request: Request): Promise<Response> {
   const { files } = (await request.json()) as BatchRequest;
 
-  const results = await Promise.all(files.map(async (file) => {
-    try {
-      const audioData = Uint8Array.from(
-        atob(file.data),
-        (c) => c.charCodeAt(0),
-      );
-      using audioFile = await taglib!.open(audioData);
-      const tag = audioFile.tag();
-      const props = audioFile.audioProperties();
-      return {
-        name: file.name,
-        title: tag.title,
-        artist: tag.artist,
-        duration: props?.duration,
-      };
-    } catch (error) {
-      return { name: file.name, error: (error as Error).message };
-    }
-  }));
+  const results = await Promise.all(
+    files.map(async (file) => {
+      try {
+        const audioData = Uint8Array.from(atob(file.data), (c) =>
+          c.charCodeAt(0),
+        );
+        using audioFile = await taglib!.open(audioData);
+        const tag = audioFile.tag();
+        const props = audioFile.audioProperties();
+        return {
+          name: file.name,
+          title: tag.title,
+          artist: tag.artist,
+          duration: props?.duration,
+        };
+      } catch (error) {
+        return { name: file.name, error: (error as Error).message };
+      }
+    }),
+  );
 
   return Response.json(results);
 }

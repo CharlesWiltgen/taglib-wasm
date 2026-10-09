@@ -61,10 +61,10 @@ describe("loadAudioData", () => {
       content[3] = 3;
       content[4] = 0;
       content[5] = 0;
-      content[6] = (declaredTagSize >>> 21) & 0x7F;
-      content[7] = (declaredTagSize >>> 14) & 0x7F;
-      content[8] = (declaredTagSize >>> 7) & 0x7F;
-      content[9] = declaredTagSize & 0x7F;
+      content[6] = (declaredTagSize >>> 21) & 0x7f;
+      content[7] = (declaredTagSize >>> 14) & 0x7f;
+      content[8] = (declaredTagSize >>> 7) & 0x7f;
+      content[9] = declaredTagSize & 0x7f;
       return content;
     }
 

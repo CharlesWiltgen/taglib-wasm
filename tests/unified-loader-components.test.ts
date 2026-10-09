@@ -44,9 +44,8 @@ describe("UnifiedLoaderComponents", () => {
   it("WASI capability validation - should fallback gracefully", async () => {
     // Test that the unified loader falls back to Emscripten when WASI is unavailable
     try {
-      const { loadUnifiedTagLibModule } = await import(
-        "../src/runtime/unified-loader/index.ts"
-      );
+      const { loadUnifiedTagLibModule } =
+        await import("../src/runtime/unified-loader/index.ts");
 
       // Should fallback to Emscripten, not throw
       const module = await loadUnifiedTagLibModule();
@@ -81,20 +80,15 @@ describe("UnifiedLoaderComponents", () => {
       );
     };
 
-    expectThrows(
-      shouldFailFast,
-      Error,
-      "WASI memory not available",
-    );
+    expectThrows(shouldFailFast, Error, "WASI memory not available");
 
     console.log("✅ Memory manager correctly fails fast without WASI memory");
   });
 
   it("File handle factory - graceful fallback behavior", async () => {
     try {
-      const { loadUnifiedTagLibModule } = await import(
-        "../src/runtime/unified-loader/index.ts"
-      );
+      const { loadUnifiedTagLibModule } =
+        await import("../src/runtime/unified-loader/index.ts");
 
       // Load module (will fallback to Emscripten)
       const module = await loadUnifiedTagLibModule();
@@ -282,7 +276,8 @@ describe("UnifiedLoaderComponents", () => {
 
     for (const errorMessage of testErrors) {
       // Each error should contain context information
-      const hasContext = errorMessage.includes("WASI") ||
+      const hasContext =
+        errorMessage.includes("WASI") ||
         errorMessage.includes("TagLib") ||
         errorMessage.includes("FileHandle") ||
         errorMessage.includes("file data") ||
@@ -291,7 +286,8 @@ describe("UnifiedLoaderComponents", () => {
       expect(hasContext).toBeTruthy();
 
       // Should explain what's missing or what to do
-      const hasAction = errorMessage.includes("not available") ||
+      const hasAction =
+        errorMessage.includes("not available") ||
         errorMessage.includes("not implemented") ||
         errorMessage.includes("required") ||
         errorMessage.includes("Ensure") ||
@@ -307,9 +303,8 @@ describe("UnifiedLoaderComponents", () => {
 
   it("Module loading fallback works correctly", async () => {
     try {
-      const { loadUnifiedTagLibModule } = await import(
-        "../src/runtime/unified-loader/index.ts"
-      );
+      const { loadUnifiedTagLibModule } =
+        await import("../src/runtime/unified-loader/index.ts");
 
       // Test that WASI failure falls back to Emscripten
       const module = await loadUnifiedTagLibModule();
@@ -453,11 +448,7 @@ describe("UnifiedLoaderComponents", () => {
 
     for (const scenario of testScenarios) {
       if (scenario.shouldThrow) {
-        expectThrows(
-          scenario.testAction,
-          Error,
-          scenario.shouldThrow,
-        );
+        expectThrows(scenario.testAction, Error, scenario.shouldThrow);
       } else {
         scenario.testAction(); // Should not throw
       }

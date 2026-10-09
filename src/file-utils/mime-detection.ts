@@ -1,12 +1,12 @@
 import type { Picture, PictureType } from "../types.ts";
 
 const MIME_TYPES: Record<string, string> = {
-  "jpg": "image/jpeg",
-  "jpeg": "image/jpeg",
-  "png": "image/png",
-  "gif": "image/gif",
-  "webp": "image/webp",
-  "bmp": "image/bmp",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
 };
 
 export function detectMimeType(path: string, override?: string): string {

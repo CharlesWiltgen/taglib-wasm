@@ -177,7 +177,7 @@ describe("WasiFileHandle", () => {
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
     // MP3 magic: FF FB
-    const mp3Data = new Uint8Array([0xFF, 0xFB, 0x90, 0x00, 0, 0, 0, 0, 0, 0]);
+    const mp3Data = new Uint8Array([0xff, 0xfb, 0x90, 0x00, 0, 0, 0, 0, 0, 0]);
     fh.loadFromBuffer(mp3Data);
     expect(fh.getFormat()).toStrictEqual("MP3");
   });
@@ -189,7 +189,7 @@ describe("WasiFileHandle", () => {
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
     // FLAC magic: 66 4C 61 43
-    const flacData = new Uint8Array([0x66, 0x4C, 0x61, 0x43, 0, 0, 0, 0, 0, 0]);
+    const flacData = new Uint8Array([0x66, 0x4c, 0x61, 0x43, 0, 0, 0, 0, 0, 0]);
     fh.loadFromBuffer(flacData);
     expect(fh.getFormat()).toStrictEqual("FLAC");
   });
@@ -201,7 +201,7 @@ describe("WasiFileHandle", () => {
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
     // OGG magic: 4F 67 67 53
-    const oggData = new Uint8Array([0x4F, 0x67, 0x67, 0x53, 0, 0, 0, 0, 0, 0]);
+    const oggData = new Uint8Array([0x4f, 0x67, 0x67, 0x53, 0, 0, 0, 0, 0, 0]);
     fh.loadFromBuffer(oggData);
     expect(fh.getFormat()).toStrictEqual("OGG");
   });
@@ -209,14 +209,12 @@ describe("WasiFileHandle", () => {
   // The magic-byte path (buffer mode with no container snapshot) tells the Ogg
   // flavours apart from the first page's payload signature; the stub above
   // returns an empty snapshot, so getFormat() here never sees a codec.
-  for (
-    const [codec, sig] of [
-      ["OGG", [0x01, 0x76, 0x6F, 0x72, 0x62, 0x69, 0x73, 0x00]], // \x01vorbis
-      ["OggFLAC", [0x7F, 0x46, 0x4C, 0x41, 0x43, 0x01, 0x00, 0x00]], // \x7fFLAC
-      ["SPEEX", [0x53, 0x70, 0x65, 0x65, 0x78, 0x20, 0x20, 0x20]], // "Speex   "
-      ["OPUS", [0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64]], // "OpusHead"
-    ] as const
-  ) {
+  for (const [codec, sig] of [
+    ["OGG", [0x01, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73, 0x00]], // \x01vorbis
+    ["OggFLAC", [0x7f, 0x46, 0x4c, 0x41, 0x43, 0x01, 0x00, 0x00]], // \x7fFLAC
+    ["SPEEX", [0x53, 0x70, 0x65, 0x65, 0x78, 0x20, 0x20, 0x20]], // "Speex   "
+    ["OPUS", [0x4f, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64]], // "OpusHead"
+  ] as const) {
     it(`should detect ${codec} from the first Ogg page's payload`, () => {
       const mock = createMockWasiModule();
       mock.tl_read_tags = stubTlReadTags(mock);
@@ -246,7 +244,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
     expect(fh.isMP4()).toStrictEqual(false);
   });
 
@@ -256,7 +254,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperty("myKey", "myValue");
     expect(fh.getProperty("myKey")).toStrictEqual("myValue");
@@ -268,7 +266,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperty("DATE", "2024");
     expect(fh.getTagData().year).toStrictEqual(2024);
@@ -283,7 +281,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setMP4Item("----:com.apple.iTunes:iTunNORM", "value");
     expect(fh.getMP4Item("----:com.apple.iTunes:iTunNORM")).toStrictEqual(
@@ -300,7 +298,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     expect(fh.getPictures()).toStrictEqual([]);
 
@@ -322,7 +320,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setRatings([{ rating: 0.8, email: "test@test.com" }]);
     const ratings = fh.getRatings();
@@ -338,7 +336,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
     fh.destroy();
 
     expect(() => fh.isValid()).toThrow();
@@ -355,7 +353,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     const tag = fh.getTagData();
     expectDefined(tag);
@@ -371,7 +369,7 @@ describe("WasiFileHandle", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     const props = fh.getAudioProperties();
     expect(props).toStrictEqual(null);
@@ -385,7 +383,7 @@ describe("WasiFileHandle.getProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setTagData({ title: "Test" });
     fh.setTagData({ artist: "Artist" });
@@ -403,7 +401,7 @@ describe("WasiFileHandle.getProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setTagData({ title: "Test" });
 
@@ -417,7 +415,7 @@ describe("WasiFileHandle.getProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperty("ALBUMARTIST", "Various Artists");
 
@@ -432,7 +430,7 @@ describe("WasiFileHandle.getProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     const props = fh.getProperties();
     expect("bitrate" in props).toStrictEqual(false);
@@ -450,7 +448,7 @@ describe("WasiFileHandle.getProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperty("ACOUSTID_FINGERPRINT", "abc123");
 
@@ -464,7 +462,7 @@ describe("WasiFileHandle.getProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setTagData({ title: "Test" });
     // year and track default to 0 — should be omitted
@@ -483,7 +481,7 @@ describe("WasiFileHandle.setProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperties({ TITLE: ["New Title"] });
     expect(fh.getTagData().title).toStrictEqual("New Title");
@@ -495,7 +493,7 @@ describe("WasiFileHandle.setProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperties({ TITLE: ["New Title"], ARTIST: ["New Artist"] });
     const props = fh.getProperties();
@@ -509,7 +507,7 @@ describe("WasiFileHandle.setProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperties({ ALBUMARTIST: ["VA"] });
     expect(fh.getProperty("ALBUMARTIST")).toStrictEqual("VA");
@@ -522,7 +520,7 @@ describe("WasiFileHandle.setProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperties({ MYCUSTOMKEY: ["custom value"] });
     expect(fh.getProperty("MYCUSTOMKEY")).toStrictEqual("custom value");
@@ -534,7 +532,7 @@ describe("WasiFileHandle.setProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperties({ DATE: ["2024"] });
     expect(fh.getTagData().year).toStrictEqual(2024);
@@ -546,7 +544,7 @@ describe("WasiFileHandle.setProperties()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setProperties({ TRACKNUMBER: ["5"] });
     expect(fh.getTagData().track).toStrictEqual(5);
@@ -560,7 +558,7 @@ describe("WasiFileHandle.removeMP4Item()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setMP4Item("TITLE", "test");
     expect(fh.getMP4Item("TITLE")).toStrictEqual("test");
@@ -575,7 +573,7 @@ describe("WasiFileHandle.removeMP4Item()", () => {
 
     const adapter = new WasiToTagLibAdapter(mock);
     const fh = adapter.createFileHandle();
-    fh.loadFromBuffer(new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]));
+    fh.loadFromBuffer(new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]));
 
     fh.setMP4Item("----:com.apple.iTunes:custom", "val");
     expect(fh.getMP4Item("----:com.apple.iTunes:custom")).toStrictEqual("val");
@@ -606,16 +604,7 @@ describe("WasiFileHandle.getFormat() extended", () => {
     const fh = adapter.createFileHandle();
     // ftyp at offset 4: 0x66 0x74 0x79 0x70
     const m4aData = new Uint8Array([
-      0,
-      0,
-      0,
-      0x20,
-      0x66,
-      0x74,
-      0x79,
-      0x70,
-      0,
-      0,
+      0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, 0, 0,
     ]);
     fh.loadFromBuffer(m4aData);
     expect(fh.getFormat()).toStrictEqual("MP4");
@@ -636,7 +625,7 @@ describe("readTagsFromWasm", () => {
     const mock = createMockWasiModule();
     mock.tl_read_tags = stubTlReadTags(mock);
 
-    const buffer = new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0, 0, 0]);
+    const buffer = new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0, 0, 0]);
     const result = readTagsFromWasm(mock, buffer);
     expect(result instanceof Uint8Array).toStrictEqual(true);
     expect(result.length).toStrictEqual(1);
@@ -648,7 +637,7 @@ describe("readTagsFromWasm", () => {
     mock.tl_read_tags = () => 0;
     mock.tl_get_last_error_code = () => 42;
 
-    const buffer = new Uint8Array([0xFF, 0xFB, 0, 0]);
+    const buffer = new Uint8Array([0xff, 0xfb, 0, 0]);
     expectThrows(
       () => readTagsFromWasm(mock, buffer),
       WasmMemoryError,
@@ -661,7 +650,7 @@ describe("writeTagsToWasm", () => {
   it("should return modified buffer on success", () => {
     const mock = createMockWasiModule();
     const OUTPUT_PTR = 8192;
-    const outputData = new Uint8Array([0xFF, 0xFB, 0x90, 0x00, 0xAA]);
+    const outputData = new Uint8Array([0xff, 0xfb, 0x90, 0x00, 0xaa]);
 
     mock.tl_write_tags = (
       _fd: number,
@@ -680,7 +669,7 @@ describe("writeTagsToWasm", () => {
       return 0; // success
     };
 
-    const fileData = new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0]);
+    const fileData = new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0]);
     const tagData = { title: "Test" } as unknown as ExtendedTag;
     const result = writeTagsToWasm(mock, fileData, tagData);
     expectDefined(result);
@@ -691,7 +680,7 @@ describe("writeTagsToWasm", () => {
     const mock = createMockWasiModule();
     mock.tl_write_tags = () => 1; // failure
 
-    const fileData = new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0]);
+    const fileData = new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0]);
     const tagData = { title: "Test" } as unknown as ExtendedTag;
     const result = writeTagsToWasm(mock, fileData, tagData);
     expect(result).toStrictEqual(null);
@@ -714,7 +703,7 @@ describe("writeTagsToWasm", () => {
       return 0;
     };
 
-    const fileData = new Uint8Array([0xFF, 0xFB, 0, 0, 0, 0, 0, 0]);
+    const fileData = new Uint8Array([0xff, 0xfb, 0, 0, 0, 0, 0, 0]);
     const tagData = { title: "Test" } as unknown as ExtendedTag;
     expect(writeTagsToWasm(mock, fileData, tagData)).toStrictEqual(null);
   });
@@ -728,7 +717,7 @@ describe("writeTagsToWasm", () => {
  */
 function oggPageWithSignature(sig: readonly number[]): Uint8Array {
   const page = new Uint8Array(28 + sig.length + 1);
-  page.set([0x4F, 0x67, 0x67, 0x53, 0x00, 0x02], 0); // "OggS", version 0, BOS
+  page.set([0x4f, 0x67, 0x67, 0x53, 0x00, 0x02], 0); // "OggS", version 0, BOS
   page[26] = 1; // one segment
   page[27] = sig.length + 1; // its length
   page.set(sig, 28);

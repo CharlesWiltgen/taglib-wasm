@@ -46,95 +46,98 @@ type Disposition = "browser" | "node-only";
  * added to `index.ts` alone (or `index.browser.ts` alone) fails until someone
  * decides where it belongs. Reasons name the capability that decides it.
  */
-const CLASSIFICATION: Record<
-  string,
-  { where: Disposition; because: string }
-> = {
-  bwf: {
-    where: "browser",
-    because: "pure `bext` codec over bytes — bext.ts has no runtime imports",
-  },
-  discFolderInfo: {
-    where: "browser",
-    because: "pure directory-name grammar, no I/O (taglib-ys7m split)",
-  },
-  groupAlbums: {
-    where: "browser",
-    because:
-      "pure grouping over a FolderScanResult, runtime-agnostic by contract",
-  },
-  isDenoCompiled: {
-    where: "browser",
-    because: "reads `typeof Deno` and returns false where Deno is absent; " +
-      "deno-detect.ts has no imports (the embedding helpers that do " +
-      "Deno I/O — initializeForDenoCompile, prepareWasmForEmbedding — stay out)",
-  },
-  copyCoverArt: {
-    where: "node-only",
-    because: "writes the target audio file to a path (utils/write.ts)",
-  },
-  exportAllPictures: {
-    where: "node-only",
-    because: "writes each picture to a directory path",
-  },
-  exportCoverArt: {
-    where: "node-only",
-    because: "writes an image file to a path",
-  },
-  exportFolderMetadata: {
-    where: "node-only",
-    because: "walks a directory and writes a JSON file",
-  },
-  exportPictureByType: {
-    where: "node-only",
-    because: "writes an image file to a path",
-  },
-  findCoverArtFiles: {
-    where: "node-only",
-    because: "reads sibling cover files from the audio file's directory",
-  },
-  findDuplicates: {
-    where: "node-only",
-    because: "takes a folder path and calls scanFolder",
-  },
-  importCoverArt: {
-    where: "node-only",
-    because: "reads an image path and rewrites the audio path",
-  },
-  importPictureWithType: {
-    where: "node-only",
-    because: "reads an image path and rewrites the audio path",
-  },
-  initializeForDenoCompile: {
-    where: "node-only",
-    because: "Deno-compiled-binary bootstrap (Deno.mainModule, file URLs)",
-  },
-  loadPictureFromFile: {
-    where: "node-only",
-    because: "reads an image from a path and sniffs its extension",
-  },
-  prepareWasmForEmbedding: {
-    where: "node-only",
-    because: "Deno compile embedding, resolves file paths",
-  },
-  savePictureToFile: {
-    where: "node-only",
-    because: "writes an image file to a path",
-  },
-  scanFolder: {
-    where: "node-only",
-    because: "walks a directory (platform filesystem I/O)",
-  },
-  scanForAlbums: {
-    where: "node-only",
-    because: "walks a directory via scanFolder",
-  },
-};
+const CLASSIFICATION: Record<string, { where: Disposition; because: string }> =
+  {
+    bwf: {
+      where: "browser",
+      because: "pure `bext` codec over bytes — bext.ts has no runtime imports",
+    },
+    discFolderInfo: {
+      where: "browser",
+      because: "pure directory-name grammar, no I/O (taglib-ys7m split)",
+    },
+    groupAlbums: {
+      where: "browser",
+      because:
+        "pure grouping over a FolderScanResult, runtime-agnostic by contract",
+    },
+    isDenoCompiled: {
+      where: "browser",
+      because:
+        "reads `typeof Deno` and returns false where Deno is absent; " +
+        "deno-detect.ts has no imports (the embedding helpers that do " +
+        "Deno I/O — initializeForDenoCompile, prepareWasmForEmbedding — stay out)",
+    },
+    copyCoverArt: {
+      where: "node-only",
+      because: "writes the target audio file to a path (utils/write.ts)",
+    },
+    exportAllPictures: {
+      where: "node-only",
+      because: "writes each picture to a directory path",
+    },
+    exportCoverArt: {
+      where: "node-only",
+      because: "writes an image file to a path",
+    },
+    exportFolderMetadata: {
+      where: "node-only",
+      because: "walks a directory and writes a JSON file",
+    },
+    exportPictureByType: {
+      where: "node-only",
+      because: "writes an image file to a path",
+    },
+    findCoverArtFiles: {
+      where: "node-only",
+      because: "reads sibling cover files from the audio file's directory",
+    },
+    findDuplicates: {
+      where: "node-only",
+      because: "takes a folder path and calls scanFolder",
+    },
+    importCoverArt: {
+      where: "node-only",
+      because: "reads an image path and rewrites the audio path",
+    },
+    importPictureWithType: {
+      where: "node-only",
+      because: "reads an image path and rewrites the audio path",
+    },
+    initializeForDenoCompile: {
+      where: "node-only",
+      because: "Deno-compiled-binary bootstrap (Deno.mainModule, file URLs)",
+    },
+    loadPictureFromFile: {
+      where: "node-only",
+      because: "reads an image from a path and sniffs its extension",
+    },
+    prepareWasmForEmbedding: {
+      where: "node-only",
+      because: "Deno compile embedding, resolves file paths",
+    },
+    savePictureToFile: {
+      where: "node-only",
+      because: "writes an image file to a path",
+    },
+    scanFolder: {
+      where: "node-only",
+      because: "walks a directory (platform filesystem I/O)",
+    },
+    scanForAlbums: {
+      where: "node-only",
+      because: "walks a directory via scanFolder",
+    },
+  };
 
 const BROWSER_SAFE = Object.entries(CLASSIFICATION)
-  .filter(([, c]) => c.where === "browser").map(([name]) => name).sort();
+  .filter(([, c]) => c.where === "browser")
+  .map(([name]) => name)
+  .sort();
 const NODE_ONLY = Object.entries(CLASSIFICATION)
-  .filter(([, c]) => c.where === "node-only").map(([name]) => name).sort();
+  .filter(([, c]) => c.where === "node-only")
+  .map(([name]) => name)
+  .sort();
 
 /**
  * Subpaths that deliberately have no `browser` condition. `./folder` is
@@ -168,16 +171,18 @@ async function declaredSurface(
   const values = new Set<string>();
   const types = new Set<string>();
 
-  for (
-    const match of source.matchAll(
-      /export\s+(type\s+)?\{([^}]*)\}\s*from\s*"([^"]+)"/g,
-    )
-  ) {
+  for (const match of source.matchAll(
+    /export\s+(type\s+)?\{([^}]*)\}\s*from\s*"([^"]+)"/g,
+  )) {
     const [, typeKeyword, body, specifier] = match;
     for (const raw of body.split(",")) {
       const item = raw.trim();
       if (item === "") continue;
-      const name = item.replace(/^type\s+/, "").split(/\s+as\s+/).pop()!.trim();
+      const name = item
+        .replace(/^type\s+/, "")
+        .split(/\s+as\s+/)
+        .pop()!
+        .trim();
       const isType = typeKeyword !== undefined || item.startsWith("type ");
       (isType ? types : values).add(name);
     }
@@ -185,19 +190,14 @@ async function declaredSurface(
     void specifier;
   }
 
-  for (
-    const match of source.matchAll(
-      /export\s+\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s*"([^"]+)"/g,
-    )
-  ) {
+  for (const match of source.matchAll(
+    /export\s+\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s*"([^"]+)"/g,
+  )) {
     values.add(match[1]);
   }
 
   for (const match of source.matchAll(/export\s+\*\s+from\s*"([^"]+)"/g)) {
-    const nested = await declaredSurface(
-      resolveRelative(path, match[1]),
-      seen,
-    );
+    const nested = await declaredSurface(resolveRelative(path, match[1]), seen);
     for (const name of nested.values) values.add(name);
     for (const name of nested.types) types.add(name);
   }
@@ -206,10 +206,9 @@ async function declaredSurface(
 }
 
 function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(
-    /^[ \t]*\/\/.*$/gm,
-    "",
-  );
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^[ \t]*\/\/.*$/gm, "");
 }
 
 // ---------------------------------------------------------------------------
@@ -237,33 +236,31 @@ function resolveRelative(from: string, specifier: string): string {
 function runtimeSpecifiers(source: string): string[] {
   const text = stripComments(source);
   const out: string[] = [];
-  for (
-    const match of text.matchAll(
-      /(?:^|\n)[ \t]*(import|export)\b([\s\S]*?)from\s*["']([^"']+)["']/g,
-    )
-  ) {
+  for (const match of text.matchAll(
+    /(?:^|\n)[ \t]*(import|export)\b([\s\S]*?)from\s*["']([^"']+)["']/g,
+  )) {
     const body = match[2];
     const braced = /\{[\s\S]*\}/.test(body);
     const items = braced
-      ? body.replace(/^[\s\S]*?\{([\s\S]*)\}\s*$/, "$1").split(",").map((s) =>
-        s.trim()
-      ).filter(Boolean)
+      ? body
+          .replace(/^[\s\S]*?\{([\s\S]*)\}\s*$/, "$1")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
       : [];
-    const allTypes = items.length > 0 &&
-      items.every((i) => i.startsWith("type "));
+    const allTypes =
+      items.length > 0 && items.every((i) => i.startsWith("type "));
     if (/^\s*type\b/.test(body) || allTypes) continue;
     out.push(match[3]);
   }
-  for (
-    const match of text.matchAll(
-      /(?:^|[^\w$.'"`])(?:import|export)\s*\(\s*["']([^"']+)["']/g,
-    )
-  ) {
+  for (const match of text.matchAll(
+    /(?:^|[^\w$.'"`])(?:import|export)\s*\(\s*["']([^"']+)["']/g,
+  )) {
     out.push(match[1]);
   }
-  for (
-    const match of text.matchAll(/(?:^|\n)[ \t]*import\s*["']([^"']+)["']/g)
-  ) {
+  for (const match of text.matchAll(
+    /(?:^|\n)[ \t]*import\s*["']([^"']+)["']/g,
+  )) {
     out.push(match[1]);
   }
   return out;
@@ -296,11 +293,9 @@ async function runtimeGraph(entry: string): Promise<RuntimeGraph> {
     const file = queue.pop()!;
     if (modules.has(file)) continue;
     modules.add(file);
-    for (
-      const spec of runtimeSpecifiers(
-        await readFile(new URL(file, ROOT), "utf8"),
-      )
-    ) {
+    for (const spec of runtimeSpecifiers(
+      await readFile(new URL(file, ROOT), "utf8"),
+    )) {
       if (!spec.startsWith(".")) {
         bareSpecifiers.add(spec);
         continue;
@@ -310,9 +305,8 @@ async function runtimeGraph(entry: string): Promise<RuntimeGraph> {
       // TypeScript modules: taglib-wrapper.js only exists after the wasm build.
       if (!resolved.endsWith(".ts")) continue;
       if (STUBBED_MODULES[resolved] === true) continue;
-      const target = resolved === LOADER_REDIRECT.from
-        ? LOADER_REDIRECT.to
-        : resolved;
+      const target =
+        resolved === LOADER_REDIRECT.from ? LOADER_REDIRECT.to : resolved;
       queue.push(target);
     }
   }
@@ -423,9 +417,7 @@ it("browser export conditions point at sources the build produces, and only the 
         `${subpath} declares a browser condition without both types and default`,
       );
     }
-    for (
-      const distPath of [browserCondition.types, browserCondition.default]
-    ) {
+    for (const distPath of [browserCondition.types, browserCondition.default]) {
       const source =
         distPath.replace(/^\.\/dist\//, "").replace(/(?:\.d)?\.ts$|\.js$/, "") +
         ".ts";
@@ -459,17 +451,14 @@ it("browser entries reach no Node-only module and no undeclared dependency", asy
     const { modules, bareSpecifiers } = await runtimeGraph(entry);
 
     const stray = modules.filter((m) => NODE_ONLY_MODULES.test(m));
-    expect(
-      stray,
-      `${entry} reaches Node-only modules`,
-    ).toStrictEqual([]);
+    expect(stray, `${entry} reaches Node-only modules`).toStrictEqual([]);
 
     const builtins = [...bareSpecifiers].filter((s) => !declared.has(s));
     expect(
       builtins,
-      `${entry} imports ${
-        builtins.join(", ")
-      } — a runtime-provided specifier ` +
+      `${entry} imports ${builtins.join(
+        ", ",
+      )} — a runtime-provided specifier ` +
         `cannot be resolved by a browser bundler`,
     ).toStrictEqual([]);
 
@@ -481,14 +470,12 @@ it("browser entries reach no Node-only module and no undeclared dependency", asy
   }
 
   const indexGraph = await runtimeGraph("index.browser.ts");
-  for (
-    const leaf of [
-      "src/bwf/bext.ts",
-      "src/folder-api/folder-disc.ts",
-      "src/folder-api/album-grouping.ts",
-      "src/runtime/deno-detect.ts",
-    ]
-  ) {
+  for (const leaf of [
+    "src/bwf/bext.ts",
+    "src/folder-api/folder-disc.ts",
+    "src/folder-api/album-grouping.ts",
+    "src/runtime/deno-detect.ts",
+  ]) {
     expect(
       indexGraph.modules.includes(leaf),
       `${leaf} is classified browser-safe, so the browser bundle must carry ` +

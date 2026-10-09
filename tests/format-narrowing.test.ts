@@ -270,9 +270,7 @@ describe("TypedAudioProperties narrowing", () => {
     });
   });
 
-  for (
-    const backend of ["wasi", "emscripten"] as const
-  ) {
+  for (const backend of ["wasi", "emscripten"] as const) {
     describe(`runtime tests (${backend})`, () => {
       let taglib: TagLib;
 

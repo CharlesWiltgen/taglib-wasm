@@ -52,7 +52,7 @@ const sampleAudioProperties: AudioProperties = {
 
 const samplePicture: Picture = {
   mimeType: "image/jpeg",
-  data: new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46]),
+  data: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]),
   type: "FrontCover" as PictureType, // Front cover
   description: "Album cover",
 };
@@ -235,23 +235,21 @@ describe("MessagePack", () => {
     expect(MessagePackUtils.isTagLibCompatible(sampleTagData)).toStrictEqual(
       true,
     );
-    expect(MessagePackUtils.isTagLibCompatible(sampleAudioProperties))
-      .toStrictEqual(true);
+    expect(
+      MessagePackUtils.isTagLibCompatible(sampleAudioProperties),
+    ).toStrictEqual(true);
     expect(MessagePackUtils.isTagLibCompatible(samplePicture)).toStrictEqual(
       true,
     );
-    expect(MessagePackUtils.isTagLibCompatible({ random: "data" }))
-      .toStrictEqual(false);
+    expect(
+      MessagePackUtils.isTagLibCompatible({ random: "data" }),
+    ).toStrictEqual(false);
     expect(MessagePackUtils.isTagLibCompatible("string")).toStrictEqual(false);
     expect(MessagePackUtils.isTagLibCompatible(null)).toStrictEqual(false);
   });
 
   it("round-trip - encode then decode preserves data", () => {
-    const testCases = [
-      sampleTagData,
-      sampleAudioProperties,
-      samplePicture,
-    ];
+    const testCases = [sampleTagData, sampleAudioProperties, samplePicture];
 
     for (const testData of testCases) {
       const encoded = encodeTagData(testData as ExtendedTag);

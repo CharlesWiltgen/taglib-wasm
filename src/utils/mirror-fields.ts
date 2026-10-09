@@ -71,8 +71,11 @@ function hasValue(v: unknown): boolean {
 /** Stringify a primitive scalar; non-primitive values yield "". */
 export function stringifyScalar(v: unknown): string {
   const t = typeof v;
-  return t === "string" || t === "number" || t === "boolean" ||
-      t === "bigint" || t === "symbol"
+  return t === "string" ||
+    t === "number" ||
+    t === "boolean" ||
+    t === "bigint" ||
+    t === "symbol"
     ? String(v)
     : "";
 }

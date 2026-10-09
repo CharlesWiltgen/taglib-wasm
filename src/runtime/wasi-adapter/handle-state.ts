@@ -40,8 +40,10 @@ export function loadPath(state: HandleState, path: string): void {
 }
 
 export function isValid(state: HandleState): boolean {
-  return (state.fileData !== null && state.fileData.length > 0) ||
-    (state.filePath !== null && state.tagData !== null);
+  return (
+    (state.fileData !== null && state.fileData.length > 0) ||
+    (state.filePath !== null && state.tagData !== null)
+  );
 }
 
 /** Write the snapshot back; path mode writes in place, buffer mode returns

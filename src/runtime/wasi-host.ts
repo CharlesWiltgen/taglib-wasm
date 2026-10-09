@@ -76,7 +76,9 @@ export function createWasiImports(
       if (entry.type === "file") {
         try {
           entry.file.close();
-        } catch { /* already closed */ }
+        } catch {
+          /* already closed */
+        }
       }
       fds.delete(fd);
       return WASI_ESUCCESS;
@@ -88,8 +90,8 @@ export function createWasiImports(
       const fileType = entry.type === "preopen" ? 3 : 4;
       dv.setUint8(buf, fileType);
       dv.setUint16(buf + 2, 0, true);
-      dv.setBigUint64(buf + 8, 0xFFFFFFFFFFFFFFFFn, true);
-      dv.setBigUint64(buf + 16, 0xFFFFFFFFFFFFFFFFn, true);
+      dv.setBigUint64(buf + 8, 0xffffffffffffffffn, true);
+      dv.setBigUint64(buf + 16, 0xffffffffffffffffn, true);
       return WASI_ESUCCESS;
     },
     fd_fdstat_set_flags: (_fd: number, _flags: number) => WASI_ESUCCESS,
@@ -186,7 +188,8 @@ export function createWasiImports(
       dv.setUint32(nwrittenPtr, totalWritten, true);
       return WASI_ESUCCESS;
     },
-    path_open: ( // NOSONAR — WASI P1 spec mandates 9 parameters
+    path_open: (
+      // NOSONAR — WASI P1 spec mandates 9 parameters
       dirFd: number,
       _dirflags: number,
       pathPtr: number,
@@ -200,7 +203,8 @@ export function createWasiImports(
       const realPath = resolvePath(dirFd, pathPtr, pathLen);
       if (!realPath) return WASI_ENOTCAPABLE;
       try {
-        const wantWrite = (_rightsBase & RIGHTS_FD_WRITE) !== 0n ||
+        const wantWrite =
+          (_rightsBase & RIGHTS_FD_WRITE) !== 0n ||
           (oflags & (OFLAGS_CREAT | OFLAGS_TRUNC)) !== 0;
         const options = {
           read: true,
@@ -246,7 +250,9 @@ export function createWasiImports(
         if (entry.type === "file") {
           try {
             entry.file.close();
-          } catch { /* already closed */ }
+          } catch {
+            /* already closed */
+          }
         }
         fds.delete(fd);
       }

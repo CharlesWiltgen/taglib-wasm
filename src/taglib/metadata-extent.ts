@@ -24,8 +24,13 @@
 
 /** Big-endian 32-bit read; callers must have bounds-checked `offset`. */
 function be32(b: Uint8Array, offset: number): number {
-  return ((b[offset] << 24) | (b[offset + 1] << 16) |
-    (b[offset + 2] << 8) | b[offset + 3]) >>> 0;
+  return (
+    ((b[offset] << 24) |
+      (b[offset + 1] << 16) |
+      (b[offset + 2] << 8) |
+      b[offset + 3]) >>>
+    0
+  );
 }
 
 function startsWith(bytes: Uint8Array, magic: string, at = 0): boolean {
@@ -51,8 +56,7 @@ function startsWith(bytes: Uint8Array, magic: string, at = 0): boolean {
  */
 export function id3v2End(bytes: Uint8Array): number | undefined {
   if (!startsWith(bytes, "ID3") || bytes.length < 10) return undefined;
-  const size = (bytes[6] << 21) | (bytes[7] << 14) | (bytes[8] << 7) |
-    bytes[9];
+  const size = (bytes[6] << 21) | (bytes[7] << 14) | (bytes[8] << 7) | bytes[9];
   const hasFooter = (bytes[5] & 0x10) !== 0;
   return 10 + size + (hasFooter ? 10 : 0);
 }
@@ -72,8 +76,8 @@ function flacEnd(
   for (;;) {
     if (offset + 4 > bytes.length) return undefined;
     const isLast = (bytes[offset] & 0x80) !== 0;
-    const length = (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) |
-      bytes[offset + 3];
+    const length =
+      (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
     offset += 4 + length;
     // Already past the window: the answer cannot change, so stop walking rather
     // than demand bytes the caller may not have read.
@@ -177,7 +181,7 @@ function oggMetadataEnd(
       const payloadStart = tableStart + segmentCount;
       if (payloadStart + 5 > bytes.length) return undefined;
       if (
-        bytes[payloadStart] === 0x7F &&
+        bytes[payloadStart] === 0x7f &&
         startsWith(bytes, "FLAC", payloadStart + 1)
       ) {
         return undefined;
@@ -230,14 +234,15 @@ const MPEG_SAMPLE_RATES: readonly number[][] = [
  */
 export function mpegFrameLength(bytes: Uint8Array, at: number): number {
   if (bytes.length < at + 4) return 0;
-  if (bytes[at] !== 0xFF || (bytes[at + 1] & 0xE0) !== 0xE0) return 0;
+  if (bytes[at] !== 0xff || (bytes[at + 1] & 0xe0) !== 0xe0) return 0;
   const version = (bytes[at + 1] >> 3) & 0x03;
   const layer = (bytes[at + 1] >> 1) & 0x03;
   if (version === 0x01 || layer === 0x00) return 0;
-  const bitrateIndex = (bytes[at + 2] >> 4) & 0x0F;
+  const bitrateIndex = (bytes[at + 2] >> 4) & 0x0f;
   const sampleRateIndex = (bytes[at + 2] >> 2) & 0x03;
   if (
-    bitrateIndex === 0x00 || bitrateIndex === 0x0F ||
+    bitrateIndex === 0x00 ||
+    bitrateIndex === 0x0f ||
     sampleRateIndex === 0x03
   ) {
     return 0;
@@ -248,14 +253,11 @@ export function mpegFrameLength(bytes: Uint8Array, at: number): number {
   const bitrate = MPEG_BITRATES[mpeg1 ? 0 : 1][layerIndex][bitrateIndex];
   const sampleRateTable = mpeg1 ? 0 : version === 0b10 ? 1 : 2;
   const sampleRate = MPEG_SAMPLE_RATES[sampleRateTable][sampleRateIndex];
-  const samplesPerFrame = layerIndex === 2
-    ? (mpeg1 ? 1152 : 576)
-    : layerIndex === 1
-    ? 1152
-    : 384;
+  const samplesPerFrame =
+    layerIndex === 2 ? (mpeg1 ? 1152 : 576) : layerIndex === 1 ? 1152 : 384;
   // C++ integer division truncates (mpegheader.cpp:236-264); JS `/` is float,
   // and a fractional frame length would describe a frame no header can start at.
-  let frameLength = Math.floor(samplesPerFrame * bitrate * 125 / sampleRate);
+  let frameLength = Math.floor((samplesPerFrame * bitrate * 125) / sampleRate);
   if ((bytes[at + 2] & 0x02) !== 0) frameLength += layerIndex === 0 ? 4 : 1;
   return frameLength === 0 ? 0 : frameLength;
 }
@@ -282,10 +284,21 @@ function isMpegFrameSync(bytes: Uint8Array, at = 0): boolean {
   if (bytes.length < next + 4) return false;
   const mask = 0xfffe0c00;
   const header =
-    ((((bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) |
-      bytes[at + 3]) >>> 0) & mask) >>> 0;
-  const nextHeader = ((((bytes[next] << 24) | (bytes[next + 1] << 16) |
-    (bytes[next + 2] << 8) | bytes[next + 3]) >>> 0) & mask) >>> 0;
+    ((((bytes[at] << 24) |
+      (bytes[at + 1] << 16) |
+      (bytes[at + 2] << 8) |
+      bytes[at + 3]) >>>
+      0) &
+      mask) >>>
+    0;
+  const nextHeader =
+    ((((bytes[next] << 24) |
+      (bytes[next + 1] << 16) |
+      (bytes[next + 2] << 8) |
+      bytes[next + 3]) >>>
+      0) &
+      mask) >>>
+    0;
   return header === nextHeader;
 }
 
@@ -389,8 +402,12 @@ export function trailerFitsInFooter(
     if (at < 0 || !startsWith(tail, "APETAGEX", at)) continue;
     // Bytes 12..16 of the footer: tag size in little-endian, covering the
     // footer and all items but not the optional 32-byte header.
-    const size = (tail[at + 12] | (tail[at + 13] << 8) |
-      (tail[at + 14] << 16) | (tail[at + 15] << 24)) >>> 0;
+    const size =
+      (tail[at + 12] |
+        (tail[at + 13] << 8) |
+        (tail[at + 14] << 16) |
+        (tail[at + 15] << 24)) >>>
+      0;
     // At the second position the tag is followed by a 128-byte ID3v1 block, so
     // it ends that much earlier and needs that much more of the window. Omitting
     // this left a 96-byte band where an APE tag was spliced and read as audio.

@@ -56,8 +56,10 @@ for (const { kind, available } of BACKENDS) {
 
           const f2 = await open(out);
           try {
-            expect(f2.properties().date, `${format}: date truncated`)
-              .toStrictEqual([FULL_DATE]);
+            expect(
+              f2.properties().date,
+              `${format}: date truncated`,
+            ).toStrictEqual([FULL_DATE]);
             expect(f2.tag().year, `${format}: year mismatch`).toStrictEqual(
               EXPECTED_YEAR,
             );
@@ -87,8 +89,10 @@ for (const { kind, available } of BACKENDS) {
               f3.properties().date,
               `${format}: date lost after unrelated edit`,
             ).toStrictEqual([FULL_DATE]);
-            expect(f3.properties().artist, `${format}: artist not written`)
-              .toStrictEqual(["New Artist"]);
+            expect(
+              f3.properties().artist,
+              `${format}: artist not written`,
+            ).toStrictEqual(["New Artist"]);
           } finally {
             f3.dispose();
           }
@@ -181,10 +185,14 @@ for (const { kind, available } of BACKENDS) {
 
           const f2 = await open(out);
           try {
-            expect(f2.tag().date, `${format}: date lost on roundtrip`)
-              .toStrictEqual(FULL_DATE);
-            expect(f2.tag().year, `${format}: year lost on roundtrip`)
-              .toStrictEqual(EXPECTED_YEAR);
+            expect(
+              f2.tag().date,
+              `${format}: date lost on roundtrip`,
+            ).toStrictEqual(FULL_DATE);
+            expect(
+              f2.tag().year,
+              `${format}: year lost on roundtrip`,
+            ).toStrictEqual(EXPECTED_YEAR);
           } finally {
             f2.dispose();
           }
@@ -230,8 +238,10 @@ for (const { kind, available } of BACKENDS) {
         // both backends agree on this written value, so the cross-API check is valid.
         // Normalize string | string[] from the Simple API before comparing.
         const d = (await readTags(out)).date;
-        expect(Array.isArray(d) ? d[0] : d, "Simple/Full date mismatch")
-          .toStrictEqual(FULL_DATE);
+        expect(
+          Array.isArray(d) ? d[0] : d,
+          "Simple/Full date mismatch",
+        ).toStrictEqual(FULL_DATE);
       });
     },
   );

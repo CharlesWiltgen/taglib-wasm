@@ -77,9 +77,8 @@ export async function processFileWithTagLib(
       onProgress?.(current, totalFound, filePath);
     }
 
-    const withDynamics = Object.keys(dynamics).length > 0
-      ? dynamics
-      : undefined;
+    const withDynamics =
+      Object.keys(dynamics).length > 0 ? dynamics : undefined;
     return {
       path: filePath,
       tags,

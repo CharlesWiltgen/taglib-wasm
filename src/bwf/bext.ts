@@ -92,13 +92,14 @@ export function decodeBext(
     originationTime: readFixedString(bytes, 330, 8),
     timeReferenceSamples: (BigInt(timeRefHigh) << 32n) | BigInt(timeRefLow),
     version,
-    codingHistory: bytes.length > FIXED_PREFIX_LEN
-      ? readFixedString(
-        bytes,
-        FIXED_PREFIX_LEN,
-        bytes.length - FIXED_PREFIX_LEN,
-      )
-      : "",
+    codingHistory:
+      bytes.length > FIXED_PREFIX_LEN
+        ? readFixedString(
+            bytes,
+            FIXED_PREFIX_LEN,
+            bytes.length - FIXED_PREFIX_LEN,
+          )
+        : "",
   };
   if (version >= 1 && bytes.length >= UMID_OFFSET + UMID_LEN) {
     result.umid = bytesToHex(
@@ -132,13 +133,19 @@ export function encodeBext(b: BroadcastAudioExtension): Uint8Array {
   const codingHistory = b.codingHistory ?? "";
   const bytes = new Uint8Array(FIXED_PREFIX_LEN + codingHistory.length);
   const dv = new DataView(bytes.buffer);
-  const hasLoudness = b.loudnessValueDb !== undefined ||
-    b.loudnessRangeDb !== undefined || b.maxTruePeakLevelDbtp !== undefined ||
+  const hasLoudness =
+    b.loudnessValueDb !== undefined ||
+    b.loudnessRangeDb !== undefined ||
+    b.maxTruePeakLevelDbtp !== undefined ||
     b.maxMomentaryLoudnessDb !== undefined ||
     b.maxShortTermLoudnessDb !== undefined;
   const version = Number.isInteger(b.version)
-    ? (b.version)
-    : (hasLoudness ? 2 : (b.umid ? 1 : 0));
+    ? b.version
+    : hasLoudness
+      ? 2
+      : b.umid
+        ? 1
+        : 0;
   writeFixedString(bytes, 0, 256, b.description ?? "");
   writeFixedString(bytes, 256, 32, b.originator ?? "");
   writeFixedString(bytes, 288, 32, b.originatorReference ?? "");

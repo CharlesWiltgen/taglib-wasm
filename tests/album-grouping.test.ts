@@ -72,16 +72,13 @@ function group(
   return groupAlbums(makeScan(files) as never, { scanRoot: ROOT, ...options });
 }
 
-function albumByTitle(
-  result: AlbumGroupingResult,
-  title: string,
-): AlbumGroup {
+function albumByTitle(result: AlbumGroupingResult, title: string): AlbumGroup {
   const found = result.albums.find((a) => a.album === title);
   expectDefined(
     found,
-    `no album "${title}" in ${
-      JSON.stringify(result.albums.map((a) => a.album))
-    }`,
+    `no album "${title}" in ${JSON.stringify(
+      result.albums.map((a) => a.album),
+    )}`,
   );
   return found;
 }
@@ -159,18 +156,16 @@ describe("discFolderInfo (standalone recognizer)", () => {
   });
 
   it("returns undefined for non-disc names", () => {
-    for (
-      const name of [
-        "Greatest Hits",
-        "2001 A Space Odyssey",
-        "CD",
-        "Help 1",
-        "Abcd1",
-        "Scalp 1",
-        "Extras",
-        "Bonus",
-      ]
-    ) {
+    for (const name of [
+      "Greatest Hits",
+      "2001 A Space Odyssey",
+      "CD",
+      "Help 1",
+      "Abcd1",
+      "Scalp 1",
+      "Extras",
+      "Bonus",
+    ]) {
       expect(discFolderInfo(name), name).toStrictEqual(undefined);
     }
   });
@@ -180,33 +175,31 @@ describe("discFolderInfo (standalone recognizer)", () => {
     // ("Robert Johnson - The Complete Recordings (41 Tracks)", ...) parsed as
     // discs — "record" matched the first letters of "ings", and the
     // single-letter token consumed them.
-    for (
-      const name of [
-        "Recordings 1",
-        "Records",
-        "Recorded",
-        "The Complete Recordings (41 Tracks)",
-        "Robert Johnson - The Complete Recordings (41 Tracks)",
-        "Bukka White - The Vintage Recordings 1930 - 1940",
-        "CD-ROM",
-        "Discography 1",
-        "Disco 1",
-        // Marker-half guards: only these fail if the marker-level lookahead
-        // alone is reverted (the side-letter token still matches at end/space).
-        "CDs",
-        "DVDs",
-        "Vinyls",
-        "LPs",
-        // Token-branch guards: the roman and word alternatives of the token
-        // lookahead (the side-letter branch is covered by CD-ROM above).
-        "Disc IVB",
-        "Disc Oner",
-        // Roman plausibility: all-roman-letter words are titles, not numerals.
-        "Disc Mic",
-        "Disc Mix 1",
-        "CD Mix 1",
-      ]
-    ) {
+    for (const name of [
+      "Recordings 1",
+      "Records",
+      "Recorded",
+      "The Complete Recordings (41 Tracks)",
+      "Robert Johnson - The Complete Recordings (41 Tracks)",
+      "Bukka White - The Vintage Recordings 1930 - 1940",
+      "CD-ROM",
+      "Discography 1",
+      "Disco 1",
+      // Marker-half guards: only these fail if the marker-level lookahead
+      // alone is reverted (the side-letter token still matches at end/space).
+      "CDs",
+      "DVDs",
+      "Vinyls",
+      "LPs",
+      // Token-branch guards: the roman and word alternatives of the token
+      // lookahead (the side-letter branch is covered by CD-ROM above).
+      "Disc IVB",
+      "Disc Oner",
+      // Roman plausibility: all-roman-letter words are titles, not numerals.
+      "Disc Mic",
+      "Disc Mix 1",
+      "CD Mix 1",
+    ]) {
       expect(discFolderInfo(name), name).toStrictEqual(undefined);
     }
   });
@@ -220,8 +213,12 @@ describe("discFolderInfo (standalone recognizer)", () => {
   it("record-marker siblings must not fold to the parent (anthology regression)", () => {
     const root = R("Harry Smith_'s Anthology of American Folk Music");
     const result = group([
-      [`${root}/Robert Johnson - The Complete Recordings (41 Tracks)/track1.flac`],
-      [`${root}/Robert Johnson - The Complete Recordings (41 Tracks)/track2.flac`],
+      [
+        `${root}/Robert Johnson - The Complete Recordings (41 Tracks)/track1.flac`,
+      ],
+      [
+        `${root}/Robert Johnson - The Complete Recordings (41 Tracks)/track2.flac`,
+      ],
       [`${root}/Bukka White - The Vintage Recordings 1930 - 1940/track1.flac`],
       [`${root}/Bukka White - The Vintage Recordings 1930 - 1940/track2.flac`],
     ]);
@@ -288,26 +285,26 @@ describe("disc-folder recognizer (via groupAlbums)", () => {
   });
 
   it("negatives are not disc folders: Greatest Hits, 2001 A Space Odyssey, CD, Help 1, Abcd1, Scalp 1, Extras, Bonus", () => {
-    for (
-      const dir of [
-        "Greatest Hits",
-        "2001 A Space Odyssey",
-        "CD",
-        "Help 1",
-        "Abcd1",
-        "Scalp 1",
-        "Extras",
-        "Bonus",
-      ]
-    ) {
+    for (const dir of [
+      "Greatest Hits",
+      "2001 A Space Odyssey",
+      "CD",
+      "Help 1",
+      "Abcd1",
+      "Scalp 1",
+      "Extras",
+      "Bonus",
+    ]) {
       const result = group([
         [R(`${dir}/track1.flac`), { album: "X" }],
         [R(`${dir}/track2.flac`), { album: "X" }],
       ]);
       const album = albumByTitle(result, "X");
       // No disc evidence: the files sit in one undefined-number disc.
-      expect(album.discs.length, `${dir} must not create disc evidence`)
-        .toStrictEqual(1);
+      expect(
+        album.discs.length,
+        `${dir} must not create disc evidence`,
+      ).toStrictEqual(1);
       expect(album.discs[0].discNumber).toStrictEqual(undefined);
       expect(album.discs[0].folderDiscNumber).toStrictEqual(undefined);
     }
@@ -488,10 +485,7 @@ describe("sibling corroboration", () => {
 
 describe("folder fallback walk (untagged)", () => {
   it("CD1/ at the scan root, untagged, is unmatched", () => {
-    const result = group(
-      [[R("CD1/track1.flac")]],
-      { scanRoot: ROOT },
-    );
+    const result = group([[R("CD1/track1.flac")]], { scanRoot: ROOT });
     expect(result.albums.length).toStrictEqual(0);
     expect(result.unmatched.length).toStrictEqual(1);
     expect(result.unmatched[0].path).toStrictEqual(R("CD1/track1.flac"));
@@ -697,12 +691,12 @@ describe("disc assembly", () => {
   });
 
   it("minFolderConfidence: high drops a lone embedded disc folder", () => {
-    const result = group([
-      [R("Album (Disc 1)/track1.flac")],
-      [R("Album (Disc 1)/track2.flac")],
-    ], {
-      minFolderConfidence: "high",
-    });
+    const result = group(
+      [[R("Album (Disc 1)/track1.flac")], [R("Album (Disc 1)/track2.flac")]],
+      {
+        minFolderConfidence: "high",
+      },
+    );
     // The folder is no longer a disc: it becomes a plain folder album.
     const album = albumByTitle(result, "Album (Disc 1)");
     expect(album.discs[0].discNumber).toStrictEqual(undefined);
@@ -727,8 +721,9 @@ describe("disc assembly", () => {
       [R("Album/Disc 1/track1.flac")],
       [R("Album/Disc 3/track1.flac")],
     ]);
-    expect(discOf(albumByTitle(maxSibling, "Album"), 1).totalDiscs)
-      .toStrictEqual(3);
+    expect(
+      discOf(albumByTitle(maxSibling, "Album"), 1).totalDiscs,
+    ).toStrictEqual(3);
   });
 
   it("files without disc evidence join the lowest-numbered disc", () => {
@@ -825,10 +820,13 @@ describe("invariants", () => {
     [
       "discs+flat+untagged",
       [
-        [R("Artist/Album/Disc 1/track1.flac"), {
-          album: "Album",
-          discNumber: 1,
-        }],
+        [
+          R("Artist/Album/Disc 1/track1.flac"),
+          {
+            album: "Album",
+            discNumber: 1,
+          },
+        ],
         [R("Artist/Album/Disc 2/track2.flac"), { album: "Album" }],
         [R("Flat/1-01 A.flac"), { album: "Flat" }],
         [R("Flat/2-01 B.flac"), { album: "Flat" }],
@@ -860,10 +858,14 @@ describe("invariants", () => {
       const seen = new Set<string>();
       for (const album of result.albums) {
         for (const item of album.items) {
-          expect(okPaths.has(item.path), `album item ${item.path} not in input`)
-            .toBeTruthy();
-          expect(!seen.has(item.path), `duplicate ${item.path} in albums`)
-            .toBeTruthy();
+          expect(
+            okPaths.has(item.path),
+            `album item ${item.path} not in input`,
+          ).toBeTruthy();
+          expect(
+            !seen.has(item.path),
+            `duplicate ${item.path} in albums`,
+          ).toBeTruthy();
           seen.add(item.path);
         }
         expect(album.discs.length >= 1, `${name}: discs >= 1`).toBeTruthy();
@@ -882,13 +884,17 @@ describe("invariants", () => {
         }
       }
       for (const item of result.singles) {
-        expect(!seen.has(item.path), `duplicate ${item.path} in singles`)
-          .toBeTruthy();
+        expect(
+          !seen.has(item.path),
+          `duplicate ${item.path} in singles`,
+        ).toBeTruthy();
         seen.add(item.path);
       }
       for (const item of result.unmatched) {
-        expect(!seen.has(item.path), `duplicate ${item.path} in unmatched`)
-          .toBeTruthy();
+        expect(
+          !seen.has(item.path),
+          `duplicate ${item.path} in unmatched`,
+        ).toBeTruthy();
         seen.add(item.path);
       }
       expect(seen.size, `${name}: partition covers all ok items`).toStrictEqual(
@@ -941,13 +947,16 @@ describe("invariants", () => {
 
 describe("error paths", () => {
   it("input error items map to errors and never enter groups", () => {
-    const result = groupAlbums({
-      items: [
-        okFile(R("Album/track1.flac"), { album: "Album" }),
-        okFile(R("Album/track2.flac"), { album: "Album" }),
-        errorFile(R("Album/broken.flac")),
-      ],
-    } as never, { scanRoot: ROOT });
+    const result = groupAlbums(
+      {
+        items: [
+          okFile(R("Album/track1.flac"), { album: "Album" }),
+          okFile(R("Album/track2.flac"), { album: "Album" }),
+          errorFile(R("Album/broken.flac")),
+        ],
+      } as never,
+      { scanRoot: ROOT },
+    );
     expect(result.errors.length).toStrictEqual(1);
     expect(result.errors[0].path).toStrictEqual(R("Album/broken.flac"));
     expect(result.errors[0].error.message).toStrictEqual("boom");

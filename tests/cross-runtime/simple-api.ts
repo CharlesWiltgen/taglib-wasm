@@ -35,9 +35,9 @@ function check(label: string, actual: unknown, expected: unknown): void {
   if (actual !== expected) {
     failures++;
     console.error(
-      `  ✗ ${label}: expected ${JSON.stringify(expected)}, got ${
-        JSON.stringify(actual)
-      }`,
+      `  ✗ ${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(
+        actual,
+      )}`,
     );
   }
 }
@@ -96,7 +96,5 @@ for (const c of CASES) {
   checkTrue(`${c.ext} has a sample rate`, (props?.sampleRate ?? 0) > 0);
 }
 
-console.log(
-  `simple-api: ${checks - failures}/${checks} checks passed`,
-);
+console.log(`simple-api: ${checks - failures}/${checks} checks passed`);
 process.exit(failures === 0 ? 0 : 1);

@@ -152,7 +152,7 @@ async function demonstrateRealWorldUsage() {
   // Pattern 3: Validation before processing
   console.log("\n🛡️ Pattern 3: Safe processing");
   async function processAudioFile(file: string) {
-    if (!await isValidAudioFile(file)) {
+    if (!(await isValidAudioFile(file))) {
       throw new Error("Not a valid audio file");
     }
 

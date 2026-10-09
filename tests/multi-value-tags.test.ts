@@ -56,13 +56,13 @@ describe("readTags multi-value", () => {
   });
 
   it("should return arrays across all formats", async () => {
-    for (
-      const format of ["mp3", "flac", "ogg", "m4a", "wav"] as const
-    ) {
+    for (const format of ["mp3", "flac", "ogg", "m4a", "wav"] as const) {
       const tags = await readTags(FIXTURE_PATH[format]);
       expectDefined(tags.title, `${format}: title missing`);
-      expect(Array.isArray(tags.title), `${format}: title should be an array`)
-        .toStrictEqual(true);
+      expect(
+        Array.isArray(tags.title),
+        `${format}: title should be an array`,
+      ).toStrictEqual(true);
     }
   });
 });
@@ -138,8 +138,7 @@ describe("clearTags", () => {
     const tags = await readTags(cleared);
 
     const isEmpty = (val: string[] | undefined) =>
-      val === undefined || val.length === 0 ||
-      val.every((s) => s === "");
+      val === undefined || val.length === 0 || val.every((s) => s === "");
 
     expect(isEmpty(tags.title)).toStrictEqual(true);
     expect(isEmpty(tags.artist)).toStrictEqual(true);
@@ -345,9 +344,8 @@ describe("embedded-null single-string multi-value (taglib-ktfn)", () => {
       file.save();
       const buf = file.getFileBuffer();
       const tcon = file.getId3v2Frames("TCON");
-      const body = tcon.length === 1
-        ? new Uint8Array(tcon[0].data)
-        : new Uint8Array(0);
+      const body =
+        tcon.length === 1 ? new Uint8Array(tcon[0].data) : new Uint8Array(0);
       file.dispose();
       written.push(body);
       expect(

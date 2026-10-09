@@ -64,9 +64,10 @@ async function demonstrateReplayGainAndSoundCheck() {
         replayGainTrackPeak: file.getProperty("replayGainTrackPeak")?.[0],
         replayGainAlbumGain: file.getProperty("replayGainAlbumGain")?.[0],
         replayGainAlbumPeak: file.getProperty("replayGainAlbumPeak")?.[0],
-        appleSoundCheck: format === "M4A"
-          ? file.getMP4Item("----:com.apple.iTunes:iTunNORM")
-          : undefined,
+        appleSoundCheck:
+          format === "M4A"
+            ? file.getMP4Item("----:com.apple.iTunes:iTunNORM")
+            : undefined,
       };
       console.log(
         `  ReplayGain Track Gain: ${

@@ -13,10 +13,7 @@
     "./rating": "./rating.ts"
   },
   "compilerOptions": {
-    "lib": [
-      "deno.window",
-      "dom"
-    ],
+    "lib": ["deno.window", "dom"],
     "strict": true,
     "exactOptionalPropertyTypes": true
   },
@@ -64,11 +61,7 @@
   },
   "lint": {
     "rules": {
-      "exclude": [
-        "no-explicit-any",
-        "no-unused-vars",
-        "require-await"
-      ]
+      "exclude": ["no-explicit-any", "no-unused-vars", "require-await"]
     },
     "exclude": [
       "lib/",

@@ -46,7 +46,8 @@ const MP3_PATH = "tests/test-files/mp3/kiss-snippet.mp3";
 /** Hex SHA-256 of a byte string: what this file's assertions compare in. */
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0"))
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
@@ -79,9 +80,13 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
       const original = new Uint8Array(readFileSync(path));
       const before = await adapter.mediaChecksum(original, ext);
       expect(before.source).toStrictEqual("audio-payload");
-      const edited = await adapter.writeTags(original, {
-        title: "Checksum Spike",
-      }, ext);
+      const edited = await adapter.writeTags(
+        original,
+        {
+          title: "Checksum Spike",
+        },
+        ext,
+      );
       expectDefined(edited, `${ext}: writeTags returned null`);
       const after = await adapter.mediaChecksum(edited, ext);
       expect(after.hex, `${ext}: hash must survive a tag edit`).toStrictEqual(
@@ -159,8 +164,10 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
       "the tag edit must actually have landed",
     ).toStrictEqual("Checksum Spike");
     const after = await adapter.mediaChecksum(edited, "flac", { basis: "pcm" });
-    expect(after.hex, "a tag edit must not move the STREAMINFO digest")
-      .toStrictEqual(before.hex);
+    expect(
+      after.hex,
+      "a tag edit must not move the STREAMINFO digest",
+    ).toStrictEqual(before.hex);
     expect(after.bytesHashed).toStrictEqual(16);
   });
 
@@ -200,11 +207,15 @@ forEachBackend("mediaChecksum", (adapter: BackendAdapter) => {
         // that holds no bytes, so if WASI ever starts keeping the file in memory
         // this fails instead of quietly asserting something weaker. The one
         // private field this file reaches for — and it is the claim itself.
-        const handle = (file as unknown as {
-          fileHandle: { getBuffer(): Uint8Array };
-        }).fileHandle;
-        expect(handle.getBuffer().length, "WASI path mode must hold no bytes")
-          .toStrictEqual(0);
+        const handle = (
+          file as unknown as {
+            fileHandle: { getBuffer(): Uint8Array };
+          }
+        ).fileHandle;
+        expect(
+          handle.getBuffer().length,
+          "WASI path mode must hold no bytes",
+        ).toStrictEqual(0);
       }
 
       const pcm = await file.mediaChecksum({ basis: "pcm" });
@@ -333,11 +344,7 @@ it("several payload ranges join in order into one digest", async () => {
     },
   } as unknown as PlatformIO;
 
-  const sum = await mediaChecksum(
-    { bytes, partiallyLoaded: false },
-    "MP4",
-    io,
-  );
+  const sum = await mediaChecksum({ bytes, partiallyLoaded: false }, "MP4", io);
   expect(sum.source).toStrictEqual("audio-payload");
   expect(sum.bytesHashed).toStrictEqual(72);
   expect(sum.hex).toStrictEqual(await sha256Hex(expected));
@@ -401,9 +408,7 @@ function flacWithOversizedMetadata(): Uint8Array {
     flacBlock(6, true, picture),
     new Uint8Array([0xff, 0xf8, 0x69, 0x18, 0x00, 0x00]),
   ];
-  const out = new Uint8Array(
-    parts.reduce((n, part) => n + part.length, 0),
-  );
+  const out = new Uint8Array(parts.reduce((n, part) => n + part.length, 0));
   let at = 0;
   for (const part of parts) {
     out.set(part, at);
@@ -427,8 +432,10 @@ it("basis: pcm reads STREAMINFO past a metadata chain larger than the header win
   ];
   try {
     const fixture = flacWithOversizedMetadata();
-    expect(fixture.length > 65536, "fixture must exceed the window")
-      .toStrictEqual(true);
+    expect(
+      fixture.length > 65536,
+      "fixture must exceed the window",
+    ).toStrictEqual(true);
     await writeFile(path, fixture);
 
     for (const backend of backends) {
@@ -487,8 +494,10 @@ it("basis: pcm reads STREAMINFO past a prepended tag larger than the header wind
   try {
     const flac = new Uint8Array(readFileSync(FLAC_PATH));
     const fixture = flacBehindLargeId3v2(flac);
-    expect(fixture.length > 65536, "fixture must exceed the window")
-      .toStrictEqual(true);
+    expect(
+      fixture.length > 65536,
+      "fixture must exceed the window",
+    ).toStrictEqual(true);
     await writeFile(path, fixture);
 
     // The digest the untagged fixture answers: the prepended tag is not audio,
@@ -614,6 +623,8 @@ it("a partial handle hashes the file, not its window image", async () => {
   }
 
   // The third input form the spec's item 3 names.
-  expect((await readMediaChecksum(LARGE_PATH)).hex, "path vs buffer")
-    .toStrictEqual(byBuffer.hex);
+  expect(
+    (await readMediaChecksum(LARGE_PATH)).hex,
+    "path vs buffer",
+  ).toStrictEqual(byBuffer.hex);
 });

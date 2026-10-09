@@ -137,10 +137,7 @@ export type BitrateControlMode =
  * Used for converting between string representations and numeric codes
  * stored in MP4/M4A files.
  */
-export const BITRATE_CONTROL_MODE_VALUES: Record<
-  BitrateControlMode,
-  number
-> = {
+export const BITRATE_CONTROL_MODE_VALUES: Record<BitrateControlMode, number> = {
   Constant: 0,
   LongTermAverage: 1,
   VariableConstrained: 2,
@@ -152,10 +149,7 @@ export const BITRATE_CONTROL_MODE_VALUES: Record<
  * Used for converting numeric codes from MP4/M4A files
  * to human-readable string representations.
  */
-export const BITRATE_CONTROL_MODE_NAMES: Record<
-  number,
-  BitrateControlMode
-> = {
+export const BITRATE_CONTROL_MODE_NAMES: Record<number, BitrateControlMode> = {
   0: "Constant",
   1: "LongTermAverage",
   2: "VariableConstrained",

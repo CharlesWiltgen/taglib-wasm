@@ -26,16 +26,20 @@ export async function withAudioFileSave(
   file: AudioFileInput,
   fn: (audioFile: AudioFile) => void,
 ): Promise<Uint8Array> {
-  return withAudioFile(file, (audioFile) => {
-    fn(audioFile);
-    if (!audioFile.save()) {
-      throw new FileOperationError(
-        "save",
-        "Failed to save metadata changes. The file may be read-only or corrupted.",
-      );
-    }
-    return audioFile.getFileBuffer();
-  }, { partial: false });
+  return withAudioFile(
+    file,
+    (audioFile) => {
+      fn(audioFile);
+      if (!audioFile.save()) {
+        throw new FileOperationError(
+          "save",
+          "Failed to save metadata changes. The file may be read-only or corrupted.",
+        );
+      }
+      return audioFile.getFileBuffer();
+    },
+    { partial: false },
+  );
 }
 
 export async function withAudioFileSaveToFile(

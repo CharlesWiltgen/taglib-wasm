@@ -91,14 +91,15 @@ async function openAdaptive(path: string) {
 
   // Use partial loading for files larger than 50MB
   const threshold = 50;
-  const options = sizeMB > threshold
-    ? {
-      partial: true,
-      // Scale buffer sizes based on file size
-      maxHeaderSize: Math.min(stat.size * 0.01, 5 * 1024 * 1024), // 1% or 5MB max
-      maxFooterSize: Math.min(stat.size * 0.001, 512 * 1024), // 0.1% or 512KB max
-    }
-    : undefined;
+  const options =
+    sizeMB > threshold
+      ? {
+          partial: true,
+          // Scale buffer sizes based on file size
+          maxHeaderSize: Math.min(stat.size * 0.01, 5 * 1024 * 1024), // 1% or 5MB max
+          maxFooterSize: Math.min(stat.size * 0.001, 512 * 1024), // 0.1% or 512KB max
+        }
+      : undefined;
 
   if (options) {
     console.log("Using partial loading with:");

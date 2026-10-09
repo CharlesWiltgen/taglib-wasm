@@ -167,9 +167,10 @@ async function advancedPictureHandling() {
   console.log(`Current pictures: ${currentPics.length}`);
 
   // Remove all non-cover pictures
-  const coversOnly = currentPics.filter((pic) =>
-    pic.type === PICTURE_TYPE_VALUES.FrontCover ||
-    pic.type === PICTURE_TYPE_VALUES.BackCover
+  const coversOnly = currentPics.filter(
+    (pic) =>
+      pic.type === PICTURE_TYPE_VALUES.FrontCover ||
+      pic.type === PICTURE_TYPE_VALUES.BackCover,
   );
 
   if (coversOnly.length !== currentPics.length) {
@@ -178,8 +179,8 @@ async function advancedPictureHandling() {
   }
 
   // Add a band logo if not present
-  const hasLogo = currentPics.some((pic) =>
-    pic.type === PICTURE_TYPE_VALUES.BandLogo
+  const hasLogo = currentPics.some(
+    (pic) => pic.type === PICTURE_TYPE_VALUES.BandLogo,
   );
   if (!hasLogo) {
     const logo = await loadImage("band-logo.png");

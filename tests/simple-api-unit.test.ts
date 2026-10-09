@@ -68,7 +68,8 @@ describe("clearTags", () => {
     // Read back and verify tags are empty
     const tags = await readTags(cleared);
     expect(
-      tags.title === undefined || tags.title.length === 0 ||
+      tags.title === undefined ||
+        tags.title.length === 0 ||
         tags.title.every((s) => s === ""),
     ).toStrictEqual(true);
   });
@@ -181,11 +182,7 @@ describe("findPictureByType", () => {
 
 describe("readTagsBatch", () => {
   it("should read tags from multiple files", async () => {
-    const files = [
-      FIXTURE_PATH.mp3,
-      FIXTURE_PATH.flac,
-      FIXTURE_PATH.ogg,
-    ];
+    const files = [FIXTURE_PATH.mp3, FIXTURE_PATH.flac, FIXTURE_PATH.ogg];
 
     const result = await readTagsBatch(files);
     expect(result.items.length).toStrictEqual(3);
@@ -196,10 +193,7 @@ describe("readTagsBatch", () => {
   });
 
   it("should handle errors with continueOnError", async () => {
-    const files = [
-      FIXTURE_PATH.mp3,
-      "/nonexistent/file.mp3",
-    ];
+    const files = [FIXTURE_PATH.mp3, "/nonexistent/file.mp3"];
 
     const result = await readTagsBatch(files, { continueOnError: true });
     expect(result.items.length).toStrictEqual(2);
@@ -241,10 +235,7 @@ describe("readTagsBatch", () => {
 
 describe("readPropertiesBatch", () => {
   it("should read properties from multiple files", async () => {
-    const files = [
-      FIXTURE_PATH.mp3,
-      FIXTURE_PATH.flac,
-    ];
+    const files = [FIXTURE_PATH.mp3, FIXTURE_PATH.flac];
 
     const result = await readPropertiesBatch(files);
     expect(result.items.length).toStrictEqual(2);
@@ -263,10 +254,7 @@ describe("readPropertiesBatch", () => {
 
 describe("readMetadataBatch", () => {
   it("should read both tags and properties in single pass", async () => {
-    const files = [
-      FIXTURE_PATH.mp3,
-      FIXTURE_PATH.flac,
-    ];
+    const files = [FIXTURE_PATH.mp3, FIXTURE_PATH.flac];
 
     const result = await readMetadataBatch(files);
     expect(result.items.length).toStrictEqual(2);
@@ -424,8 +412,11 @@ describe("readTags structured fields (taglib-0co)", () => {
     };
     reopened.dispose();
 
-    expect({ bext: tag.bext, bextData: tag.bextData, ixml: tag.ixml })
-      .toStrictEqual(viaMethods);
+    expect({
+      bext: tag.bext,
+      bextData: tag.bextData,
+      ixml: tag.ixml,
+    }).toStrictEqual(viaMethods);
   });
 
   it("omits structured fields that are absent", async () => {
@@ -519,7 +510,7 @@ describe("readCoverArt", () => {
     const backCoverOnly: Picture[] = [
       {
         mimeType: "image/png",
-        data: new Uint8Array([0x89, 0x50, 0x4E, 0x47]),
+        data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
         type: "BackCover" as PictureType,
       },
     ];
@@ -536,7 +527,7 @@ describe("readCoverArt", () => {
 describe("applyCoverArt", () => {
   it("should embed a front cover image and return modified buffer", async () => {
     const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
-    const fakeImage = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
+    const fakeImage = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
     const result = await applyCoverArt(
       new Uint8Array(mp3),
       fakeImage,
@@ -557,7 +548,7 @@ describe("applyPictures", () => {
     const newPictures: Picture[] = [
       {
         mimeType: "image/png",
-        data: new Uint8Array([0x89, 0x50, 0x4E, 0x47]),
+        data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
         type: "BackCover" as PictureType,
       },
     ];
@@ -574,7 +565,7 @@ describe("addPicture", () => {
     const cleared = await clearPictures(new Uint8Array(mp3));
     const picture: Picture = {
       mimeType: "image/jpeg",
-      data: new Uint8Array([0xFF, 0xD8]),
+      data: new Uint8Array([0xff, 0xd8]),
       type: "FrontCover" as PictureType,
     };
     const result = await addPicture(cleared, picture);
@@ -589,7 +580,7 @@ describe("replacePictureByType", () => {
     // First add a front cover
     const withCover = await applyCoverArt(
       new Uint8Array(mp3),
-      new Uint8Array([0xFF, 0xD8]),
+      new Uint8Array([0xff, 0xd8]),
       "image/jpeg",
     );
     // Replace the front cover
@@ -710,10 +701,7 @@ describe("readFileData", () => {
 
 describe("readPropertiesBatch error handling", () => {
   it("should report errors for invalid files", async () => {
-    const files = [
-      FIXTURE_PATH.mp3,
-      "/nonexistent/file.mp3",
-    ];
+    const files = [FIXTURE_PATH.mp3, "/nonexistent/file.mp3"];
     const result = await readPropertiesBatch(files, { continueOnError: true });
     expect(result.items.length).toStrictEqual(2);
     expect(result.items[0].status).toStrictEqual("ok");
@@ -778,10 +766,13 @@ describe("readTagsBatch with NamedAudioInput", () => {
 
 describe("readTagsBatch without continueOnError", () => {
   it("should throw on error when continueOnError is false", async () => {
-    await expectRejects(() =>
-      readTagsBatch(["/nonexistent/file.mp3"], {
-        continueOnError: false,
-      }), Error);
+    await expectRejects(
+      () =>
+        readTagsBatch(["/nonexistent/file.mp3"], {
+          continueOnError: false,
+        }),
+      Error,
+    );
   });
 });
 

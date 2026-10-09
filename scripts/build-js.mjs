@@ -27,7 +27,8 @@ function findTsFiles(dir, rootDir) {
     if (statSync(full).isDirectory()) {
       files.push(...findTsFiles(full, rootDir));
     } else if (
-      entry.endsWith(".ts") && !entry.endsWith(".d.ts") &&
+      entry.endsWith(".ts") &&
+      !entry.endsWith(".d.ts") &&
       !entry.endsWith(".test.ts")
     ) {
       files.push(full.slice(rootDir.length + 1));
@@ -178,9 +179,9 @@ try {
   console.log("  ⚡ Building src/**/*.js...");
   const srcFiles = findTsFiles(join(rootDir, "src"), rootDir);
   execSync(
-    `npx esbuild ${
-      srcFiles.join(" ")
-    } --outdir=dist/src --format=esm --platform=node --target=es2020`,
+    `npx esbuild ${srcFiles.join(
+      " ",
+    )} --outdir=dist/src --format=esm --platform=node --target=es2020`,
     {
       cwd: rootDir,
       stdio: "inherit",

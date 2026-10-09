@@ -61,8 +61,8 @@ export function getAudioProperties(
 ): AudioProperties | null {
   if (!tagData || !("sampleRate" in tagData)) return null;
   const d = tagData;
-  const containerFormat =
-    ((d.containerFormat as string) || "unknown") as ContainerFormat;
+  const containerFormat = ((d.containerFormat as string) ||
+    "unknown") as ContainerFormat;
   const mpegVersion = (d.mpegVersion as number) ?? 0;
   const formatVersion = (d.formatVersion as number) ?? 0;
   return {
@@ -108,9 +108,13 @@ export function detectOggCodec(fileData: Uint8Array): string {
   // FLAC-in-Ogg: the mapping header starts with 0x7F "FLAC" (the native
   // "fLaC" stream marker follows the mapping version).
   if (
-    sig[0] === 0x7F && sig[1] === 0x46 && sig[2] === 0x4C &&
-    sig[3] === 0x41 && sig[4] === 0x43
-  ) return "OggFLAC";
+    sig[0] === 0x7f &&
+    sig[1] === 0x46 &&
+    sig[2] === 0x4c &&
+    sig[3] === 0x41 &&
+    sig[4] === 0x43
+  )
+    return "OggFLAC";
   // Speex: the 5-char name padded to the 8-byte comment-header signature.
   if (text === "Speex   ") return "SPEEX";
   return "OGG";
@@ -137,48 +141,72 @@ export function getFormat(
   // Magic byte fallback requires buffer data
   if (!fileData || fileData.length < 8) return "unknown";
   const magic = fileData.slice(0, 4);
-  if (magic[0] === 0xFF && (magic[1] & 0xE0) === 0xE0) return "MP3";
+  if (magic[0] === 0xff && (magic[1] & 0xe0) === 0xe0) return "MP3";
   if (magic[0] === 0x49 && magic[1] === 0x44 && magic[2] === 0x33) {
     return "MP3";
   }
   if (
-    magic[0] === 0x66 && magic[1] === 0x4C && magic[2] === 0x61 &&
+    magic[0] === 0x66 &&
+    magic[1] === 0x4c &&
+    magic[2] === 0x61 &&
     magic[3] === 0x43
-  ) return "FLAC";
+  )
+    return "FLAC";
   if (
-    magic[0] === 0x4F && magic[1] === 0x67 && magic[2] === 0x67 &&
+    magic[0] === 0x4f &&
+    magic[1] === 0x67 &&
+    magic[2] === 0x67 &&
     magic[3] === 0x53
-  ) return detectOggCodec(fileData);
+  )
+    return detectOggCodec(fileData);
   if (
-    magic[0] === 0x52 && magic[1] === 0x49 && magic[2] === 0x46 &&
+    magic[0] === 0x52 &&
+    magic[1] === 0x49 &&
+    magic[2] === 0x46 &&
     magic[3] === 0x46
-  ) return "WAV";
+  )
+    return "WAV";
   // WavPack: "wvpk"
   if (
-    magic[0] === 0x77 && magic[1] === 0x76 && magic[2] === 0x70 &&
-    magic[3] === 0x6B
-  ) return "WV";
+    magic[0] === 0x77 &&
+    magic[1] === 0x76 &&
+    magic[2] === 0x70 &&
+    magic[3] === 0x6b
+  )
+    return "WV";
   // TrueAudio: "TTA1"
   if (
-    magic[0] === 0x54 && magic[1] === 0x54 && magic[2] === 0x41 &&
+    magic[0] === 0x54 &&
+    magic[1] === 0x54 &&
+    magic[2] === 0x41 &&
     magic[3] === 0x31
-  ) return "TTA";
+  )
+    return "TTA";
   // ASF/WMA: ASF header object GUID
   if (
     fileData.length >= 16 &&
-    magic[0] === 0x30 && magic[1] === 0x26 &&
-    magic[2] === 0xB2 && magic[3] === 0x75
-  ) return "ASF";
+    magic[0] === 0x30 &&
+    magic[1] === 0x26 &&
+    magic[2] === 0xb2 &&
+    magic[3] === 0x75
+  )
+    return "ASF";
   // Matroska/WebM: EBML signature
   if (
-    magic[0] === 0x1A && magic[1] === 0x45 && magic[2] === 0xDF &&
-    magic[3] === 0xA3
-  ) return "MATROSKA";
+    magic[0] === 0x1a &&
+    magic[1] === 0x45 &&
+    magic[2] === 0xdf &&
+    magic[3] === 0xa3
+  )
+    return "MATROSKA";
   const ftyp = fileData.slice(4, 8);
   if (
-    ftyp[0] === 0x66 && ftyp[1] === 0x74 && ftyp[2] === 0x79 &&
+    ftyp[0] === 0x66 &&
+    ftyp[1] === 0x74 &&
+    ftyp[2] === 0x79 &&
     ftyp[3] === 0x70
-  ) return "MP4";
+  )
+    return "MP4";
   return "unknown";
 }
 

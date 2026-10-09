@@ -54,14 +54,14 @@ describe("folder-api", () => {
     }
 
     // Check specific known files
-    const flacItem = result.items.find((i) =>
-      i.status === "ok" && i.path.endsWith(".flac")
+    const flacItem = result.items.find(
+      (i) => i.status === "ok" && i.path.endsWith(".flac"),
     );
     expectDefined(flacItem);
     if (flacItem!.status === "ok") expectDefined(flacItem!.tags);
 
-    const mp3Item = result.items.find((i) =>
-      i.status === "ok" && i.path.endsWith(".mp3")
+    const mp3Item = result.items.find(
+      (i) => i.status === "ok" && i.path.endsWith(".mp3"),
     );
     expectDefined(mp3Item);
     if (mp3Item!.status === "ok") expectDefined(mp3Item!.tags);
@@ -120,9 +120,7 @@ describe("folder-api", () => {
 
     // Copy test file
     const mp3Data = new Uint8Array(
-      await readFile(
-        `${TEST_FILES_DIR}/mp3/kiss-snippet.mp3`,
-      ),
+      await readFile(`${TEST_FILES_DIR}/mp3/kiss-snippet.mp3`),
     );
     await writeFile(file1, mp3Data);
     await writeFile(file2, mp3Data);

@@ -40,10 +40,11 @@ it(
       HAS_EMSCRIPTEN,
       "build/taglib-wrapper.js is missing — the Emscripten backend cannot load",
     ).toBeTruthy();
-    expect(getAdapters().map((adapter) => adapter.kind).sort()).toStrictEqual([
-      "emscripten",
-      "wasi",
-    ]);
+    expect(
+      getAdapters()
+        .map((adapter) => adapter.kind)
+        .sort(),
+    ).toStrictEqual(["emscripten", "wasi"]);
 
     const buffer = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     // Load through the adapters, not TagLib.initialize: the adapters read the

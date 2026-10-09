@@ -12,7 +12,7 @@ void _typecheck;
 const OPUS_DIR = join("tests", "test-files", "opus");
 const BACKENDS = ["wasi", "emscripten"] as const;
 
-async function audioProps(backend: typeof BACKENDS[number], file: string) {
+async function audioProps(backend: (typeof BACKENDS)[number], file: string) {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
   const buffer = new Uint8Array(await readFile(join(OPUS_DIR, file)));
   const f = await taglib.open(buffer);

@@ -61,17 +61,21 @@ describe(mapPropertiesToExtendedTag.name, () => {
   });
 
   it("should map compilation to boolean", () => {
-    expect(mapPropertiesToExtendedTag({ compilation: ["1"] }).compilation)
-      .toStrictEqual(true);
-    expect(mapPropertiesToExtendedTag({ compilation: ["0"] }).compilation)
-      .toStrictEqual(false);
+    expect(
+      mapPropertiesToExtendedTag({ compilation: ["1"] }).compilation,
+    ).toStrictEqual(true);
+    expect(
+      mapPropertiesToExtendedTag({ compilation: ["0"] }).compilation,
+    ).toStrictEqual(false);
     // Non-canonical disk values (literal "true" COMPILATION fields) must
     // read the same on both backends: WASI canonicalizes to "1", Emscripten
     // surfaces "true" verbatim (taglib-c9b).
-    expect(mapPropertiesToExtendedTag({ compilation: ["true"] }).compilation)
-      .toStrictEqual(true);
-    expect(mapPropertiesToExtendedTag({ compilation: ["false"] }).compilation)
-      .toStrictEqual(false);
+    expect(
+      mapPropertiesToExtendedTag({ compilation: ["true"] }).compilation,
+    ).toStrictEqual(true);
+    expect(
+      mapPropertiesToExtendedTag({ compilation: ["false"] }).compilation,
+    ).toStrictEqual(false);
   });
 
   it("should pass through unknown camelCase property keys", () => {

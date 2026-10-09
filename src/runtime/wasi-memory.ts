@@ -93,9 +93,8 @@ export class WasmAlloc {
    * Accepts a string or pre-encoded UTF-8 bytes (avoids double-encoding).
    */
   writeCString(input: string | Uint8Array): void {
-    const bytes = typeof input === "string"
-      ? new TextEncoder().encode(input)
-      : input;
+    const bytes =
+      typeof input === "string" ? new TextEncoder().encode(input) : input;
     if (bytes.length >= this.#size) {
       throw new MemoryError(
         `String too long for allocation. String: ${bytes.byteLength} bytes, allocated: ${this.#size}`,

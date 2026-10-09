@@ -167,7 +167,7 @@ describe("Error Handling", () => {
       0x56,
       0x45, // "WAVE"
       0x66,
-      0x6D,
+      0x6d,
       0x74,
       0x20, // "fmt "
       0x10,
@@ -179,11 +179,11 @@ describe("Error Handling", () => {
       0x02,
       0x00, // AudioFormat, NumChannels
       0x44,
-      0xAC,
+      0xac,
       0x00,
       0x00, // SampleRate (44100)
       0x10,
-      0xB1,
+      0xb1,
       0x02,
       0x00, // ByteRate
       0x04,

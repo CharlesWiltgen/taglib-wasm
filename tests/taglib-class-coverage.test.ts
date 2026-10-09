@@ -17,12 +17,9 @@ describe("TagLib.edit() with buffer input", () => {
   it("should return modified Uint8Array when editing a buffer", async () => {
     const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
 
-    const result = await taglib.edit(
-      new Uint8Array(original),
-      (file) => {
-        file.tag().setTitle("Buffer Edit Test").setArtist("Test Artist");
-      },
-    );
+    const result = await taglib.edit(new Uint8Array(original), (file) => {
+      file.tag().setTitle("Buffer Edit Test").setArtist("Test Artist");
+    });
 
     expect(result).toBeInstanceOf(Uint8Array);
   });
@@ -30,12 +27,9 @@ describe("TagLib.edit() with buffer input", () => {
   it("should return modified buffer with ArrayBuffer input", async () => {
     const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
 
-    const result = await taglib.edit(
-      original.buffer,
-      (file) => {
-        file.tag().setAlbum("New Album");
-      },
-    );
+    const result = await taglib.edit(original.buffer, (file) => {
+      file.tag().setAlbum("New Album");
+    });
 
     expect(result).toBeInstanceOf(Uint8Array);
   });
@@ -43,17 +37,16 @@ describe("TagLib.edit() with buffer input", () => {
   it("should reflect tag changes in the returned buffer", async () => {
     const original = new Uint8Array(await readFile(FIXTURE_PATH.ogg));
 
-    const modified = await taglib.edit(
-      new Uint8Array(original),
-      (file) => {
-        file.tag().setTitle("Roundtrip Test").setYear(2025);
-      },
-    );
+    const modified = await taglib.edit(new Uint8Array(original), (file) => {
+      file.tag().setTitle("Roundtrip Test").setYear(2025);
+    });
 
     const verifyFile = await taglib.open(modified);
     try {
-      expect({ title: verifyFile.tag().title, year: verifyFile.tag().year })
-        .toStrictEqual({ title: "Roundtrip Test", year: 2025 });
+      expect({
+        title: verifyFile.tag().title,
+        year: verifyFile.tag().year,
+      }).toStrictEqual({ title: "Roundtrip Test", year: 2025 });
     } finally {
       verifyFile.dispose();
     }
@@ -64,32 +57,30 @@ describe("TagLib.edit() with partial tag updates", () => {
   it("should preserve untouched fields when updating one field", async () => {
     const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
 
-    const modified = await taglib.edit(
-      new Uint8Array(original),
-      (file) => {
-        file.tag()
-          .setTitle("Original")
-          .setArtist("Original Artist")
-          .setAlbum("Original Album");
-      },
-    );
+    const modified = await taglib.edit(new Uint8Array(original), (file) => {
+      file
+        .tag()
+        .setTitle("Original")
+        .setArtist("Original Artist")
+        .setAlbum("Original Album");
+    });
 
-    const remodified = await taglib.edit(
-      modified,
-      (file) => {
-        file.tag().setTitle("Only Title Changed");
-      },
-    );
+    const remodified = await taglib.edit(modified, (file) => {
+      file.tag().setTitle("Only Title Changed");
+    });
 
     const verifyFile = await taglib.open(remodified);
     try {
       const tag = verifyFile.tag();
-      expect({ title: tag.title, artist: tag.artist, album: tag.album })
-        .toStrictEqual({
-          title: "Only Title Changed",
-          artist: "Original Artist",
-          album: "Original Album",
-        });
+      expect({
+        title: tag.title,
+        artist: tag.artist,
+        album: tag.album,
+      }).toStrictEqual({
+        title: "Only Title Changed",
+        artist: "Original Artist",
+        album: "Original Album",
+      });
     } finally {
       verifyFile.dispose();
     }
@@ -98,17 +89,16 @@ describe("TagLib.edit() with partial tag updates", () => {
   it("should handle year and track as numeric fields", async () => {
     const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
 
-    const modified = await taglib.edit(
-      new Uint8Array(original),
-      (file) => {
-        file.tag().setYear(1999).setTrack(7);
-      },
-    );
+    const modified = await taglib.edit(new Uint8Array(original), (file) => {
+      file.tag().setYear(1999).setTrack(7);
+    });
 
     const verifyFile = await taglib.open(modified);
     try {
-      expect({ year: verifyFile.tag().year, track: verifyFile.tag().track })
-        .toStrictEqual({ year: 1999, track: 7 });
+      expect({
+        year: verifyFile.tag().year,
+        track: verifyFile.tag().track,
+      }).toStrictEqual({ year: 1999, track: 7 });
     } finally {
       verifyFile.dispose();
     }

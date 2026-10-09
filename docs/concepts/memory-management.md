@@ -75,9 +75,7 @@ for (const file of files) {
 }
 
 // Bad: Loading all at once
-const audioFiles = await Promise.all(
-  files.map((f) => taglib.open(f)),
-); // Risk of memory exhaustion
+const audioFiles = await Promise.all(files.map((f) => taglib.open(f))); // Risk of memory exhaustion
 ```
 
 ### 3. Monitor Memory Usage
@@ -113,9 +111,9 @@ For files larger than 100MB:
 const stats = await Deno.stat(filePath);
 if (stats.size > 100 * 1024 * 1024) {
   console.warn(
-    `Large file (${
-      (stats.size / 1024 / 1024).toFixed(1)
-    }MB), processing may be slow`,
+    `Large file (${(stats.size / 1024 / 1024).toFixed(
+      1,
+    )}MB), processing may be slow`,
   );
 }
 ```
@@ -178,16 +176,18 @@ async function processMusicLibrary(files: string[]) {
   for (let i = 0; i < files.length; i += batchSize) {
     const batch = files.slice(i, i + batchSize);
 
-    await Promise.all(batch.map(async (file) => {
-      using audio = await taglib.open(file);
-      const tags = audio.tag();
-      console.log(`${file}: ${tags.artist} - ${tags.title}`);
-    }));
+    await Promise.all(
+      batch.map(async (file) => {
+        using audio = await taglib.open(file);
+        const tags = audio.tag();
+        console.log(`${file}: ${tags.artist} - ${tags.title}`);
+      }),
+    );
 
     console.log(
-      `Batch ${i / batchSize + 1} of ${
-        Math.ceil(files.length / batchSize)
-      } complete`,
+      `Batch ${i / batchSize + 1} of ${Math.ceil(
+        files.length / batchSize,
+      )} complete`,
     );
   }
 }

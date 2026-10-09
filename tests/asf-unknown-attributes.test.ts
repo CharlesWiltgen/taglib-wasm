@@ -126,7 +126,7 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
-      file.setProperties({ "replaygain_track_gain": ["-3.00 dB"] });
+      file.setProperties({ replaygain_track_gain: ["-3.00 dB"] });
       file.save();
       const once = file.getFileBuffer();
       file.dispose();
@@ -135,8 +135,8 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       const file2 = await tl2.open(once);
       // The value is there; the name has normalized to the canonical case.
       const props2 = file2.properties() as Record<string, string[]>;
-      const surviving = props2["replayGainTrackGain"] ??
-        props2["replaygain_track_gain"];
+      const surviving =
+        props2["replayGainTrackGain"] ?? props2["replaygain_track_gain"];
       expect(surviving).toStrictEqual(["-3.00 dB"]);
       file2.save(); // no-op: must not strip the attribute
       const twice = file2.getFileBuffer();
@@ -146,8 +146,8 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       const file3 = await tl3.open(twice);
       const props = file3.properties() as Record<string, string[]>;
       file3.dispose();
-      const survived = props["replayGainTrackGain"] ??
-        props["replaygain_track_gain"];
+      const survived =
+        props["replayGainTrackGain"] ?? props["replaygain_track_gain"];
       expect(survived).toStrictEqual(["-3.00 dB"]);
     });
 
@@ -178,23 +178,22 @@ describe("ASF unknown attributes (taglib-984r)", () => {
       // present, which is exactly the stale-duplicate regression this test
       // exists for (measured: a correct write leaves exactly one occurrence).
       const src = new Uint8Array(
-        await readFile(
-          "tests/test-files/wma/wma-lowercase-attr.wma",
-        ),
+        await readFile("tests/test-files/wma/wma-lowercase-attr.wma"),
       );
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(src);
       // Deliberately the property-key (upper) spelling: it is the casing that
       // would land beside the existing lower-case attribute if the collapse
       // regressed.
-      file.setProperties({ "REPLAYGAIN_TRACK_GAIN": ["-9.99 dB"] });
+      file.setProperties({ REPLAYGAIN_TRACK_GAIN: ["-9.99 dB"] });
       file.save();
       const buf = file.getFileBuffer();
       file.dispose();
 
       const text = new TextDecoder("utf-16le").decode(buf);
-      const names = [...text.matchAll(/[A-Za-z_]*replaygain[A-Za-z_]*/gi)]
-        .map((m) => m[0]);
+      const names = [...text.matchAll(/[A-Za-z_]*replaygain[A-Za-z_]*/gi)].map(
+        (m) => m[0],
+      );
       expect(names).toStrictEqual(["replaygain_track_gain"]);
 
       const tlR = await TagLib.initialize({ forceWasmType: OTHER[backend] });

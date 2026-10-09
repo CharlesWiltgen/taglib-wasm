@@ -105,9 +105,10 @@ function genreAtoms(bytes: Uint8Array): string[] {
     .filter((a) => a.name === GEN || a.name === GNRE)
     .map((a) => {
       const payload = bytes.subarray(a.start + GENRE_PAYLOAD_OFFSET, a.end);
-      const value = a.name === GEN
-        ? new TextDecoder().decode(payload)
-        : [...payload].map((b) => b.toString(16).padStart(2, "0")).join("");
+      const value =
+        a.name === GEN
+          ? new TextDecoder().decode(payload)
+          : [...payload].map((b) => b.toString(16).padStart(2, "0")).join("");
       return `${a.name}:${value}`;
     });
 }
@@ -216,16 +217,12 @@ for (const backend of BACKENDS) {
       const bytes = new Uint8Array(
         await readFile(GNRE_GENRE_FIXTURES["before"]),
       );
-      const jazz = await savedBytes(
-        backend,
-        bytes,
-        (file) => file.tag().setGenre("Jazz"),
+      const jazz = await savedBytes(backend, bytes, (file) =>
+        file.tag().setGenre("Jazz"),
       );
       expect(genreAtoms(jazz)).toStrictEqual([`${GEN}:Jazz`]);
-      const table = await savedBytes(
-        backend,
-        bytes,
-        (file) => file.tag().setGenre(TABLE_GENRE),
+      const table = await savedBytes(backend, bytes, (file) =>
+        file.tag().setGenre(TABLE_GENRE),
       );
       expect(genreAtoms(table)).toStrictEqual([`${GEN}:${TABLE_GENRE}`]);
     });
@@ -277,8 +274,9 @@ for (const backend of BACKENDS) {
       );
       expectDefined(gen);
       const typeWord = gen.start + 16;
-      expect(new DataView(bytes.buffer, bytes.byteOffset).getUint32(typeWord))
-        .toStrictEqual(1);
+      expect(
+        new DataView(bytes.buffer, bytes.byteOffset).getUint32(typeWord),
+      ).toStrictEqual(1);
       new DataView(bytes.buffer, bytes.byteOffset).setUint32(typeWord, 0);
 
       await withFile(backend, bytes, (file) => {

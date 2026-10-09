@@ -9,9 +9,7 @@ import { withAudioFile, withAudioFileSave } from "./with-audio-file.ts";
  * @throws {TagLibInitializationError} If the Wasm module fails to initialize
  * @throws {InvalidFormatError} If the file is corrupted or in an unsupported format
  */
-export async function readPictures(
-  file: AudioFileInput,
-): Promise<Picture[]> {
+export async function readPictures(file: AudioFileInput): Promise<Picture[]> {
   return withAudioFile(file, (audioFile) => audioFile.getPictures());
 }
 
@@ -62,9 +60,7 @@ export async function addPicture(
  * @throws {InvalidFormatError} If the file is corrupted or in an unsupported format
  * @throws {FileOperationError} If saving the modified file fails
  */
-export async function clearPictures(
-  file: AudioFileInput,
-): Promise<Uint8Array> {
+export async function clearPictures(file: AudioFileInput): Promise<Uint8Array> {
   return applyPictures(file, []);
 }
 
@@ -147,8 +143,8 @@ export async function replacePictureByType(
 ): Promise<Uint8Array> {
   const pictures = await readPictures(file);
 
-  const filteredPictures = pictures.filter((pic) =>
-    pic.type !== newPicture.type
+  const filteredPictures = pictures.filter(
+    (pic) => pic.type !== newPicture.type,
   );
 
   filteredPictures.push(newPicture);
@@ -164,9 +160,7 @@ export async function replacePictureByType(
  * @throws {TagLibInitializationError} If the Wasm module fails to initialize
  * @throws {InvalidFormatError} If the file is corrupted or in an unsupported format
  */
-export async function readPictureMetadata(
-  file: AudioFileInput,
-): Promise<
+export async function readPictureMetadata(file: AudioFileInput): Promise<
   Array<{
     type: PictureType;
     mimeType: string;

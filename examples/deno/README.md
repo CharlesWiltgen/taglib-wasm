@@ -21,11 +21,13 @@ require network access.
 #### Usage:
 
 1. First, prepare the WASM file for embedding:
+
    ```bash
    deno run --allow-read --allow-write prepare-offline.ts
    ```
 
 2. Compile your application with the embedded WASM:
+
    ```bash
    deno compile --allow-read --include taglib.wasm offline-compile.ts
    ```

@@ -57,9 +57,10 @@ function flatPrefix(
 // ---------------------------------------------------------------------------
 
 /** Step 1: split ok items from errors. */
-function normalizeOk(
-  result: FolderScanResult,
-): { okItems: OkItem[]; errors: Array<{ path: string; error: Error }> } {
+function normalizeOk(result: FolderScanResult): {
+  okItems: OkItem[];
+  errors: Array<{ path: string; error: Error }>;
+} {
   const okItems: OkItem[] = [];
   const errors: Array<{ path: string; error: Error }> = [];
   for (const item of result.items) {
@@ -204,9 +205,10 @@ export function groupAlbums(
       albumsOut.push(group);
     }
   }
-  albumsOut.sort((a, b) =>
-    (a.albumArtist ?? "").localeCompare(b.albumArtist ?? "") ||
-    (a.album ?? "").localeCompare(b.album ?? "")
+  albumsOut.sort(
+    (a, b) =>
+      (a.albumArtist ?? "").localeCompare(b.albumArtist ?? "") ||
+      (a.album ?? "").localeCompare(b.album ?? ""),
   );
 
   return { albums: albumsOut, singles, unmatched, errors };

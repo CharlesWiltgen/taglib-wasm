@@ -15,8 +15,10 @@ type ProcessLike = {
 
 function hasFsShape(fs: unknown): fs is NodeFsLike {
   const candidate = fs as NodeFsLike | null | undefined;
-  return typeof candidate?.statSync === "function" &&
-    typeof candidate?.readFileSync === "function";
+  return (
+    typeof candidate?.statSync === "function" &&
+    typeof candidate?.readFileSync === "function"
+  );
 }
 
 /**
@@ -47,9 +49,8 @@ export function getNodeFsSync(): NodeFsLike | null {
   }
   try {
     const g = globalThis as { require?: (id: string) => unknown };
-    const fs = typeof g.require === "function"
-      ? g.require("node:fs")
-      : undefined;
+    const fs =
+      typeof g.require === "function" ? g.require("node:fs") : undefined;
     if (hasFsShape(fs)) return fs;
   } catch {
     // no global require either — caller handles null

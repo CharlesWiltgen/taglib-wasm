@@ -30,11 +30,11 @@ export function getAllPropertyKeys(): readonly PropertyKey[] {
  */
 export function getAllProperties(): readonly [
   PropertyKey,
-  typeof PROPERTIES[PropertyKey],
+  (typeof PROPERTIES)[PropertyKey],
 ][] {
   return Object.entries(PROPERTIES) as [
     PropertyKey,
-    typeof PROPERTIES[PropertyKey],
+    (typeof PROPERTIES)[PropertyKey],
   ][];
 }
 
@@ -43,7 +43,7 @@ export function getAllProperties(): readonly [
  */
 export function getPropertiesByFormat(format: string): PropertyKey[] {
   return getAllPropertyKeys().filter((key) =>
-    (PROPERTIES[key].supportedFormats as readonly string[]).includes(format)
+    (PROPERTIES[key].supportedFormats as readonly string[]).includes(format),
   );
 }
 

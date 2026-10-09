@@ -168,7 +168,7 @@ describe("constants", () => {
   it("PROPERTIES constant structure - validates all properties have required fields", () => {
     const propertyEntries = Object.entries(PROPERTIES) as [
       PropertyKey,
-      typeof PROPERTIES[PropertyKey],
+      (typeof PROPERTIES)[PropertyKey],
     ][];
 
     for (const [key, prop] of propertyEntries) {
@@ -405,10 +405,9 @@ describe("Property key translation", () => {
 
   it("PROPERTIES keys are camelCase", () => {
     for (const key of Object.keys(PROPERTIES)) {
-      expect(
-        key[0],
-        `Key "${key}" should start lowercase`,
-      ).toStrictEqual(key[0].toLowerCase());
+      expect(key[0], `Key "${key}" should start lowercase`).toStrictEqual(
+        key[0].toLowerCase(),
+      );
       expect(
         key.includes("_"),
         `Key "${key}" should not contain underscores`,
@@ -419,10 +418,9 @@ describe("Property key translation", () => {
   it("every PROPERTIES entry has a key field with ALL_CAPS TagLib wire name", () => {
     for (const [camelKey, meta] of Object.entries(PROPERTIES)) {
       expectDefined(meta.key, `${camelKey} missing key field`);
-      expect(
-        meta.key,
-        `${camelKey}.key should be ALL_CAPS`,
-      ).toStrictEqual(meta.key.toUpperCase());
+      expect(meta.key, `${camelKey}.key should be ALL_CAPS`).toStrictEqual(
+        meta.key.toUpperCase(),
+      );
     }
   });
 });

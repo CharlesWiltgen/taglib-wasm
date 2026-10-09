@@ -73,9 +73,7 @@ beforeAll(async () => {
 /** Copy a fixture to a temp path so each case mutates an isolated file. */
 async function tempCopy(format: string): Promise<string> {
   const src = new Uint8Array(
-    await readFile(
-      FIXTURE_PATH[format as keyof typeof FIXTURE_PATH],
-    ),
+    await readFile(FIXTURE_PATH[format as keyof typeof FIXTURE_PATH]),
   );
   const tmp = await createTempFile(`.${format}`);
   await writeFile(tmp, src);
@@ -136,38 +134,37 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
 
   for (const value of RAW_TRACK_VALUES) {
     for (const format of PADDABLE_TRACK_FORMATS) {
-      it(
-        `round-trips trackNumber ${
-          JSON.stringify(value)
-        } identically on both backends [${format}]`,
-        async () => {
-          // Seed once per backend so the WRITE path is exercised on each, then
-          // assert both backends read back the value they were given.
-          for (const backend of BACKENDS) {
-            const path = await tempCopy(format);
-            try {
-              await seedProperties(backend, path, { trackNumber: [value] });
-              const readByWriter = await readProperty(
-                backend,
-                path,
-                "trackNumber",
-              );
-              expect(readByWriter, `${backend} lost the raw string it wrote`)
-                .toStrictEqual([value]);
+      it(`round-trips trackNumber ${JSON.stringify(
+        value,
+      )} identically on both backends [${format}]`, async () => {
+        // Seed once per backend so the WRITE path is exercised on each, then
+        // assert both backends read back the value they were given.
+        for (const backend of BACKENDS) {
+          const path = await tempCopy(format);
+          try {
+            await seedProperties(backend, path, { trackNumber: [value] });
+            const readByWriter = await readProperty(
+              backend,
+              path,
+              "trackNumber",
+            );
+            expect(
+              readByWriter,
+              `${backend} lost the raw string it wrote`,
+            ).toStrictEqual([value]);
 
-              // And the OTHER backend must agree about the same bytes.
-              for (const reader of BACKENDS) {
-                expect(
-                  await readProperty(reader, path, "trackNumber"),
-                  `${reader} disagrees about a file written by ${backend}`,
-                ).toStrictEqual([value]);
-              }
-            } finally {
-              await rm(path).catch(() => {});
+            // And the OTHER backend must agree about the same bytes.
+            for (const reader of BACKENDS) {
+              expect(
+                await readProperty(reader, path, "trackNumber"),
+                `${reader} disagrees about a file written by ${backend}`,
+              ).toStrictEqual([value]);
             }
+          } finally {
+            await rm(path).catch(() => {});
           }
-        },
-      );
+        }
+      });
     }
   }
 
@@ -187,8 +184,10 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
             const file = await taglibs[reader].open(path);
             try {
               const props = file.properties() as Record<string, string[]>;
-              expect(props.trackNumber, `${reader} did not report the raw pair`)
-                .toStrictEqual(["3/12"]);
+              expect(
+                props.trackNumber,
+                `${reader} did not report the raw pair`,
+              ).toStrictEqual(["3/12"]);
               expect(
                 props.totalTracks,
                 `${reader} still splits the pair into a separate total`,
@@ -236,24 +235,19 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
   ];
 
   for (const [key, value] of OTHER_NUMERIC_CASES) {
-    it(
-      `round-trips ${key} ${
-        JSON.stringify(value)
-      } identically on both backends [flac]`,
-      async () => {
-        for (const backend of BACKENDS) {
-          const path = await tempCopy("flac");
-          try {
-            await seedProperties(backend, path, { [key]: [value] });
-            expect(await readProperty(backend, path, key)).toStrictEqual([
-              value,
-            ]);
-          } finally {
-            await rm(path).catch(() => {});
-          }
+    it(`round-trips ${key} ${JSON.stringify(
+      value,
+    )} identically on both backends [flac]`, async () => {
+      for (const backend of BACKENDS) {
+        const path = await tempCopy("flac");
+        try {
+          await seedProperties(backend, path, { [key]: [value] });
+          expect(await readProperty(backend, path, key)).toStrictEqual([value]);
+        } finally {
+          await rm(path).catch(() => {});
         }
-      },
-    );
+      }
+    });
   }
 });
 
@@ -317,10 +311,9 @@ describe("readTags() preserves the raw track string", () => {
         path,
         await applyTags(path, { track: 9, trackNumber: "3/12" }),
       );
-      expect(await readProperty("emscripten", path, "trackNumber"))
-        .toStrictEqual([
-          "3/12",
-        ]);
+      expect(
+        await readProperty("emscripten", path, "trackNumber"),
+      ).toStrictEqual(["3/12"]);
     } finally {
       await rm(path).catch(() => {});
     }
@@ -364,8 +357,10 @@ describe("the numeric track mirror never outlives its raw string", () => {
         const file = await taglibs[backend].open(path);
         try {
           file.setProperty("trackNumber", "unknown");
-          expect(file.tag().track, `${backend} reports a stale numeric track`)
-            .toStrictEqual(0);
+          expect(
+            file.tag().track,
+            `${backend} reports a stale numeric track`,
+          ).toStrictEqual(0);
         } finally {
           file.dispose();
         }
@@ -457,10 +452,13 @@ describe("setTrack() preserves an existing track total (taglib-eq3)", () => {
         const reopened = await taglibs[backend].open(path);
         try {
           const frames = reopened.getId3v2Frames("TRCK");
-          expect(frames.length, "expected exactly one TRCK frame")
-            .toStrictEqual(1);
+          expect(
+            frames.length,
+            "expected exactly one TRCK frame",
+          ).toStrictEqual(1);
           // Text frame body: 1 encoding byte, then the value.
-          const raw = new TextDecoder().decode(frames[0]!.data.slice(1))
+          const raw = new TextDecoder()
+            .decode(frames[0]!.data.slice(1))
             .replace(/\0+$/, "");
           expect(raw, `${backend} dropped the track total`).toStrictEqual(
             "7/12",
@@ -522,10 +520,7 @@ describe("the date/year mirror obeys the same rules as trackNumber/track", () =>
   // taglib-qpl defects were still live for date/year on WASI. Generalizing the
   // rule fixed them; these pin the two pairs to one behaviour.
   const PAIRS: Array<
-    [
-      raw: string,
-      numericOf: (f: AudioFile) => number | undefined,
-    ]
+    [raw: string, numericOf: (f: AudioFile) => number | undefined]
   > = [
     ["date", (f) => f.tag().year],
     ["trackNumber", (f) => f.tag().track],
@@ -563,8 +558,10 @@ describe("the date/year mirror obeys the same rules as trackNumber/track", () =>
               (file.properties() as Record<string, string[]>)[raw],
               `${backend}: ${raw} not cleared`,
             ).toStrictEqual(undefined);
-            expect(readNumeric(file), `${backend}: mirror not cleared`)
-              .toStrictEqual(0);
+            expect(
+              readNumeric(file),
+              `${backend}: mirror not cleared`,
+            ).toStrictEqual(0);
           } finally {
             file.dispose();
           }
@@ -640,59 +637,53 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
 
   for (const backend of BACKENDS) {
     for (const [frameId, property, value] of NARROWS_TO_ZERO) {
-      it(
-        `keeps ${frameId} ${
-          JSON.stringify(value)
-        } across a no-op open+save [${backend}]`,
-        async () => {
-          const path = await tempCopy("mp3");
+      it(`keeps ${frameId} ${JSON.stringify(
+        value,
+      )} across a no-op open+save [${backend}]`, async () => {
+        const path = await tempCopy("mp3");
+        try {
+          await seedRawFrame(path, frameId, value);
+          expect(
+            await readProperty("emscripten", path, property),
+            "seed did not land — the rest of this test would be vacuous",
+          ).toStrictEqual([value]);
+
+          // The reported scenario: open and save, changing nothing at all.
+          const file = await taglibs[backend].open(path);
           try {
-            await seedRawFrame(path, frameId, value);
-            expect(
-              await readProperty("emscripten", path, property),
-              "seed did not land — the rest of this test would be vacuous",
-            ).toStrictEqual([value]);
-
-            // The reported scenario: open and save, changing nothing at all.
-            const file = await taglibs[backend].open(path);
-            try {
-              file.save();
-              await writeFile(path, file.getFileBuffer());
-            } finally {
-              file.dispose();
-            }
-
-            for (const reader of BACKENDS) {
-              expect(
-                await readProperty(reader, path, property),
-                `${backend} deleted ${frameId} on a save that changed nothing`,
-              ).toStrictEqual([value]);
-            }
+            file.save();
+            await writeFile(path, file.getFileBuffer());
           } finally {
-            await rm(path).catch(() => {});
+            file.dispose();
           }
-        },
-      );
 
-      it(
-        `can write ${frameId} ${
-          JSON.stringify(value)
-        } through setProperties [${backend}]`,
-        async () => {
-          // The same duplication pass runs after a property write, so the value
-          // could not be written at all — not just not preserved.
-          const path = await tempCopy("mp3");
-          try {
-            await seedProperties(backend, path, { [property]: [value] });
+          for (const reader of BACKENDS) {
             expect(
-              await readProperty("emscripten", path, property),
-              `${backend} could not write ${frameId}=${value}`,
+              await readProperty(reader, path, property),
+              `${backend} deleted ${frameId} on a save that changed nothing`,
             ).toStrictEqual([value]);
-          } finally {
-            await rm(path).catch(() => {});
           }
-        },
-      );
+        } finally {
+          await rm(path).catch(() => {});
+        }
+      });
+
+      it(`can write ${frameId} ${JSON.stringify(
+        value,
+      )} through setProperties [${backend}]`, async () => {
+        // The same duplication pass runs after a property write, so the value
+        // could not be written at all — not just not preserved.
+        const path = await tempCopy("mp3");
+        try {
+          await seedProperties(backend, path, { [property]: [value] });
+          expect(
+            await readProperty("emscripten", path, property),
+            `${backend} could not write ${frameId}=${value}`,
+          ).toStrictEqual([value]);
+        } finally {
+          await rm(path).catch(() => {});
+        }
+      });
     }
   }
 
@@ -880,12 +871,10 @@ describe("an empty value survives a save and is visible on both backends (taglib
   for (const backend of BACKENDS) {
     // Both rows must survive. The non-empty row is the CONTROL: without it a
     // blanket "TXXX survives" regression would make the empty row vacuous.
-    for (
-      const [label, seeded] of [
-        ["empty", ""],
-        ["non-empty", "0123456789"],
-      ] as const
-    ) {
+    for (const [label, seeded] of [
+      ["empty", ""],
+      ["non-empty", "0123456789"],
+    ] as const) {
       it(`keeps an ${label} TXXX:BARCODE across a no-op open+save [${backend}]`, async () => {
         const path = await tempCopy("mp3");
         try {
@@ -897,9 +886,11 @@ describe("an empty value survives a save and is visible on both backends (taglib
           const barcodeFrames = async () => {
             const f = await taglibs.emscripten.open(path);
             try {
-              return f.getId3v2Frames("TXXX").filter((fr) =>
-                new TextDecoder().decode(fr.data).includes("BARCODE")
-              ).length;
+              return f
+                .getId3v2Frames("TXXX")
+                .filter((fr) =>
+                  new TextDecoder().decode(fr.data).includes("BARCODE"),
+                ).length;
             } finally {
               f.dispose();
             }
@@ -974,15 +965,13 @@ describe("an empty value survives a save and is visible on both backends (taglib
   // so FLAC and Ogg drop it while MP3/MP4/RIFF keep it. Both backends must agree
   // per format — the fix is format-agnostic, and the previous attempt at it is
   // recorded as having broken clearing on exactly MP4 and WAV.
-  for (
-    const [format, retained] of [
-      ["mp3", true],
-      ["m4a", true],
-      ["wav", true],
-      ["flac", false],
-      ["ogg", false],
-    ] as const
-  ) {
+  for (const [format, retained] of [
+    ["mp3", true],
+    ["m4a", true],
+    ["wav", true],
+    ["flac", false],
+    ["ogg", false],
+  ] as const) {
     it(`agrees across backends on whether an empty value is storable [${format}]`, async () => {
       const seen: Record<string, string[] | undefined> = {};
       for (const backend of BACKENDS) {
@@ -1013,8 +1002,9 @@ describe("an empty value survives a save and is visible on both backends (taglib
       for (const backend of BACKENDS) {
         const file = await taglibs[backend].open(path);
         try {
-          seen[backend] =
-            (file.properties() as Record<string, string[]>).barcode;
+          seen[backend] = (
+            file.properties() as Record<string, string[]>
+          ).barcode;
         } finally {
           file.dispose();
         }
@@ -1088,8 +1078,10 @@ describe("ID3v1-only values are visible, writable and clearable (taglib-nft5)", 
         ).toStrictEqual(undefined);
         const file = await taglibs[backend].open(path);
         try {
-          expect(file.tag().title, `${backend}: stale typed title`)
-            .toStrictEqual("");
+          expect(
+            file.tag().title,
+            `${backend}: stale typed title`,
+          ).toStrictEqual("");
         } finally {
           file.dispose();
         }
@@ -1163,8 +1155,10 @@ describe("a described COMM does not attract a duplicate (taglib-o3sl)", () => {
   }
 
   const id3v1Comment = (bytes: Uint8Array) =>
-    new TextDecoder().decode(bytes.slice(bytes.length - 31, bytes.length - 1))
-      .replace(/\0/g, "").trim();
+    new TextDecoder()
+      .decode(bytes.slice(bytes.length - 31, bytes.length - 1))
+      .replace(/\0/g, "")
+      .trim();
 
   for (const backend of BACKENDS) {
     it(`keeps one COMM and the ID3v1 comment across a no-op save [${backend}]`, async () => {
@@ -1185,8 +1179,10 @@ describe("a described COMM does not attract a duplicate (taglib-o3sl)", () => {
         const reopened = await taglibs[backend].open(path);
         try {
           const frames = reopened.getId3v2Frames("COMM");
-          expect(frames.length, `${backend} added a duplicate COMM frame`)
-            .toStrictEqual(1);
+          expect(
+            frames.length,
+            `${backend} added a duplicate COMM frame`,
+          ).toStrictEqual(1);
           // The COUNT alone blessed silent data loss: withdrawing the bare frame
           // before the typed COMMENT mirror ran left setComment() with no bare
           // frame to write to, so it fell through to the DESCRIBED frame and
@@ -1195,9 +1191,9 @@ describe("a described COMM does not attract a duplicate (taglib-o3sl)", () => {
           const text = new TextDecoder("latin1").decode(frames[0]!.data);
           expect(
             text.includes(" 00000A1B"),
-            `${backend} overwrote the described frame's payload: ${
-              JSON.stringify(text)
-            }`,
+            `${backend} overwrote the described frame's payload: ${JSON.stringify(
+              text,
+            )}`,
           ).toStrictEqual(true);
         } finally {
           reopened.dispose();
@@ -1234,14 +1230,16 @@ describe("a described COMM does not attract a duplicate (taglib-o3sl)", () => {
         const reopened = await taglibs[backend].open(path);
         try {
           const frames = reopened.getId3v2Frames("COMM");
-          expect(frames.length, `${backend} added a duplicate COMM frame`)
-            .toStrictEqual(1);
+          expect(
+            frames.length,
+            `${backend} added a duplicate COMM frame`,
+          ).toStrictEqual(1);
           const text = new TextDecoder("latin1").decode(frames[0]!.data);
           expect(
             text.includes(" 00000A1B"),
-            `${backend} overwrote the described frame's payload: ${
-              JSON.stringify(text)
-            }`,
+            `${backend} overwrote the described frame's payload: ${JSON.stringify(
+              text,
+            )}`,
           ).toStrictEqual(true);
         } finally {
           reopened.dispose();
@@ -1355,8 +1353,10 @@ describe("track and disc totals land in the standard on-disk field", () => {
         "a stale total survived alongside the new pair",
       ).toStrictEqual(undefined);
       const tags = await readTags(path);
-      expect(tags.totalTracks, "readTags reported the stale total")
-        .toStrictEqual(12);
+      expect(
+        tags.totalTracks,
+        "readTags reported the stale total",
+      ).toStrictEqual(12);
     } finally {
       await rm(path).catch(() => {});
     }

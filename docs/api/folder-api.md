@@ -79,7 +79,10 @@ letters like `CD D`, bonus, bare), `number`, `total`, `title`, `discTitle`,
 ```typescript
 const { albums, singles } = await scanForAlbums("/music", { recursive: true });
 for (const album of albums) {
-  console.log(album.album, album.discs.map((d) => d.discNumber));
+  console.log(
+    album.album,
+    album.discs.map((d) => d.discNumber),
+  );
 }
 ```
 
@@ -165,18 +168,21 @@ saves); abort is honored between files, never mid-save.
 ```typescript
 import { writeTagsBatch } from "taglib-wasm/simple";
 
-const result = await writeTagsBatch([
-  { path: "/music/song1.mp3", tags: { artist: "New Artist" } },
+const result = await writeTagsBatch(
+  [
+    { path: "/music/song1.mp3", tags: { artist: "New Artist" } },
+    {
+      path: "/music/song2.mp3",
+      tags: { album: "New Album" },
+      properties: { BARCODE: ["LC1234"], COMPILATION: [] },
+    },
+  ],
   {
-    path: "/music/song2.mp3",
-    tags: { album: "New Album" },
-    properties: { BARCODE: ["LC1234"], COMPILATION: [] },
+    concurrency: 8,
+    onProgress: (processed, total, file) =>
+      console.log(`${processed}/${total}: ${file}`),
   },
-], {
-  concurrency: 8,
-  onProgress: (processed, total, file) =>
-    console.log(`${processed}/${total}: ${file}`),
-});
+);
 ```
 
 The mutator-callback variant opens each file, applies `mutator(audioFile, path)`
@@ -281,11 +287,7 @@ interface FolderScanOptions {
   maxFiles?: number;
 
   /** Progress callback */
-  onProgress?: (
-    processed: number,
-    total: number,
-    currentFile: string,
-  ) => void;
+  onProgress?: (processed: number, total: number, currentFile: string) => void;
 
   /** Include audio properties (default: true) */
   includeProperties?: boolean;

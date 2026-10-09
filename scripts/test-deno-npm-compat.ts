@@ -31,7 +31,8 @@ try {
   console.error("❌ NPM package failed:");
   console.error(error);
   if (
-    error instanceof Error && error.message.includes("WebAssembly.Table.get")
+    error instanceof Error &&
+    error.message.includes("WebAssembly.Table.get")
   ) {
     console.error("\n⚠️  This is the reported WebAssembly error!");
     console.error(
@@ -61,7 +62,7 @@ try {
     0x56,
     0x45, // "WAVE"
     0x66,
-    0x6D,
+    0x6d,
     0x74,
     0x20, // "fmt "
     0x10,
@@ -73,7 +74,7 @@ try {
     0x01,
     0x00, // Channels
     0x44,
-    0xAC,
+    0xac,
     0x00,
     0x00, // Sample rate (44100)
     0x88,

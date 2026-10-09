@@ -47,8 +47,12 @@ async function executeBatch<T>(
 ): Promise<BatchResult<T>> {
   if (files.length === 0) return { items: [], duration: 0 };
   const startTime = Date.now();
-  const { concurrency = 4, continueOnError = true, onProgress, signal } =
-    options;
+  const {
+    concurrency = 4,
+    continueOnError = true,
+    onProgress,
+    signal,
+  } = options;
   const items: BatchItem<T>[] = new Array<BatchItem<T>>(files.length);
   const taglib = await getTagLib();
   let processed = 0;
@@ -59,13 +63,14 @@ async function executeBatch<T>(
     const chunk = files.slice(i, i + concurrency);
     const chunkPromises = chunk.map(async (file, idx) => {
       const index = i + idx;
-      const fileName = typeof file === "string"
-        ? file
-        : file instanceof File
-        ? file.name
-        : isNamedAudioInput(file)
-        ? file.name
-        : `buffer-${index}`;
+      const fileName =
+        typeof file === "string"
+          ? file
+          : file instanceof File
+            ? file.name
+            : isNamedAudioInput(file)
+              ? file.name
+              : `buffer-${index}`;
       try {
         const audioFile = await taglib.open(file);
         try {
@@ -107,10 +112,8 @@ export async function readTagsBatch(
   files: AudioFileInput[],
   options: BatchOptions = {},
 ): Promise<BatchResult<ExtendedTag>> {
-  return executeBatch(
-    files,
-    options,
-    (audioFile) => readExtendedTag(audioFile, options.includeProperties),
+  return executeBatch(files, options, (audioFile) =>
+    readExtendedTag(audioFile, options.includeProperties),
   );
 }
 
@@ -126,10 +129,8 @@ export async function readPropertiesBatch(
   files: AudioFileInput[],
   options: BatchOptions = {},
 ): Promise<BatchResult<AudioProperties | undefined>> {
-  return executeBatch(
-    files,
-    options,
-    (audioFile) => audioFile.audioProperties(),
+  return executeBatch(files, options, (audioFile) =>
+    audioFile.audioProperties(),
   );
 }
 
@@ -274,8 +275,12 @@ async function executeWriteBatch(
   // the default continueOnError.
   await getTagLib();
   const startTime = Date.now();
-  const { concurrency = 4, continueOnError = true, onProgress, signal } =
-    options;
+  const {
+    concurrency = 4,
+    continueOnError = true,
+    onProgress,
+    signal,
+  } = options;
   const items: BatchItem<void>[] = new Array<BatchItem<void>>(entries.length);
   let processed = 0;
   const total = entries.length;
@@ -325,27 +330,25 @@ export async function writeTagsBatch(
   options: BatchOptions = {},
 ): Promise<BatchResult<void>> {
   const byPath = new Map(updates.map((u) => [u.path, u]));
-  return executeWriteBatch(
-    updates,
-    options,
-    (path) =>
-      withAudioFileSaveToFile(path, (audioFile) => {
-        const update = byPath.get(path)!;
-        const merged = update.tags !== undefined
+  return executeWriteBatch(updates, options, (path) =>
+    withAudioFileSaveToFile(path, (audioFile) => {
+      const update = byPath.get(path)!;
+      const merged =
+        update.tags !== undefined
           ? mergeTagUpdatesInto(audioFile.properties(), update.tags)
           : audioFile.properties();
-        // Raw wire-key entries fold into the SAME map so one setProperties call
-        // reaches the replace-style Emscripten backend — two calls would drop
-        // the first's keys there (taglib-pmhp review). The empty-array removal
-        // (qyw2/nc5) is the map's own rule: `{ COMPILATION: [] }` removes the
-        // key with no empty-string carrier (setProperty(key, "") leaves one).
-        if (update.properties !== undefined) {
-          for (const [key, values] of Object.entries(update.properties)) {
-            merged[fromTagLibKey(key)] = values;
-          }
+      // Raw wire-key entries fold into the SAME map so one setProperties call
+      // reaches the replace-style Emscripten backend — two calls would drop
+      // the first's keys there (taglib-pmhp review). The empty-array removal
+      // (qyw2/nc5) is the map's own rule: `{ COMPILATION: [] }` removes the
+      // key with no empty-string carrier (setProperty(key, "") leaves one).
+      if (update.properties !== undefined) {
+        for (const [key, values] of Object.entries(update.properties)) {
+          merged[fromTagLibKey(key)] = values;
         }
-        audioFile.setProperties(merged);
-      }),
+      }
+      audioFile.setProperties(merged);
+    }),
   );
 }
 
@@ -372,10 +375,7 @@ export async function editTagsBatch(
   mutator: (audioFile: AudioFile, path: string) => void,
   options: BatchOptions = {},
 ): Promise<BatchResult<void>> {
-  return executeWriteBatch(
-    files,
-    options,
-    (path) =>
-      withAudioFileSaveToFile(path, (audioFile) => mutator(audioFile, path)),
+  return executeWriteBatch(files, options, (path) =>
+    withAudioFileSaveToFile(path, (audioFile) => mutator(audioFile, path)),
   );
 }

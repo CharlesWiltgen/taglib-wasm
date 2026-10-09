@@ -31,9 +31,9 @@ function check(label: string, actual: unknown, expected: unknown): void {
   if (actual !== expected) {
     failures++;
     console.error(
-      `  ✗ ${label}: expected ${JSON.stringify(expected)}, got ${
-        JSON.stringify(actual)
-      }`,
+      `  ✗ ${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(
+        actual,
+      )}`,
     );
   }
 }

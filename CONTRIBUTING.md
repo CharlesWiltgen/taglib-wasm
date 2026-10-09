@@ -21,12 +21,14 @@ software together.
 ### Development Setup
 
 1. **Clone the repository** (includes TagLib, mpack, and msgpack submodules)
+
    ```bash
    git clone --recurse-submodules https://github.com/CharlesWiltgen/TagLib-Wasm.git
    cd TagLib-Wasm
    ```
 
 2. **Install Emscripten** (required for Wasm builds)
+
    ```bash
    # Follow instructions at https://emscripten.org/docs/getting_started/downloads.html
    # Or use brew on macOS:
@@ -34,11 +36,13 @@ software together.
    ```
 
 3. **Install WASI SDK** (only needed if modifying the WASI backend)
+
    ```bash
    bash build/setup-wasi-sdk.sh        # Downloads WASI SDK 34 (stock sysroot ships C++ exceptions)
    ```
 
 4. **Build the project**
+
    ```bash
    deno task build                 # Build TypeScript + both Wasm backends
    deno task build:wasm            # Rebuild both Wasm backends
@@ -144,6 +148,7 @@ describe("Feature", () => {
 
 1. **Fork the repository**
 2. **Create a feature branch**
+
    ```bash
    git checkout -b feat/your-feature-name
    # or
@@ -156,9 +161,11 @@ describe("Feature", () => {
    - Update documentation as needed
 
 4. **Test your changes**
+
    ```bash
    deno task check:all  # format, lint, typecheck, tests, and build:ts bundle
    ```
+
    > `deno task test` runs the tests only. Use `check:all` before pushing — it
    > also runs `build:ts`, catching bundler-resolution breaks (e.g. a JSR import
    > that isn't an npm dep) that pass tests but break the shippable bundle.

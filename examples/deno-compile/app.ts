@@ -14,7 +14,8 @@ import { type ExtendedTag, readTags, TagLib } from "../../index.ts";
 
 // Configuration from environment
 const USE_EMBEDDED = Deno.env.get("USE_EMBEDDED_WASM") === "true";
-const WASM_URL = Deno.env.get("WASM_URL") ||
+const WASM_URL =
+  Deno.env.get("WASM_URL") ||
   "https://cdn.jsdelivr.net/npm/taglib-wasm@latest/dist/taglib-web.wasm";
 
 /**
@@ -24,7 +25,8 @@ async function initializeTagLib(): Promise<TagLib> {
   console.log("🎵 Initializing TagLib-Wasm...");
 
   // Strategy 1: Check if running as compiled binary with included WASM
-  const isCompiled = import.meta.url.startsWith("file:///") &&
+  const isCompiled =
+    import.meta.url.startsWith("file:///") &&
     import.meta.url.includes("/deno-compile-");
 
   if (isCompiled) {
@@ -114,7 +116,7 @@ function createTestWav(): Uint8Array {
     0x56,
     0x45, // "WAVE"
     0x66,
-    0x6D,
+    0x6d,
     0x74,
     0x20, // "fmt "
     0x10,
@@ -126,11 +128,11 @@ function createTestWav(): Uint8Array {
     0x02,
     0x00, // Channels
     0x44,
-    0xAC,
+    0xac,
     0x00,
     0x00, // Sample rate (44100)
     0x10,
-    0xB1,
+    0xb1,
     0x02,
     0x00, // Byte rate
     0x04,

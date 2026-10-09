@@ -94,22 +94,21 @@ async function scanSpecificFiles(
       });
 
       // Filter to only include files we care about
-      const relevantFiles = result.items
-        .filter((i) => i.status === "ok" && fileSet.has(i.path));
+      const relevantFiles = result.items.filter(
+        (i) => i.status === "ok" && fileSet.has(i.path),
+      );
       allFiles.push(...(relevantFiles as AudioFileMetadata[]));
 
       // Add errors for files in our list
-      const relevantErrors = result.items
-        .filter((i) => i.status === "error" && fileSet.has(i.path)) as Array<
-          { status: "error"; path: string; error: Error }
-        >;
+      const relevantErrors = result.items.filter(
+        (i) => i.status === "error" && fileSet.has(i.path),
+      ) as Array<{ status: "error"; path: string; error: Error }>;
       allErrors.push(...relevantErrors);
 
       totalDuration += result.duration;
     } catch (error) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error(`Error scanning directory ${dir}: ${errorMessage}`);
     }
   }
@@ -159,9 +158,11 @@ export async function showTagsWithFolderAPI(
     const files = result.items.filter((i) => i.status === "ok") as Array<
       { status: "ok" } & AudioFileMetadata
     >;
-    const errors = result.items.filter((i) => i.status === "error") as Array<
-      { status: "error"; path: string; error: Error }
-    >;
+    const errors = result.items.filter((i) => i.status === "error") as Array<{
+      status: "error";
+      path: string;
+      error: Error;
+    }>;
 
     spinner.succeed(`Read metadata from ${files.length} files`);
 
@@ -225,8 +226,13 @@ export async function showTagsWithFolderAPI(
       console.log("\n📋 Tracks:");
 
       // Create table for tracks
-      const table = new Table()
-        .header(["#", "Title", "Duration", "AcoustID", "ReplayGain"]);
+      const table = new Table().header([
+        "#",
+        "Title",
+        "Duration",
+        "AcoustID",
+        "ReplayGain",
+      ]);
 
       // Process each file to get extended metadata
       const extendedMetadataPromises = files.map(async (file) => {
@@ -240,23 +246,17 @@ export async function showTagsWithFolderAPI(
             const properties = propertyMap.properties();
 
             // Check for AcoustID
-            if (
-              properties["acoustidId"] || properties["acoustidFingerprint"]
-            ) {
+            if (properties["acoustidId"] || properties["acoustidFingerprint"]) {
               acoustId = "✓";
             }
 
             // Check for track ReplayGain
             const replayGainInfo = [];
             if (properties["replayGainTrackGain"]) {
-              replayGainInfo.push(
-                `G: ${properties["replayGainTrackGain"][0]}`,
-              );
+              replayGainInfo.push(`G: ${properties["replayGainTrackGain"][0]}`);
             }
             if (properties["replayGainTrackPeak"]) {
-              replayGainInfo.push(
-                `P: ${properties["replayGainTrackPeak"][0]}`,
-              );
+              replayGainInfo.push(`P: ${properties["replayGainTrackPeak"][0]}`);
             }
             if (replayGainInfo.length > 0) {
               replayGain = replayGainInfo.join(", ");
@@ -301,7 +301,8 @@ export async function showTagsWithFolderAPI(
           sampleRates.add(file.properties.sampleRate);
         }
         // Try to get format from file extension
-        const ext = file.path.substring(file.path.lastIndexOf(".") + 1)
+        const ext = file.path
+          .substring(file.path.lastIndexOf(".") + 1)
           .toUpperCase();
         formats.add(ext);
       }

@@ -35,11 +35,9 @@ describe("readId3v2FramesFromWasm (wasm-io boundary)", () => {
   it("returns a TIT2 frame after a title write", async () => {
     using wasi = await loadWasiHost({});
     const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
-    const tagged = writeTagsToWasm(
-      wasi,
-      buffer,
-      { title: "Frame Test" } as unknown as ExtendedTag,
-    );
+    const tagged = writeTagsToWasm(wasi, buffer, {
+      title: "Frame Test",
+    } as unknown as ExtendedTag);
     expectDefined(tagged, "seeding title via writeTagsToWasm failed");
     const frames = readId3v2FramesFromWasm(wasi, tagged);
     const tit2 = frames.filter((f: RawId3v2Frame) => f.id === "TIT2");
@@ -51,11 +49,10 @@ describe("readId3v2FramesFromWasm (wasm-io boundary)", () => {
   it("id filter returns only matching frames", async () => {
     using wasi = await loadWasiHost({});
     const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
-    const tagged = writeTagsToWasm(
-      wasi,
-      buffer,
-      { title: "T", artist: "A" } as unknown as ExtendedTag,
-    );
+    const tagged = writeTagsToWasm(wasi, buffer, {
+      title: "T",
+      artist: "A",
+    } as unknown as ExtendedTag);
     expectDefined(tagged);
     const frames = readId3v2FramesFromWasm(wasi, tagged, "TPE1");
     expect(frames.length >= 1).toBeTruthy();
@@ -83,11 +80,9 @@ describe("readId3v2FramesFromWasm (wasm-io boundary)", () => {
   it("a filter shorter than 4 chars matches nothing (no over-read)", async () => {
     using wasi = await loadWasiHost({});
     const buffer = new Uint8Array(await readFile(MP3_FIXTURE));
-    const tagged = writeTagsToWasm(
-      wasi,
-      buffer,
-      { title: "T" } as unknown as ExtendedTag,
-    );
+    const tagged = writeTagsToWasm(wasi, buffer, {
+      title: "T",
+    } as unknown as ExtendedTag);
     expectDefined(tagged);
     expect(readId3v2FramesFromWasm(wasi, tagged, "TP")).toStrictEqual([]);
   });
@@ -179,9 +174,9 @@ describe("apply_id3v2_frames_from_msgpack (write contract)", () => {
     expect(readId3v2FramesFromWasm(wasi, removed, "RGAD")).toStrictEqual([]);
     // Content, not count: a count-only guard stays green while the payload
     // is destroyed (AGENTS.md observed-failing doctrine).
-    expect(
-      [...readId3v2FramesFromWasm(wasi, removed, "NCON")[0].data],
-    ).toStrictEqual([3, 4]);
+    expect([
+      ...readId3v2FramesFromWasm(wasi, removed, "NCON")[0].data,
+    ]).toStrictEqual([3, 4]);
   });
 
   it("unrelated typed writes preserve existing raw frames", async () => {
@@ -193,11 +188,9 @@ describe("apply_id3v2_frames_from_msgpack (write contract)", () => {
       encode({ id3v2Frames: { NCON: [new Uint8Array([9, 9, 9])] } }),
     );
     expectDefined(seeded);
-    const titled = writeTagsToWasm(
-      wasi,
-      seeded,
-      { title: "New Title" } as unknown as ExtendedTag,
-    );
+    const titled = writeTagsToWasm(wasi, seeded, {
+      title: "New Title",
+    } as unknown as ExtendedTag);
     expectDefined(titled);
     const ncon = readId3v2FramesFromWasm(wasi, titled, "NCON");
     expect(ncon.length).toStrictEqual(1);
@@ -208,7 +201,7 @@ describe("apply_id3v2_frames_from_msgpack (write contract)", () => {
 // Both backends: the parity matrix for the raw ID3v2 frame API.
 const BACKENDS = ["wasi", "emscripten"] as const;
 
-async function openMp3(backend: typeof BACKENDS[number]) {
+async function openMp3(backend: (typeof BACKENDS)[number]) {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
   return {
     taglib,
@@ -291,7 +284,10 @@ for (const backend of BACKENDS) {
       // round-trip (a count-only guard stays green while payloads are lost).
       expect(
         reopened.getId3v2Frames("PRIV").map((f) => [...f.data]),
-      ).toStrictEqual([[65, 0, 1], [66, 0, 2]]);
+      ).toStrictEqual([
+        [65, 0, 1],
+        [66, 0, 2],
+      ]);
       reopened.removeId3v2Frames("PRIV");
       expect(reopened.getId3v2Frames("PRIV")).toStrictEqual([]);
       reopened.save();
@@ -587,9 +583,11 @@ for (const backend of BACKENDS) {
           const reopened = await taglib.open(out);
           try {
             const frames = reopened.getId3v2Frames("XXXX");
-            return frames.length === 1 &&
+            return (
+              frames.length === 1 &&
               frames[0].data.length === body.length &&
-              frames[0].data.every((b, i) => b === body[i]);
+              frames[0].data.every((b, i) => b === body[i])
+            );
           } finally {
             reopened.dispose();
           }
@@ -704,38 +702,35 @@ it("[wasi] staged raw frames survive save-as reconstruct (extra-state registry)"
 // getStagedId3v2Frames, so the "id3v2Frames" EXTRA_FIELDS entry silently
 // no-op'd on saveViaFreshHandle's partial-load reconstruct path, dropping
 // the raw write.
-it(
-  "[emscripten] staged raw frames survive a partial-load save-as reconstruct (C2)",
-  async () => {
-    const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const dir = await mkdtemp(join(tmpdir(), "taglib-id3v2-"));
+it("[emscripten] staged raw frames survive a partial-load save-as reconstruct (C2)", async () => {
+  const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
+  const dir = await mkdtemp(join(tmpdir(), "taglib-id3v2-"));
+  try {
+    const dst = `${dir}/dst.mp3`;
+    const body = new Uint8Array([0x61, 0x62]);
+    const file = await taglib.open(MP3_FIXTURE, {
+      partial: true,
+      maxHeaderSize: 4096,
+      maxFooterSize: 1024,
+    });
     try {
-      const dst = `${dir}/dst.mp3`;
-      const body = new Uint8Array([0x61, 0x62]);
-      const file = await taglib.open(MP3_FIXTURE, {
-        partial: true,
-        maxHeaderSize: 4096,
-        maxFooterSize: 1024,
-      });
-      try {
-        file.setId3v2Frames("RGAD", [body]);
-        await file.saveToFile(dst); // save-as → saveViaFreshHandle reconstruct
-      } finally {
-        file.dispose();
-      }
-      const reopened = await taglib.open(dst);
-      try {
-        const frames = reopened.getId3v2Frames("RGAD");
-        expect(frames.length).toStrictEqual(1);
-        expect([...frames[0].data]).toStrictEqual([...body]);
-      } finally {
-        reopened.dispose();
-      }
+      file.setId3v2Frames("RGAD", [body]);
+      await file.saveToFile(dst); // save-as → saveViaFreshHandle reconstruct
     } finally {
-      await rm(dir, { force: true, recursive: true });
+      file.dispose();
     }
-  },
-);
+    const reopened = await taglib.open(dst);
+    try {
+      const frames = reopened.getId3v2Frames("RGAD");
+      expect(frames.length).toStrictEqual(1);
+      expect([...frames[0].data]).toStrictEqual([...body]);
+    } finally {
+      reopened.dispose();
+    }
+  } finally {
+    await rm(dir, { force: true, recursive: true });
+  }
+});
 
 // Backend-divergence pin for spec Semantics caveat 3: raw reads of a
 // modeled ID after a pending typed edit differ by backend (ADR-001 class).

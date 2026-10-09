@@ -66,6 +66,7 @@ This script will:
 If you must release manually:
 
 1. **Run all checks**:
+
    ```bash
    deno fmt --check
    deno lint

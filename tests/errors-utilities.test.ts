@@ -236,16 +236,18 @@ describe("Type Guards", () => {
     expect(isTagLibError(new TagLibError("MEMORY", "message"))).toStrictEqual(
       true,
     );
-    expect(isTagLibError(new TagLibInitializationError("failed")))
-      .toStrictEqual(true);
+    expect(
+      isTagLibError(new TagLibInitializationError("failed")),
+    ).toStrictEqual(true);
     expect(isTagLibError(new InvalidFormatError("bad format"))).toStrictEqual(
       true,
     );
     expect(isTagLibError(new UnsupportedFormatError("WMA"))).toStrictEqual(
       true,
     );
-    expect(isTagLibError(new FileOperationError("read", "failed")))
-      .toStrictEqual(true);
+    expect(
+      isTagLibError(new FileOperationError("read", "failed")),
+    ).toStrictEqual(true);
     expect(isTagLibError(new MetadataError("write", "failed"))).toStrictEqual(
       true,
     );
@@ -264,42 +266,52 @@ describe("Type Guards", () => {
     expect(isInvalidFormatError(new InvalidFormatError("bad"))).toStrictEqual(
       true,
     );
-    expect(isInvalidFormatError(new InvalidFormatError("bad", 100)))
-      .toStrictEqual(true);
+    expect(
+      isInvalidFormatError(new InvalidFormatError("bad", 100)),
+    ).toStrictEqual(true);
 
-    expect(isInvalidFormatError(new TagLibError("MEMORY", "msg")))
-      .toStrictEqual(false);
-    expect(isInvalidFormatError(new UnsupportedFormatError("WMA")))
-      .toStrictEqual(false);
+    expect(
+      isInvalidFormatError(new TagLibError("MEMORY", "msg")),
+    ).toStrictEqual(false);
+    expect(
+      isInvalidFormatError(new UnsupportedFormatError("WMA")),
+    ).toStrictEqual(false);
     expect(isInvalidFormatError(new Error("regular"))).toStrictEqual(false);
     expect(isInvalidFormatError("not an error")).toStrictEqual(false);
   });
 
   it("isUnsupportedFormatError - type guard", () => {
-    expect(isUnsupportedFormatError(new UnsupportedFormatError("WMA")))
-      .toStrictEqual(true);
-    expect(isUnsupportedFormatError(new UnsupportedFormatError("APE", ["MP3"])))
-      .toStrictEqual(true);
+    expect(
+      isUnsupportedFormatError(new UnsupportedFormatError("WMA")),
+    ).toStrictEqual(true);
+    expect(
+      isUnsupportedFormatError(new UnsupportedFormatError("APE", ["MP3"])),
+    ).toStrictEqual(true);
 
-    expect(isUnsupportedFormatError(new InvalidFormatError("bad")))
-      .toStrictEqual(false);
-    expect(isUnsupportedFormatError(new TagLibError("MEMORY", "msg")))
-      .toStrictEqual(false);
+    expect(
+      isUnsupportedFormatError(new InvalidFormatError("bad")),
+    ).toStrictEqual(false);
+    expect(
+      isUnsupportedFormatError(new TagLibError("MEMORY", "msg")),
+    ).toStrictEqual(false);
     expect(isUnsupportedFormatError(new Error("regular"))).toStrictEqual(false);
     expect(isUnsupportedFormatError(null)).toStrictEqual(false);
   });
 
   it("isFileOperationError - type guard", () => {
-    expect(isFileOperationError(new FileOperationError("read", "failed")))
-      .toStrictEqual(true);
-    expect(isFileOperationError(
-      new FileOperationError("write", "failed", "/path"),
-    )).toStrictEqual(true);
+    expect(
+      isFileOperationError(new FileOperationError("read", "failed")),
+    ).toStrictEqual(true);
+    expect(
+      isFileOperationError(new FileOperationError("write", "failed", "/path")),
+    ).toStrictEqual(true);
 
-    expect(isFileOperationError(new TagLibError("MEMORY", "msg")))
-      .toStrictEqual(false);
-    expect(isFileOperationError(new MetadataError("read", "failed")))
-      .toStrictEqual(false);
+    expect(
+      isFileOperationError(new TagLibError("MEMORY", "msg")),
+    ).toStrictEqual(false);
+    expect(
+      isFileOperationError(new MetadataError("read", "failed")),
+    ).toStrictEqual(false);
     expect(isFileOperationError(new Error("regular"))).toStrictEqual(false);
     expect(isFileOperationError(undefined)).toStrictEqual(false);
   });
@@ -308,11 +320,13 @@ describe("Type Guards", () => {
     expect(isMetadataError(new MetadataError("read", "failed"))).toStrictEqual(
       true,
     );
-    expect(isMetadataError(new MetadataError("write", "failed", "FIELD")))
-      .toStrictEqual(true);
+    expect(
+      isMetadataError(new MetadataError("write", "failed", "FIELD")),
+    ).toStrictEqual(true);
 
-    expect(isMetadataError(new FileOperationError("read", "failed")))
-      .toStrictEqual(false);
+    expect(
+      isMetadataError(new FileOperationError("read", "failed")),
+    ).toStrictEqual(false);
     expect(isMetadataError(new TagLibError("MEMORY", "msg"))).toStrictEqual(
       false,
     );
@@ -321,8 +335,9 @@ describe("Type Guards", () => {
 
   it("isMemoryError - type guard", () => {
     expect(isMemoryError(new MemoryError("OOM"))).toStrictEqual(true);
-    expect(isMemoryError(new MemoryError("allocation failed", { size: 1024 })))
-      .toStrictEqual(true);
+    expect(
+      isMemoryError(new MemoryError("allocation failed", { size: 1024 })),
+    ).toStrictEqual(true);
 
     expect(isMemoryError(new TagLibError("MEMORY", "msg"))).toStrictEqual(
       false,
@@ -332,10 +347,12 @@ describe("Type Guards", () => {
   });
 
   it("isEnvironmentError - type guard", () => {
-    expect(isEnvironmentError(new EnvironmentError("Browser", "unsupported")))
-      .toStrictEqual(true);
-    expect(isEnvironmentError(new EnvironmentError("Worker", "missing", "fs")))
-      .toStrictEqual(true);
+    expect(
+      isEnvironmentError(new EnvironmentError("Browser", "unsupported")),
+    ).toStrictEqual(true);
+    expect(
+      isEnvironmentError(new EnvironmentError("Worker", "missing", "fs")),
+    ).toStrictEqual(true);
 
     expect(isEnvironmentError(new TagLibError("MEMORY", "msg"))).toStrictEqual(
       false,
@@ -386,10 +403,14 @@ describe("Utilities", () => {
       expect(error, `${error.name} should be instanceof Error`).toBeInstanceOf(
         Error,
       );
-      expect(error, `${error.name} should be instanceof TagLibError`)
-        .toBeInstanceOf(TagLibError);
-      expect(typeof error.message, `${error.name} should have message`)
-        .toStrictEqual("string");
+      expect(
+        error,
+        `${error.name} should be instanceof TagLibError`,
+      ).toBeInstanceOf(TagLibError);
+      expect(
+        typeof error.message,
+        `${error.name} should have message`,
+      ).toStrictEqual("string");
       expect(typeof error.code, `${error.name} should have code`).toStrictEqual(
         "string",
       );

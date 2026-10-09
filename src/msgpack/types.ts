@@ -84,11 +84,11 @@ export const TAGLIB_MSGPACK_MARKERS = {
   PROPERTY_MAP: 0x04,
   BATCH_DATA: 0x05,
   STREAM_CHUNK: 0x06,
-  ERROR_RESPONSE: 0xFF,
+  ERROR_RESPONSE: 0xff,
 } as const;
 
 export type TagLibMessagePackMarker =
-  typeof TAGLIB_MSGPACK_MARKERS[keyof typeof TAGLIB_MSGPACK_MARKERS];
+  (typeof TAGLIB_MSGPACK_MARKERS)[keyof typeof TAGLIB_MSGPACK_MARKERS];
 
 export interface FormatVersion {
   major: number;
@@ -135,10 +135,13 @@ export interface MessagePackErrorInfo {
 }
 
 export type MessagePackCompatible<T> = {
-  [K in keyof T]: T[K] extends object ? T[K] extends Uint8Array | Date ? T[K]
-    : MessagePackCompatible<T[K]>
-    : T[K] extends undefined ? never
-    : T[K];
+  [K in keyof T]: T[K] extends object
+    ? T[K] extends Uint8Array | Date
+      ? T[K]
+      : MessagePackCompatible<T[K]>
+    : T[K] extends undefined
+      ? never
+      : T[K];
 };
 
 export interface AutoDetectionConfig {

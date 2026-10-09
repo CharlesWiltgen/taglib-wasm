@@ -13,10 +13,6 @@ export async function writeFileData(
     await getPlatformIO().writeFile(path, data);
   } catch (error) {
     if (error instanceof EnvironmentError) throw error;
-    throw new FileOperationError(
-      "write",
-      (error as Error).message,
-      path,
-    );
+    throw new FileOperationError("write", (error as Error).message, path);
   }
 }

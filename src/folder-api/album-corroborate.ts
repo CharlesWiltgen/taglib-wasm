@@ -28,9 +28,7 @@ export function corroborated(parse: DiscParse, siblings: string[]): boolean {
   const hasExactSibling = siblingParses.some(
     (p) => !p.gated && p.kind === "exact",
   );
-  const hasNumberedSibling = siblingParses.some(
-    (p) => p.number !== undefined,
-  );
+  const hasNumberedSibling = siblingParses.some((p) => p.number !== undefined);
 
   if (parse.number !== undefined && hasNumberedSibling) return true;
   if (!parse.gated && parse.kind === "embedded" && hasExactSibling) return true;
@@ -47,8 +45,9 @@ export function corroborated(parse: DiscParse, siblings: string[]): boolean {
   // accompanying at least two numbered siblings, or a numbered sibling of
   // their own kind.
   if (parse.kind === "bonus" || parse.kind === "bare") {
-    const numberedCount = siblingParses.filter((p) => p.number !== undefined)
-      .length;
+    const numberedCount = siblingParses.filter(
+      (p) => p.number !== undefined,
+    ).length;
     if (numberedCount >= 2) return true;
     if (parse.number !== undefined && hasNumberedSibling) return true;
   }

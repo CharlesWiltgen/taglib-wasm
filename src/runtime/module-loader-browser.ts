@@ -27,9 +27,7 @@ export async function loadTagLibModule(
   // `Promise<{}>` from the wrapper's JS, while tsc resolves the committed
   // .d.ts (`Promise<any>`); `unknown` is assignable from both, and the final
   // cast narrows to TagLibModule.
-  type CreateTagLibModule = (
-    config?: object,
-  ) => Promise<unknown>;
+  type CreateTagLibModule = (config?: object) => Promise<unknown>;
   let createTagLibModule: CreateTagLibModule;
   try {
     const module = await import("../../build/taglib-wrapper.js");

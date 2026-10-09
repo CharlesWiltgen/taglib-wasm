@@ -163,10 +163,9 @@ describe("alias resolution units (taglib-7ru2)", () => {
     expect(mapped.releaseType).toStrictEqual(["EP"]);
     expect(mapped.itunesAdvisory).toStrictEqual(["1"]);
     // EXPLICIT resolves to the same group.
-    expect(remapKeysFromTagLib({ EXPLICIT: ["0"] }).itunesAdvisory)
-      .toStrictEqual([
-        "0",
-      ]);
+    expect(
+      remapKeysFromTagLib({ EXPLICIT: ["0"] }).itunesAdvisory,
+    ).toStrictEqual(["0"]);
   });
 
   it("canonical spelling wins when both are present", () => {

@@ -229,12 +229,13 @@ export interface AudioProperties {
  */
 export type TypedAudioProperties<F extends FileType> = F extends "MP3" | "AAC"
   ? AudioProperties & {
-    readonly mpegVersion: number;
-    readonly mpegLayer: number;
-  }
+      readonly mpegVersion: number;
+      readonly mpegLayer: number;
+    }
   : F extends "MP4" | "ASF"
     ? AudioProperties & { readonly isEncrypted: boolean }
-  : F extends "OPUS" ? AudioProperties & { readonly outputGainDb: number }
-  : F extends "APE" | "WV" | "TTA" | "MPC" | "SHN"
-    ? AudioProperties & { readonly formatVersion: number }
-  : AudioProperties;
+    : F extends "OPUS"
+      ? AudioProperties & { readonly outputGainDb: number }
+      : F extends "APE" | "WV" | "TTA" | "MPC" | "SHN"
+        ? AudioProperties & { readonly formatVersion: number }
+        : AudioProperties;

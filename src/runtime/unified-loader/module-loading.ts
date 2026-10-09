@@ -11,11 +11,13 @@ function isWindows(): boolean {
   return isDeno()
     ? Deno.build.os === "windows"
     : (globalThis as Record<string, unknown>).process
-    ? ((globalThis as Record<string, unknown>).process as Record<
-      string,
-      string
-    >).platform === "win32"
-    : false;
+      ? (
+          (globalThis as Record<string, unknown>).process as Record<
+            string,
+            string
+          >
+        ).platform === "win32"
+      : false;
 }
 
 /** @internal Exported for unit tests (tests/node-fs-acquisition.test.ts). */

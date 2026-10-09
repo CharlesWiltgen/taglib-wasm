@@ -145,7 +145,7 @@ describe("EdgeCases", () => {
     // Fill with a pattern that won't match any audio format
     // Avoid 0xFF (MP3), 0x00 (some formats), RIFF, fLaC, OggS, etc.
     for (let i = 0; i < nonAudioData.length; i++) {
-      nonAudioData[i] = 0xAB; // Use a specific non-audio byte pattern
+      nonAudioData[i] = 0xab; // Use a specific non-audio byte pattern
     }
 
     await expectRejects(
@@ -156,7 +156,7 @@ describe("EdgeCases", () => {
 
     // Test with PNG signature
     const pngData = new Uint8Array(2048);
-    pngData.set([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]); // PNG header
+    pngData.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]); // PNG header
 
     await expectRejects(
       async () => await taglib.open(pngData.buffer),
@@ -181,22 +181,34 @@ describe("EdgeCases", () => {
 
       // Verify properties are valid numbers
       expectDefined(props, "Properties should not be undefined");
-      expect(Number.isFinite(props.duration), "Duration should be finite")
-        .toBeTruthy();
-      expect(props.duration >= 0, "Duration should not be negative")
-        .toBeTruthy();
+      expect(
+        Number.isFinite(props.duration),
+        "Duration should be finite",
+      ).toBeTruthy();
+      expect(
+        props.duration >= 0,
+        "Duration should not be negative",
+      ).toBeTruthy();
 
-      expect(Number.isFinite(props.bitrate), "Bitrate should be finite")
-        .toBeTruthy();
+      expect(
+        Number.isFinite(props.bitrate),
+        "Bitrate should be finite",
+      ).toBeTruthy();
       expect(props.bitrate > 0, "Bitrate should be positive").toBeTruthy();
 
-      expect(Number.isFinite(props.sampleRate), "Sample rate should be finite")
-        .toBeTruthy();
-      expect(props.sampleRate > 0, "Sample rate should be positive")
-        .toBeTruthy();
+      expect(
+        Number.isFinite(props.sampleRate),
+        "Sample rate should be finite",
+      ).toBeTruthy();
+      expect(
+        props.sampleRate > 0,
+        "Sample rate should be positive",
+      ).toBeTruthy();
 
-      expect(Number.isInteger(props.channels), "Channels should be integer")
-        .toBeTruthy();
+      expect(
+        Number.isInteger(props.channels),
+        "Channels should be integer",
+      ).toBeTruthy();
       expect(
         props.channels > 0 && props.channels <= 8,
         "Channels should be 1-8",
@@ -231,19 +243,9 @@ describe("EdgeCases", () => {
 
       expect(
         [
-          8000,
-          11025,
-          16000,
-          22050,
-          32000,
-          44100,
-          48000,
-          88200,
-          96000,
-          176400,
+          8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400,
           192000,
-        ]
-          .includes(props.sampleRate) || props.sampleRate > 0,
+        ].includes(props.sampleRate) || props.sampleRate > 0,
         `${format}: Sample rate should be standard or at least positive`,
       ).toBeTruthy();
 
@@ -275,12 +277,15 @@ describe("EdgeCases", () => {
     ]);
 
     // Add invalid MPEG frame header at offset 10
-    corruptedMP3.set([
-      0xFF,
-      0xF0, // Invalid sync + version
-      0x00,
-      0x00, // Invalid layer + bitrate
-    ], 10);
+    corruptedMP3.set(
+      [
+        0xff,
+        0xf0, // Invalid sync + version
+        0x00,
+        0x00, // Invalid layer + bitrate
+      ],
+      10,
+    );
 
     // File might open but properties could be invalid
     let fileOpened = false;
@@ -291,20 +296,25 @@ describe("EdgeCases", () => {
 
       // If we get here, properties should at least be safe values
       expectDefined(props, "Properties should not be undefined");
-      expect(Number.isFinite(props.duration), "Should not return NaN duration")
-        .toBeTruthy();
-      expect(Number.isFinite(props.bitrate), "Should not return NaN bitrate")
-        .toBeTruthy();
-      expect(props.duration >= 0, "Duration should not be negative")
-        .toBeTruthy();
+      expect(
+        Number.isFinite(props.duration),
+        "Should not return NaN duration",
+      ).toBeTruthy();
+      expect(
+        Number.isFinite(props.bitrate),
+        "Should not return NaN bitrate",
+      ).toBeTruthy();
+      expect(
+        props.duration >= 0,
+        "Duration should not be negative",
+      ).toBeTruthy();
       expect(props.bitrate >= 0, "Bitrate should not be negative").toBeTruthy();
 
       file.dispose();
     } catch (error) {
       // Either opening failed or properties failed - both are acceptable
       expect(
-        error instanceof InvalidFormatError ||
-          error instanceof Error,
+        error instanceof InvalidFormatError || error instanceof Error,
         "Should throw an error for corrupted data",
       ).toBeTruthy();
     }
@@ -349,8 +359,10 @@ describe("EdgeCases", () => {
       try {
         opened = await taglib.open(DEGENERATE_MP3);
       } catch (error) {
-        expect(error instanceof Error, "a rejection must be a catchable Error")
-          .toBeTruthy();
+        expect(
+          error instanceof Error,
+          "a rejection must be a catchable Error",
+        ).toBeTruthy();
         return;
       }
       opened.properties();

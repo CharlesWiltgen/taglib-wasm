@@ -104,14 +104,14 @@ export function wrapEmbindHandle(raw: EmbindFileHandle): WasmFileHandle {
     getBextData(): Uint8Array | undefined {
       const v = (raw as unknown as { getBextData(): unknown }).getBextData();
       if (v === undefined || v === null) return undefined;
-      const u8 = v instanceof Uint8Array
-        ? v
-        : new Uint8Array(v as ArrayLike<number>);
+      const u8 =
+        v instanceof Uint8Array ? v : new Uint8Array(v as ArrayLike<number>);
       return u8.length > 0 ? u8 : undefined;
     },
     setBextData(data: Uint8Array | null) {
-      (raw as unknown as { setBextData(d: Uint8Array | null): void })
-        .setBextData(data ?? null);
+      (
+        raw as unknown as { setBextData(d: Uint8Array | null): void }
+      ).setBextData(data ?? null);
     },
     getIxml(): string | undefined {
       const v = (raw as unknown as { getIxml(): unknown }).getIxml();
@@ -126,9 +126,11 @@ export function wrapEmbindHandle(raw: EmbindFileHandle): WasmFileHandle {
     // dedicated Embind binding), so bridge get/setLyrics to get/setProperties.
     // Text only — language/description are not surfaced by the PropertyMap.
     getLyrics(): RawLyrics[] {
-      const props = (raw as unknown as {
-        getProperties(): Record<string, string[]>;
-      }).getProperties();
+      const props = (
+        raw as unknown as {
+          getProperties(): Record<string, string[]>;
+        }
+      ).getProperties();
       return (props["LYRICS"] ?? []).map((text) => ({
         text,
         description: "",
@@ -147,14 +149,17 @@ export function wrapEmbindHandle(raw: EmbindFileHandle): WasmFileHandle {
     },
     setId3v2Frames(id: string, data: Uint8Array[]) {
       stagedId3v2Frames[id] = data.map((d) => new Uint8Array(d));
-      (raw as unknown as {
-        setId3v2Frames(id: string, data: Uint8Array[]): void;
-      }).setId3v2Frames(id, data);
+      (
+        raw as unknown as {
+          setId3v2Frames(id: string, data: Uint8Array[]): void;
+        }
+      ).setId3v2Frames(id, data);
     },
     removeId3v2Frames(id: string) {
       stagedId3v2Frames[id] = [];
-      (raw as unknown as { removeId3v2Frames(id: string): void })
-        .removeId3v2Frames(id);
+      (
+        raw as unknown as { removeId3v2Frames(id: string): void }
+      ).removeId3v2Frames(id);
     },
     getStagedId3v2Frames(): Record<string, Uint8Array[]> | undefined {
       return Object.keys(stagedId3v2Frames).length > 0
@@ -168,9 +173,11 @@ export function wrapEmbindHandle(raw: EmbindFileHandle): WasmFileHandle {
       return { v1: o.v1 === true, v2: o.v2 === true };
     },
     stripId3Tags(opts: { v1: boolean; v2: boolean }) {
-      (raw as unknown as {
-        stripId3Tags(o: { v1: boolean; v2: boolean }): void;
-      }).stripId3Tags(opts);
+      (
+        raw as unknown as {
+          stripId3Tags(o: { v1: boolean; v2: boolean }): void;
+        }
+      ).stripId3Tags(opts);
     },
     destroy(): void {
       if (destroyed) return;
@@ -191,8 +198,8 @@ export function wrapEmbindHandle(raw: EmbindFileHandle): WasmFileHandle {
     getAudioProperties(): AudioProperties | null {
       const pw = raw.getAudioProperties();
       if (!pw) return null;
-      const containerFormat =
-        (pw.containerFormat() || "unknown") as ContainerFormat;
+      const containerFormat = (pw.containerFormat() ||
+        "unknown") as ContainerFormat;
       const codec = (pw.codec() || "unknown") as AudioCodec;
       const mpegVersion = pw.mpegVersion();
       const formatVersion = pw.formatVersion();

@@ -119,34 +119,38 @@ it("encodeBext: buffer is always 602 + codingHistory bytes", () => {
 });
 
 it("encodeBext: truncates over-long string fields to their widths", () => {
-  const b = decodeBext(encodeBext({
-    description: "z".repeat(400),
-    originator: "",
-    originatorReference: "",
-    originationDate: "",
-    originationTime: "",
-    timeReferenceSamples: 0n,
-    version: 0,
-    codingHistory: "",
-  }))!;
+  const b = decodeBext(
+    encodeBext({
+      description: "z".repeat(400),
+      originator: "",
+      originatorReference: "",
+      originationDate: "",
+      originationTime: "",
+      timeReferenceSamples: 0n,
+      version: 0,
+      codingHistory: "",
+    }),
+  )!;
   expect(b.description.length).toStrictEqual(256);
 });
 
 it("encodeBext: loudness clamps at the Int16 edges; 0x7FFF is the not-set sentinel", () => {
-  const b = decodeBext(encodeBext({
-    description: "",
-    originator: "",
-    originatorReference: "",
-    originationDate: "",
-    originationTime: "",
-    timeReferenceSamples: 0n,
-    version: 2,
-    codingHistory: "",
-    loudnessValueDb: 327.66, // largest representable real value (one below the sentinel)
-    loudnessRangeDb: -9999, // clamps to -327.68
-    maxTruePeakLevelDbtp: 9999, // clamps up to 0x7FFF == "not set" => decodes as undefined
-    // maxMomentaryLoudnessDb / maxShortTermLoudnessDb omitted => written as 0x7FFF => undefined
-  }))!;
+  const b = decodeBext(
+    encodeBext({
+      description: "",
+      originator: "",
+      originatorReference: "",
+      originationDate: "",
+      originationTime: "",
+      timeReferenceSamples: 0n,
+      version: 2,
+      codingHistory: "",
+      loudnessValueDb: 327.66, // largest representable real value (one below the sentinel)
+      loudnessRangeDb: -9999, // clamps to -327.68
+      maxTruePeakLevelDbtp: 9999, // clamps up to 0x7FFF == "not set" => decodes as undefined
+      // maxMomentaryLoudnessDb / maxShortTermLoudnessDb omitted => written as 0x7FFF => undefined
+    }),
+  )!;
   expect(b.loudnessValueDb).toStrictEqual(327.66);
   expect(b.loudnessRangeDb).toStrictEqual(-327.68);
   expect(b.maxTruePeakLevelDbtp).toStrictEqual(undefined);
@@ -155,17 +159,19 @@ it("encodeBext: loudness clamps at the Int16 edges; 0x7FFF is the not-set sentin
 });
 
 it("bext: a v2 chunk with no loudness fields decodes them all as undefined", () => {
-  const b = decodeBext(encodeBext({
-    description: "x",
-    originator: "",
-    originatorReference: "",
-    originationDate: "",
-    originationTime: "",
-    timeReferenceSamples: 0n,
-    version: 2,
-    umid: "00".repeat(64),
-    codingHistory: "",
-  }))!;
+  const b = decodeBext(
+    encodeBext({
+      description: "x",
+      originator: "",
+      originatorReference: "",
+      originationDate: "",
+      originationTime: "",
+      timeReferenceSamples: 0n,
+      version: 2,
+      umid: "00".repeat(64),
+      codingHistory: "",
+    }),
+  )!;
   expect(b.version).toStrictEqual(2);
   expect(b.loudnessValueDb).toStrictEqual(undefined);
   expect(b.loudnessRangeDb).toStrictEqual(undefined);
@@ -175,17 +181,19 @@ it("bext: a v2 chunk with no loudness fields decodes them all as undefined", () 
 });
 
 it("encodeBext: version defaults to 2 when loudness fields are present", () => {
-  const b = decodeBext(encodeBext({
-    description: "",
-    originator: "",
-    originatorReference: "",
-    originationDate: "",
-    originationTime: "",
-    timeReferenceSamples: 0n,
-    version: NaN as unknown as number,
-    codingHistory: "",
-    loudnessValueDb: 1,
-  }))!;
+  const b = decodeBext(
+    encodeBext({
+      description: "",
+      originator: "",
+      originatorReference: "",
+      originationDate: "",
+      originationTime: "",
+      timeReferenceSamples: 0n,
+      version: NaN as unknown as number,
+      codingHistory: "",
+      loudnessValueDb: 1,
+    }),
+  )!;
   expect(b.version).toStrictEqual(2);
 });
 
@@ -195,9 +203,9 @@ function bigintReplacer(_k: string, v: unknown) {
 
 it("property: decodeBext(encodeBext(b)) === b for arbitrary valid structs", () => {
   const ascii = (max: number) =>
-    fc.string({ maxLength: max }).map((s) =>
-      s.replace(/[^\x20-\x7e]/g, "").slice(0, max)
-    );
+    fc
+      .string({ maxLength: max })
+      .map((s) => s.replace(/[^\x20-\x7e]/g, "").slice(0, max));
   // Exclude 0x7FFF (32767) — that's the EBU "not set" sentinel, which round-trips
   // to `undefined`, not to a numeric value (covered by dedicated tests above).
   const cents = fc.integer({ min: -32768, max: 32766 }).map((n) => n / 100);
@@ -211,9 +219,11 @@ it("property: decodeBext(encodeBext(b)) === b for arbitrary valid structs", () =
         originationTime: ascii(8),
         timeReferenceSamples: fc.bigInt({ min: 0n, max: (1n << 64n) - 1n }),
         version: fc.constantFrom(0, 1, 2),
-        umid: fc.uint8Array({ minLength: 64, maxLength: 64 }).map((u) =>
-          [...u].map((x) => x.toString(16).padStart(2, "0")).join("")
-        ),
+        umid: fc
+          .uint8Array({ minLength: 64, maxLength: 64 })
+          .map((u) =>
+            [...u].map((x) => x.toString(16).padStart(2, "0")).join(""),
+          ),
         loudnessValueDb: cents,
         loudnessRangeDb: cents,
         maxTruePeakLevelDbtp: cents,
@@ -241,8 +251,10 @@ it("property: decodeBext(encodeBext(b)) === b for arbitrary valid structs", () =
           expected.maxShortTermLoudnessDb = raw.maxShortTermLoudnessDb;
         }
         const got = decodeBext(encodeBext(raw as BroadcastAudioExtension))!;
-        return JSON.stringify(got, bigintReplacer) ===
-          JSON.stringify(expected, bigintReplacer);
+        return (
+          JSON.stringify(got, bigintReplacer) ===
+          JSON.stringify(expected, bigintReplacer)
+        );
       },
     ),
     { numRuns: 200 }, // codec correctness is the crux of this feature

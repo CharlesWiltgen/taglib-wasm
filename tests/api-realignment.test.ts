@@ -24,9 +24,8 @@ describe("API Realignment", () => {
     });
 
     it("readCoverArt reads primary cover art", async () => {
-      const { readCoverArt, applyCoverArt } = await import(
-        "../src/simple/index.ts"
-      );
+      const { readCoverArt, applyCoverArt } =
+        await import("../src/simple/index.ts");
       const { RED_PNG } = await import("./test-utils.ts");
 
       const buffer = await readFileData(TEST_FILES.mp3);
@@ -41,9 +40,8 @@ describe("API Realignment", () => {
     });
 
     it("applyCoverArt sets primary cover art", async () => {
-      const { applyCoverArt, readCoverArt } = await import(
-        "../src/simple/index.ts"
-      );
+      const { applyCoverArt, readCoverArt } =
+        await import("../src/simple/index.ts");
       const { RED_PNG } = await import("./test-utils.ts");
 
       const buffer = await readFileData(TEST_FILES.mp3);
@@ -55,9 +53,8 @@ describe("API Realignment", () => {
     });
 
     it("readPictureMetadata returns metadata without data", async () => {
-      const { readPictureMetadata, applyPictures } = await import(
-        "../src/simple/index.ts"
-      );
+      const { readPictureMetadata, applyPictures } =
+        await import("../src/simple/index.ts");
       const { RED_PNG } = await import("./test-utils.ts");
 
       const buffer = await readFileData(TEST_FILES.mp3);
@@ -184,7 +181,8 @@ describe("API Realignment", () => {
       const buffer = await readFileData(TEST_FILES.flac);
 
       const result = await taglib.edit(buffer, (file) => {
-        file.tag()
+        file
+          .tag()
           .setTitle("Chained in Edit")
           .setArtist("Chain Artist")
           .setYear(2026);

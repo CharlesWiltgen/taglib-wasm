@@ -30,9 +30,8 @@ export async function readTags(
   file: AudioFileInput,
   options: { includeProperties?: string[] } = {},
 ): Promise<ExtendedTag> {
-  return withAudioFile(
-    file,
-    (audioFile) => readExtendedTag(audioFile, options.includeProperties),
+  return withAudioFile(file, (audioFile) =>
+    readExtendedTag(audioFile, options.includeProperties),
   );
 }
 
@@ -113,9 +112,7 @@ export async function readProperties(
  * @param file - File path, Uint8Array, ArrayBuffer, or File object
  * @returns `true` if the file is valid and recognized by TagLib; `false` otherwise
  */
-export async function isValidAudioFile(
-  file: AudioFileInput,
-): Promise<boolean> {
+export async function isValidAudioFile(file: AudioFileInput): Promise<boolean> {
   try {
     const taglib = await getTagLib();
     const audioFile = await taglib.open(file);
@@ -160,9 +157,7 @@ export async function readFormat(
  * @throws {InvalidFormatError} If the file is corrupted or in an unsupported format
  * @throws {FileOperationError} If saving the modified metadata fails
  */
-export async function clearTags(
-  file: AudioFileInput,
-): Promise<Uint8Array> {
+export async function clearTags(file: AudioFileInput): Promise<Uint8Array> {
   return withAudioFileSave(file, (audioFile) => {
     // Clear every writable text property. An empty value list removes the key on
     // both backends: Emscripten's setProperties replaces wholesale, and WASI now

@@ -33,14 +33,14 @@ const FILES = {
 
 const BACKENDS = ["wasi", "emscripten"] as const;
 
-async function open(backend: typeof BACKENDS[number], path: string) {
+async function open(backend: (typeof BACKENDS)[number], path: string) {
   const taglib = await TagLib.initialize({ forceWasmType: backend });
   return taglib.open(new Uint8Array(await readFile(path)));
 }
 
 /** Round-trip: setChapters → save → reopen the resulting buffer → getChapters. */
 async function writeReadBack(
-  backend: typeof BACKENDS[number],
+  backend: (typeof BACKENDS)[number],
   path: string,
   chapters: Chapter[],
   options?: SetChaptersOptions,
@@ -84,10 +84,7 @@ for (const backend of BACKENDS) {
     try {
       const ch = file.getChapters();
       expect(ch.length).toStrictEqual(2);
-      expect(ch.map((c) => c.source)).toStrictEqual([
-        "quicktime",
-        "quicktime",
-      ]);
+      expect(ch.map((c) => c.source)).toStrictEqual(["quicktime", "quicktime"]);
       expect(ch[0].id).toStrictEqual(undefined);
       expect(ch[0].endTimeMs).toStrictEqual(ch[1].startTimeMs); // interior: next start
       expect(ch[1].endTimeMs).toStrictEqual(file.audioProperties()?.durationMs); // last: track end
@@ -148,7 +145,10 @@ for (const backend of BACKENDS) {
     const ch = await writeReadBack(
       backend,
       FILES.plainM4a,
-      [{ startTimeMs: 0, title: "N0" }, { startTimeMs: 2000, title: "N1" }],
+      [
+        { startTimeMs: 0, title: "N0" },
+        { startTimeMs: 2000, title: "N1" },
+      ],
       { mp4ChapterStyle: "nero" },
     );
     expect(ch.map((c) => [c.startTimeMs, c.title])).toStrictEqual([
@@ -194,9 +194,9 @@ for (const backend of BACKENDS) {
         fc.array(
           fc.record({
             startTimeMs: fc.integer({ min: 0, max: 3_600_000 }),
-            title: fc.string({ maxLength: 32 }).filter((s) =>
-              !s.includes("\0")
-            ),
+            title: fc
+              .string({ maxLength: 32 })
+              .filter((s) => !s.includes("\0")),
           }),
           { minLength: 0, maxLength: 10 },
         ),
@@ -204,8 +204,7 @@ for (const backend of BACKENDS) {
           // De-dup by start time and sort so the expected list is well-defined.
           const expected = [
             ...new Map(raw.map((r) => [r.startTimeMs, r])).values(),
-          ]
-            .sort((a, b) => a.startTimeMs - b.startTimeMs);
+          ].sort((a, b) => a.startTimeMs - b.startTimeMs);
           const file = await taglib.open(sourceBuffer);
           let out: Uint8Array;
           try {
@@ -221,11 +220,15 @@ for (const backend of BACKENDS) {
               startTimeMs: c.startTimeMs,
               title: c.title ?? "",
             }));
-            return JSON.stringify(back) ===
-              JSON.stringify(expected.map((e) => ({
-                startTimeMs: e.startTimeMs,
-                title: e.title,
-              })));
+            return (
+              JSON.stringify(back) ===
+              JSON.stringify(
+                expected.map((e) => ({
+                  startTimeMs: e.startTimeMs,
+                  title: e.title,
+                })),
+              )
+            );
           } finally {
             reopened.dispose();
           }

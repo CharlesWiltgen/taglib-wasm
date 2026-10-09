@@ -23,9 +23,7 @@ async function scanWithTagLib(
   const items: FolderScanItem[] = [];
   const progress = { count: 0 };
 
-  const processor = async (
-    filePath: string,
-  ): Promise<FolderScanItem> => {
+  const processor = async (filePath: string): Promise<FolderScanItem> => {
     try {
       const metadata = await processFileWithTagLib(
         filePath,
@@ -53,10 +51,7 @@ async function scanWithTagLib(
   const batchSize = concurrency * 10;
   for (let i = 0; i < filePaths.length; i += batchSize) {
     signal?.throwIfAborted();
-    const batch = filePaths.slice(
-      i,
-      Math.min(i + batchSize, filePaths.length),
-    );
+    const batch = filePaths.slice(i, Math.min(i + batchSize, filePaths.length));
     const batchResults = await processBatch(batch, processor, concurrency);
     items.push(...batchResults);
   }

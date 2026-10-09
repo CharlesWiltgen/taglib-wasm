@@ -65,16 +65,15 @@ async function payloadHash(
   bytes: Uint8Array,
   ranges: ByteRange[],
 ): Promise<string> {
-  const payload = new Uint8Array(
-    ranges.reduce((n, r) => n + r.length, 0),
-  );
+  const payload = new Uint8Array(ranges.reduce((n, r) => n + r.length, 0));
   let at = 0;
   for (const r of ranges) {
     payload.set(bytes.subarray(r.offset, r.offset + r.length), at);
     at += r.length;
   }
   const digest = await crypto.subtle.digest("SHA-256", payload);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0"))
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
@@ -86,15 +85,13 @@ it("FLAC tag variants produce identical payload ranges' bytes", async () => {
   const base = new Uint8Array(readFileSync(`${FLAC_DIR}/kiss-snippet.flac`));
   const baseWalk = walkFlac(base);
   const baseHash = await payloadHash(base, baseWalk.ranges);
-  for (
-    const name of [
-      "flac-prepended-id3v2.flac",
-      "flac-prepended-id3v2-footer.flac",
-      "flac-appended-id3v1.flac",
-      "flac-appended-ape.flac",
-      "flac-both-tags.flac",
-    ]
-  ) {
+  for (const name of [
+    "flac-prepended-id3v2.flac",
+    "flac-prepended-id3v2-footer.flac",
+    "flac-appended-id3v1.flac",
+    "flac-appended-ape.flac",
+    "flac-both-tags.flac",
+  ]) {
     const bytes = new Uint8Array(readFileSync(`${FLAC_DIR}/${name}`));
     const walk = walkFlac(bytes);
     expect(walk.kind, name).toStrictEqual("ranges");
@@ -106,10 +103,12 @@ it("the FLAC walk starts after the block chain and ends at EOF", () => {
   const bytes = new Uint8Array(readFileSync(`${FLAC_DIR}/kiss-snippet.flac`));
   // Measured during the spike: marker at 0, first audio byte after the metadata
   // block chain at 323, and no trailing tags, so the range ends at EOF.
-  expect(walkFlac(bytes).ranges).toStrictEqual([{
-    offset: 323,
-    length: 245107,
-  }]);
+  expect(walkFlac(bytes).ranges).toStrictEqual([
+    {
+      offset: 323,
+      length: 245107,
+    },
+  ]);
 });
 
 // A boundary of the guarantee, pinned so a change to it is visible: an
@@ -142,9 +141,7 @@ it("FLAC STREAMINFO digest matches metaflac", () => {
 const MP4_DIR = "tests/test-files/mp4";
 
 it("MP4 payload is every non-empty top-level mdat, header excluded", () => {
-  const bytes = new Uint8Array(
-    readFileSync(`${MP4_DIR}/synth-multi-mdat.mp4`),
-  );
+  const bytes = new Uint8Array(readFileSync(`${MP4_DIR}/synth-multi-mdat.mp4`));
   // The generator writes seven atoms in this order: ftyp (whole 24), free
   // (whole 16), mdat (32 contents), a 64-bit-size mdat (24 contents), an empty
   // mdat (whole 8), moov (whole 24), mdat (16 contents). An atom's size field
@@ -203,9 +200,7 @@ it("a size-0 mdat runs to end of file", () => {
 // into its own detail (`"${walked.detail} → whole file"`) rather than inventing
 // a message of its own.
 it("MP4 atoms the walk cannot fully account for fall back", () => {
-  const synth = new Uint8Array(
-    readFileSync(`${MP4_DIR}/synth-multi-mdat.mp4`),
-  );
+  const synth = new Uint8Array(readFileSync(`${MP4_DIR}/synth-multi-mdat.mp4`));
   const patch32 = (at: number, size: number): Uint8Array => {
     const copy = synth.slice();
     new DataView(copy.buffer).setUint32(at, size, false);
@@ -218,7 +213,7 @@ it("MP4 atoms the walk cannot fully account for fall back", () => {
   };
   const cases: Array<[string, Uint8Array, string]> = [
     // The first mdat's size field (40 at offset 40) claims 65535 bytes.
-    ["a size running past the buffer", patch32(40, 0xFFFF), "oversized"],
+    ["a size running past the buffer", patch32(40, 0xffff), "oversized"],
     // 4 bytes is less than the 8-byte header that size is meant to include.
     ["a size below its own header", patch32(40, 4), "malformed"],
     // The 64-bit mdat at 80 keeps its size-1 marker while the 16 bytes that
@@ -277,9 +272,9 @@ it("inserting tag chunks before data does not change the payload hash", async ()
   const taggedWalk = walkWav(tagged);
   expect(plainWalk.ranges).toStrictEqual([{ offset: 44, length: 4096 }]);
   expect(taggedWalk.ranges).toStrictEqual([{ offset: 88, length: 4096 }]);
-  expect(
-    await payloadHash(plain, plainWalk.ranges),
-  ).toStrictEqual(await payloadHash(tagged, taggedWalk.ranges));
+  expect(await payloadHash(plain, plainWalk.ranges)).toStrictEqual(
+    await payloadHash(tagged, taggedWalk.ranges),
+  );
 });
 
 it("chunks after data do not narrow the range", () => {
@@ -300,9 +295,7 @@ it("chunks after data do not narrow the range", () => {
 // ranges but joined them out of order would still fail it.
 
 it("WAV payload is every non-empty data chunk, in chunk order", async () => {
-  const bytes = new Uint8Array(
-    readFileSync(`${WAV_DIR}/synth-multi-data.wav`),
-  );
+  const bytes = new Uint8Array(readFileSync(`${WAV_DIR}/synth-multi-data.wav`));
   const walk = walkWav(bytes);
   expect(walk.kind).toStrictEqual("ranges");
   expect(walk.ranges).toStrictEqual([
@@ -312,9 +305,7 @@ it("WAV payload is every non-empty data chunk, in chunk order", async () => {
   const joined = new Uint8Array(24);
   joined.set(bytes.subarray(52, 52 + 16), 0);
   joined.set(bytes.subarray(76, 76 + 8), 16);
-  expect(
-    await payloadHash(bytes, walk.ranges),
-  ).toStrictEqual(
+  expect(await payloadHash(bytes, walk.ranges)).toStrictEqual(
     await payloadHash(joined, [{ offset: 0, length: joined.length }]),
   );
 });

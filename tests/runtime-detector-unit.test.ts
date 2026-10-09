@@ -36,28 +36,33 @@ describe("getEnvironmentDescription", () => {
   });
 
   it("should describe node-wasi", () => {
-    expect(getEnvironmentDescription("node-wasi").includes("Node"))
-      .toStrictEqual(true);
+    expect(
+      getEnvironmentDescription("node-wasi").includes("Node"),
+    ).toStrictEqual(true);
   });
 
   it("should describe bun-wasi", () => {
-    expect(getEnvironmentDescription("bun-wasi").includes("Bun"))
-      .toStrictEqual(true);
+    expect(getEnvironmentDescription("bun-wasi").includes("Bun")).toStrictEqual(
+      true,
+    );
   });
 
   it("should describe browser", () => {
-    expect(getEnvironmentDescription("browser").includes("Browser"))
-      .toStrictEqual(true);
+    expect(
+      getEnvironmentDescription("browser").includes("Browser"),
+    ).toStrictEqual(true);
   });
 
   it("should describe worker", () => {
-    expect(getEnvironmentDescription("worker").includes("Worker"))
-      .toStrictEqual(true);
+    expect(
+      getEnvironmentDescription("worker").includes("Worker"),
+    ).toStrictEqual(true);
   });
 
   it("should describe cloudflare", () => {
-    expect(getEnvironmentDescription("cloudflare").includes("Cloudflare"))
-      .toStrictEqual(true);
+    expect(
+      getEnvironmentDescription("cloudflare").includes("Cloudflare"),
+    ).toStrictEqual(true);
   });
 
   it("should describe node-emscripten", () => {
@@ -149,15 +154,17 @@ describe("environmentProfile (taglib-2b4)", () => {
 
   it("grants filesystem support to wasi environments plus node-emscripten", () => {
     for (const env of ALL_ENVIRONMENTS) {
-      expect(profileFor(env).supportsFilesystem)
-        .toStrictEqual(FILESYSTEM_ENVIRONMENTS.includes(env));
+      expect(profileFor(env).supportsFilesystem).toStrictEqual(
+        FILESYSTEM_ENVIRONMENTS.includes(env),
+      );
     }
   });
 
   it("marks cloudflare as the only non-streaming environment", () => {
     for (const env of ALL_ENVIRONMENTS) {
-      expect(profileFor(env).supportsStreaming)
-        .toStrictEqual(env !== "cloudflare");
+      expect(profileFor(env).supportsStreaming).toStrictEqual(
+        env !== "cloudflare",
+      );
     }
   });
 
@@ -170,8 +177,9 @@ describe("environmentProfile (taglib-2b4)", () => {
 describe("canLoadWasmType with synthetic environment (taglib-2b4)", () => {
   it("reports wasi loadable only in wasi environments", () => {
     for (const env of ALL_ENVIRONMENTS) {
-      expect(canLoadWasmType("wasi", env))
-        .toStrictEqual(WASI_ENVIRONMENTS.includes(env));
+      expect(canLoadWasmType("wasi", env)).toStrictEqual(
+        WASI_ENVIRONMENTS.includes(env),
+      );
     }
   });
 
@@ -191,8 +199,9 @@ describe("canLoadWasmType with synthetic environment (taglib-2b4)", () => {
 describe("selection helpers with synthetic runtime (taglib-2b4)", () => {
   it("isWasiAvailable follows the wasi + filesystem predicate", () => {
     for (const env of ALL_ENVIRONMENTS) {
-      expect(isWasiAvailable(resultFor(env)))
-        .toStrictEqual(WASI_ENVIRONMENTS.includes(env));
+      expect(isWasiAvailable(resultFor(env))).toStrictEqual(
+        WASI_ENVIRONMENTS.includes(env),
+      );
     }
   });
 

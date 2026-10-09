@@ -191,7 +191,8 @@ export class AudioFileImpl extends BaseAudioFileImpl implements AudioFile {
       this.isPartiallyLoaded = false;
       this.originalSource = undefined;
     } else if (
-      this.module.isWasi && this.sourcePath &&
+      this.module.isWasi &&
+      this.sourcePath &&
       targetPath !== this.sourcePath
     ) {
       // taglib-cd0: WASI path-mode "save as". this.save() writes in-place to the
@@ -241,12 +242,14 @@ export class AudioFileImpl extends BaseAudioFileImpl implements AudioFile {
   }
 
   setPictures(pictures: Picture[]): void {
-    this.handle.setPictures(pictures.map((pic) => ({
-      mimeType: pic.mimeType,
-      data: pic.data,
-      type: PICTURE_TYPE_VALUES[pic.type] ?? 0,
-      description: pic.description ?? "",
-    })));
+    this.handle.setPictures(
+      pictures.map((pic) => ({
+        mimeType: pic.mimeType,
+        data: pic.data,
+        type: PICTURE_TYPE_VALUES[pic.type] ?? 0,
+        description: pic.description ?? "",
+      })),
+    );
   }
 
   addPicture(picture: Picture): void {
@@ -334,22 +337,24 @@ export class AudioFileImpl extends BaseAudioFileImpl implements AudioFile {
   }
 
   getRatings(): Rating[] {
-    return this.handle.getRatings().map(
-      (r: { rating: number; email: string; counter: number }) => ({
+    return this.handle
+      .getRatings()
+      .map((r: { rating: number; email: string; counter: number }) => ({
         rating: r.rating,
         ...(r.email !== undefined && r.email !== "" ? { email: r.email } : {}),
         // 0 must read back as ABSENT (old `r.counter || undefined` contract).
         ...(r.counter !== 0 ? { counter: r.counter } : {}),
-      }),
-    );
+      }));
   }
 
   setRatings(ratings: Rating[]): void {
-    this.handle.setRatings(ratings.map((r) => ({
-      rating: r.rating,
-      email: r.email ?? "",
-      counter: r.counter ?? 0,
-    })));
+    this.handle.setRatings(
+      ratings.map((r) => ({
+        rating: r.rating,
+        email: r.email ?? "",
+        counter: r.counter ?? 0,
+      })),
+    );
   }
 
   getLyrics(): UnsyncedLyrics[] {
@@ -362,11 +367,13 @@ export class AudioFileImpl extends BaseAudioFileImpl implements AudioFile {
   }
 
   setLyrics(lyrics: UnsyncedLyrics[]): void {
-    this.handle.setLyrics(lyrics.map((l) => ({
-      text: l.text,
-      description: l.description ?? "",
-      language: l.language ?? "",
-    })));
+    this.handle.setLyrics(
+      lyrics.map((l) => ({
+        text: l.text,
+        description: l.description ?? "",
+        language: l.language ?? "",
+      })),
+    );
   }
 
   getRating(): NormalizedRating | undefined {
@@ -375,11 +382,13 @@ export class AudioFileImpl extends BaseAudioFileImpl implements AudioFile {
   }
 
   setRating(rating: number, email?: string): void {
-    this.setRatings([{
-      rating,
-      ...(email !== undefined ? { email } : {}),
-      counter: 0,
-    }]);
+    this.setRatings([
+      {
+        rating,
+        ...(email !== undefined ? { email } : {}),
+        counter: 0,
+      },
+    ]);
   }
 
   getId3v2Frames(id?: string): Id3v2Frame[] {

@@ -55,9 +55,7 @@ export async function loadTagLibModule(
   options?: LoadTagLibOptions,
 ): Promise<TagLibModule> {
   const g = globalThis as Record<string, unknown>;
-  const nodeVersion = (g.process as any)?.versions?.node as
-    | string
-    | undefined;
+  const nodeVersion = (g.process as any)?.versions?.node as string | undefined;
   const versionError = checkNodeVersion(nodeVersion);
   if (versionError) {
     throw new EnvironmentError("Node.js", versionError, "WASI support");
@@ -82,8 +80,10 @@ export async function loadTagLibModule(
   }
 
   if (
-    !options?.wasmBinary && !options?.wasmUrl &&
-    !options?.forceWasmType && isDenoCompiled()
+    !options?.wasmBinary &&
+    !options?.wasmUrl &&
+    !options?.forceWasmType &&
+    isDenoCompiled()
   ) {
     const wasmBinary = await tryLoadEmbeddedWasm();
     if (!wasmBinary) {
@@ -104,9 +104,8 @@ export async function loadTagLibModule(
   }
 
   try {
-    const { loadUnifiedTagLibModule } = await import(
-      "./unified-loader/index.ts"
-    );
+    const { loadUnifiedTagLibModule } =
+      await import("./unified-loader/index.ts");
     return await loadUnifiedTagLibModule({
       ...(options?.wasmBinary !== undefined
         ? { wasmBinary: options.wasmBinary }
@@ -129,9 +128,9 @@ export async function loadTagLibModule(
       );
     }
     console.warn(
-      `[TagLib] Unified loader failed, falling back to buffer mode: ${
-        errorMessage(error)
-      }`,
+      `[TagLib] Unified loader failed, falling back to buffer mode: ${errorMessage(
+        error,
+      )}`,
     );
     return loadBufferModeTagLibModule(options || {});
   }

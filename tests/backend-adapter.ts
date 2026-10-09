@@ -94,9 +94,7 @@ export class WasiBackendAdapter implements BackendAdapter {
   #wasi: any = null;
 
   async init(): Promise<void> {
-    const { loadWasiHost } = await import(
-      "../src/runtime/wasi-host-loader.ts"
-    );
+    const { loadWasiHost } = await import("../src/runtime/wasi-host-loader.ts");
     this.#wasi = await loadWasiHost({
       wasmPath: WASM_PATH,
       preopens: { "/test": TEST_FILES_DIR_PATH },
@@ -134,9 +132,8 @@ export class WasiBackendAdapter implements BackendAdapter {
     buffer: Uint8Array,
     _ext: string,
   ): Promise<ExtendedAudioProps> {
-    const { WasiFileHandle } = await import(
-      "../src/runtime/wasi-adapter/file-handle.ts"
-    );
+    const { WasiFileHandle } =
+      await import("../src/runtime/wasi-adapter/file-handle.ts");
     const handle = new WasiFileHandle(this.#wasi);
     handle.loadFromBuffer(buffer);
     const props = handle.getAudioProperties();
@@ -158,12 +155,9 @@ export class WasiBackendAdapter implements BackendAdapter {
     buffer: Uint8Array,
     _ext: string,
   ): Promise<Record<string, string[]>> {
-    const { WasiFileHandle } = await import(
-      "../src/runtime/wasi-adapter/file-handle.ts"
-    );
-    const { fromTagLibKey } = await import(
-      "../src/constants/properties.ts"
-    );
+    const { WasiFileHandle } =
+      await import("../src/runtime/wasi-adapter/file-handle.ts");
+    const { fromTagLibKey } = await import("../src/constants/properties.ts");
     const handle = new WasiFileHandle(this.#wasi);
     handle.loadFromBuffer(buffer);
     const raw = handle.getProperties();
@@ -176,9 +170,8 @@ export class WasiBackendAdapter implements BackendAdapter {
   }
 
   async readFormat(buffer: Uint8Array, _ext: string): Promise<string> {
-    const { WasiFileHandle } = await import(
-      "../src/runtime/wasi-adapter/file-handle.ts"
-    );
+    const { WasiFileHandle } =
+      await import("../src/runtime/wasi-adapter/file-handle.ts");
     const handle = new WasiFileHandle(this.#wasi);
     handle.loadFromBuffer(buffer);
     const format = handle.getFormat();
@@ -186,13 +179,9 @@ export class WasiBackendAdapter implements BackendAdapter {
     return format;
   }
 
-  async readPictureCount(
-    buffer: Uint8Array,
-    _ext: string,
-  ): Promise<number> {
-    const { WasiFileHandle } = await import(
-      "../src/runtime/wasi-adapter/file-handle.ts"
-    );
+  async readPictureCount(buffer: Uint8Array, _ext: string): Promise<number> {
+    const { WasiFileHandle } =
+      await import("../src/runtime/wasi-adapter/file-handle.ts");
     const handle = new WasiFileHandle(this.#wasi);
     handle.loadFromBuffer(buffer);
     const count = handle.getPictures().length;
@@ -200,13 +189,9 @@ export class WasiBackendAdapter implements BackendAdapter {
     return count;
   }
 
-  async readRatingCount(
-    buffer: Uint8Array,
-    _ext: string,
-  ): Promise<number> {
-    const { WasiFileHandle } = await import(
-      "../src/runtime/wasi-adapter/file-handle.ts"
-    );
+  async readRatingCount(buffer: Uint8Array, _ext: string): Promise<number> {
+    const { WasiFileHandle } =
+      await import("../src/runtime/wasi-adapter/file-handle.ts");
     const handle = new WasiFileHandle(this.#wasi);
     handle.loadFromBuffer(buffer);
     const count = handle.getRatings().length;
@@ -219,12 +204,8 @@ export class WasiBackendAdapter implements BackendAdapter {
     tags: Partial<BasicTags>,
     ext: string,
   ): Promise<Uint8Array | null> {
-    const { loadWasiHost } = await import(
-      "../src/runtime/wasi-host-loader.ts"
-    );
-    const { writeTagsWasi } = await import(
-      "./wasi-test-helpers.ts"
-    );
+    const { loadWasiHost } = await import("../src/runtime/wasi-host-loader.ts");
+    const { writeTagsWasi } = await import("./wasi-test-helpers.ts");
 
     const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
     const filename = `test-write.${ext}`;
@@ -282,9 +263,9 @@ export class WasiBackendAdapter implements BackendAdapter {
 // Emscripten adapter
 // ---------------------------------------------------------------------------
 
-export const HAS_EMSCRIPTEN = fileExists(
-  resolve(process.cwd(), "build/taglib-wrapper.js"),
-) || fileExists(resolve(process.cwd(), "dist/taglib-wrapper.js"));
+export const HAS_EMSCRIPTEN =
+  fileExists(resolve(process.cwd(), "build/taglib-wrapper.js")) ||
+  fileExists(resolve(process.cwd(), "dist/taglib-wrapper.js"));
 
 export class EmscriptenBackendAdapter implements BackendAdapter {
   readonly kind = "emscripten" as const;
@@ -378,10 +359,7 @@ export class EmscriptenBackendAdapter implements BackendAdapter {
     }
   }
 
-  async readPictureCount(
-    buffer: Uint8Array,
-    _ext: string,
-  ): Promise<number> {
+  async readPictureCount(buffer: Uint8Array, _ext: string): Promise<number> {
     const file = await this.#taglib.open(buffer.buffer);
     try {
       const pics = file.getPictures();
@@ -391,10 +369,7 @@ export class EmscriptenBackendAdapter implements BackendAdapter {
     }
   }
 
-  async readRatingCount(
-    buffer: Uint8Array,
-    _ext: string,
-  ): Promise<number> {
+  async readRatingCount(buffer: Uint8Array, _ext: string): Promise<number> {
     const file = await this.#taglib.open(buffer.buffer);
     try {
       const ratings = file.getRatings();

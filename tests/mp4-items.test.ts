@@ -176,10 +176,10 @@ for (const backend of BACKENDS) {
     mp4.dispose();
 
     const mp3 = await tl.open(new Uint8Array(await readFile(FIXTURE_PATH.mp3)));
-    expect(mp3.isMP4(), `${backend}: mp3 fixture detected as MP4`)
-      .toStrictEqual(
-        false,
-      );
+    expect(
+      mp3.isMP4(),
+      `${backend}: mp3 fixture detected as MP4`,
+    ).toStrictEqual(false);
     mp3.dispose();
   });
 }
@@ -212,7 +212,8 @@ function countAtomNames(
       let i = haystack.indexOf(name);
       i !== -1;
       i = haystack.indexOf(name, i + 1)
-    ) n++;
+    )
+      n++;
     counts[name] = n;
   }
   return counts;

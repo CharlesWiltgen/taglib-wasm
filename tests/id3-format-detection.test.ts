@@ -28,9 +28,10 @@ forEachBackend(
     it("should detect FLAC buffer as FLAC, not MP3", async () => {
       const buffer = new Uint8Array(await readFile(FIXTURE_PATH.flac));
       expect(
-        buffer[0] === 0x66 && buffer[1] === 0x4C,
+        buffer[0] === 0x66 && buffer[1] === 0x4c,
         "test fixture should start with fLaC magic",
-      ).toStrictEqual( // "fL"
+      ).toStrictEqual(
+        // "fL"
         true,
       );
       const format = await adapter.readFormat(buffer, "flac");
@@ -42,12 +43,15 @@ forEachBackend(
       expect(
         buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33,
         "test fixture should start with ID3v2 header",
-      ).toStrictEqual( // "ID3"
+      ).toStrictEqual(
+        // "ID3"
         true,
       );
       const format = await adapter.readFormat(buffer, "tta");
-      expect(format, "TTA with ID3v2 prefix must not be detected as MP3").not
-        .toStrictEqual("MP3");
+      expect(
+        format,
+        "TTA with ID3v2 prefix must not be detected as MP3",
+      ).not.toStrictEqual("MP3");
       expect(format).toStrictEqual("TTA");
     });
 
@@ -73,8 +77,10 @@ forEachBackend(
       prefixed.set(flac, id3Header.length);
 
       const format = await adapter.readFormat(prefixed, "flac");
-      expect(format, "FLAC with ID3v2 prefix must be detected as FLAC")
-        .toStrictEqual("FLAC");
+      expect(
+        format,
+        "FLAC with ID3v2 prefix must be detected as FLAC",
+      ).toStrictEqual("FLAC");
     });
 
     it("should still detect plain MP3 as MP3", async () => {

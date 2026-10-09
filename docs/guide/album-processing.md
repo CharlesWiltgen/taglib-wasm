@@ -225,7 +225,7 @@ async function checkAlbumCompleteness(albumPath: string) {
 
   return {
     isComplete: Object.values(issues).every((v) =>
-      Array.isArray(v) ? v.length === 0 : v.size <= 1
+      Array.isArray(v) ? v.length === 0 : v.size <= 1,
     ),
     issues: {
       missingTitles: issues.missingTitles,
@@ -316,15 +316,18 @@ async function addAlbumArt(albumPath: string, artworkPath: string) {
   for (let i = 0; i < filesNeedingArt.length; i += batchSize) {
     const batch = filesNeedingArt.slice(i, i + batchSize);
 
-    await Promise.all(batch.map(async (file) => {
-      const updatedBuffer = await applyCoverArt(file, artworkData, mimeType);
-      await writeFile(file, updatedBuffer);
-    }));
+    await Promise.all(
+      batch.map(async (file) => {
+        const updatedBuffer = await applyCoverArt(file, artworkData, mimeType);
+        await writeFile(file, updatedBuffer);
+      }),
+    );
 
     console.log(
-      `Progress: ${
-        Math.min(i + batchSize, filesNeedingArt.length)
-      }/${filesNeedingArt.length}`,
+      `Progress: ${Math.min(
+        i + batchSize,
+        filesNeedingArt.length,
+      )}/${filesNeedingArt.length}`,
     );
   }
 }
@@ -505,12 +508,12 @@ async function getAudioFiles(dirPath: string): Promise<string[]> {
 function getMimeType(filePath: string): string {
   const ext = filePath.toLowerCase().split(".").pop() ?? "";
   const mimeTypes: Record<string, string> = {
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "png": "image/png",
-    "gif": "image/gif",
-    "bmp": "image/bmp",
-    "webp": "image/webp",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    bmp: "image/bmp",
+    webp: "image/webp",
   };
   return mimeTypes[ext] || "image/jpeg";
 }

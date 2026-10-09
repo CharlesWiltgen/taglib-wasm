@@ -161,9 +161,7 @@ export interface AudioFile {
    * Parsed BWF `bext` (Broadcast Audio Extension) chunk, or `undefined` if the
    * file has none / the chunk is too short to parse. WAV and FLAC only.
    */
-  getBext():
-    | import("../types/bwf.ts").BroadcastAudioExtension
-    | undefined;
+  getBext(): import("../types/bwf.ts").BroadcastAudioExtension | undefined;
 
   /** Encode and write a `bext` chunk. Throws UnsupportedFormatError for non-WAV/FLAC. */
   setBext(bext: import("../types/bwf.ts").BroadcastAudioExtension): void;
@@ -246,11 +244,10 @@ export interface AudioFile {
  * Note: The string-accepting overloads are intentionally removed. If you need
  * arbitrary string keys (e.g. custom tags), use the un-narrowed AudioFile reference.
  */
-export interface TypedAudioFile<F extends FileType> extends
-  Omit<
-    AudioFile,
-    "getProperty" | "setProperty" | "removeProperty" | "audioProperties"
-  > {
+export interface TypedAudioFile<F extends FileType> extends Omit<
+  AudioFile,
+  "getProperty" | "setProperty" | "removeProperty" | "audioProperties"
+> {
   getFormat(): F;
 
   audioProperties(): TypedAudioProperties<F> | undefined;

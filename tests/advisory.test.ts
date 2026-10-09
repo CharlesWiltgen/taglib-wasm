@@ -123,12 +123,15 @@ function addFreeformITunesAdvisory(buf: Uint8Array, value: number): Uint8Array {
 
 describe("advisory tri-state mapping (taglib-an30)", () => {
   it("read: ITUNESADVISORY values narrow to the tri-state", () => {
-    expect(mapPropertiesToExtendedTag({ itunesAdvisory: ["1"] }).advisory)
-      .toStrictEqual("explicit");
-    expect(mapPropertiesToExtendedTag({ itunesAdvisory: ["2"] }).advisory)
-      .toStrictEqual("clean");
-    expect(mapPropertiesToExtendedTag({ itunesAdvisory: ["0"] }).advisory)
-      .toStrictEqual("unspecified");
+    expect(
+      mapPropertiesToExtendedTag({ itunesAdvisory: ["1"] }).advisory,
+    ).toStrictEqual("explicit");
+    expect(
+      mapPropertiesToExtendedTag({ itunesAdvisory: ["2"] }).advisory,
+    ).toStrictEqual("clean");
+    expect(
+      mapPropertiesToExtendedTag({ itunesAdvisory: ["0"] }).advisory,
+    ).toStrictEqual("unspecified");
   });
 
   it("read: absent or unknown values leave advisory unset but keep the raw field", () => {
@@ -140,18 +143,17 @@ describe("advisory tri-state mapping (taglib-an30)", () => {
   });
 
   it("write: explicit/clean become '1'/'2', unspecified clears", () => {
-    expect(normalizeTagInput({ advisory: "explicit" }).itunesAdvisory)
-      .toStrictEqual([
-        "1",
-      ]);
-    expect(normalizeTagInput({ advisory: "clean" }).itunesAdvisory)
-      .toStrictEqual([
-        "2",
-      ]);
+    expect(
+      normalizeTagInput({ advisory: "explicit" }).itunesAdvisory,
+    ).toStrictEqual(["1"]);
+    expect(
+      normalizeTagInput({ advisory: "clean" }).itunesAdvisory,
+    ).toStrictEqual(["2"]);
     // Unspecified is an explicit clear (the empty-list semantics WASI's
     // merge model requires, taglib-nc5), not an "unchanged".
-    expect(normalizeTagInput({ advisory: "unspecified" }).itunesAdvisory)
-      .toStrictEqual([]);
+    expect(
+      normalizeTagInput({ advisory: "unspecified" }).itunesAdvisory,
+    ).toStrictEqual([]);
   });
 });
 
@@ -181,27 +183,31 @@ describe("MP4 native rtng atom (taglib-an30)", () => {
       // The byte-level truth: an rtng item exists with value 1, and no
       // freeform ITUNESADVISORY atom was written.
       expect(rtngByte(buffer)).toStrictEqual(1);
-      expect(!new TextDecoder().decode(buffer).includes("ITUNESADVISORY"))
-        .toBeTruthy();
+      expect(
+        !new TextDecoder().decode(buffer).includes("ITUNESADVISORY"),
+      ).toBeTruthy();
       // Read back on the other backend through the native atom.
       expect(readBack.itunesAdvisory).toStrictEqual(["1"]);
-      expect(mapPropertiesToExtendedTag(readBack as never).advisory)
-        .toStrictEqual("explicit");
+      expect(
+        mapPropertiesToExtendedTag(readBack as never).advisory,
+      ).toStrictEqual("explicit");
     });
 
     it(`[${backend}] rtng=2 reads as clean`, async () => {
       const { readBack, buffer } = await mp4RoundTrip(backend, "2");
       expect(rtngByte(buffer)).toStrictEqual(2);
-      expect(mapPropertiesToExtendedTag(readBack as never).advisory)
-        .toStrictEqual("clean");
+      expect(
+        mapPropertiesToExtendedTag(readBack as never).advisory,
+      ).toStrictEqual("clean");
     });
 
     it(`[${backend}] rtng=0 reads as unspecified (pinned contract)`, async () => {
       const { readBack, buffer } = await mp4RoundTrip(backend, "0");
       expect(rtngByte(buffer)).toStrictEqual(0);
       expect(readBack.itunesAdvisory).toStrictEqual(["0"]);
-      expect(mapPropertiesToExtendedTag(readBack as never).advisory)
-        .toStrictEqual("unspecified");
+      expect(
+        mapPropertiesToExtendedTag(readBack as never).advisory,
+      ).toStrictEqual("unspecified");
     });
 
     it(`[${backend}] clearing removes the rtng item`, async () => {
@@ -230,8 +236,9 @@ describe("MP4 native rtng atom (taglib-an30)", () => {
       // alongside rtng (freeform items are keyed by their FULL name in the
       // item map — taglib-an30 review).
       const patched = addFreeformITunesAdvisory(src, 2);
-      expect(new TextDecoder().decode(patched).includes("ITUNESADVISORY"))
-        .toBeTruthy();
+      expect(
+        new TextDecoder().decode(patched).includes("ITUNESADVISORY"),
+      ).toBeTruthy();
 
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(patched);
@@ -240,8 +247,9 @@ describe("MP4 native rtng atom (taglib-an30)", () => {
       const buf = file.getFileBuffer();
       file.dispose();
 
-      expect(!new TextDecoder().decode(buf).includes("ITUNESADVISORY"))
-        .toBeTruthy();
+      expect(
+        !new TextDecoder().decode(buf).includes("ITUNESADVISORY"),
+      ).toBeTruthy();
       const tlR = await TagLib.initialize({ forceWasmType: OTHER[backend] });
       const reopened = await tlR.open(buf);
       const props = reopened.properties() as Record<string, string[]>;
@@ -268,8 +276,9 @@ describe("advisory typed simple-API round-trips (taglib-an30)", () => {
     const modified = await applyTags(src, { advisory: "clean" });
     const tags = await readTags(modified);
     expect(tags.advisory).toStrictEqual("clean");
-    expect(new TextDecoder().decode(modified).includes("ITUNESADVISORY=2"))
-      .toBeTruthy();
+    expect(
+      new TextDecoder().decode(modified).includes("ITUNESADVISORY=2"),
+    ).toBeTruthy();
   });
 
   it("wma: ASF attribute path carries explicit (taglib-984r)", async () => {
@@ -286,7 +295,8 @@ describe("advisory typed simple-API round-trips (taglib-an30)", () => {
     const tags = await readTags(cleared);
     expect(tags.advisory).toStrictEqual(undefined);
     expect(tags.itunesAdvisory).toStrictEqual(undefined);
-    expect(!new TextDecoder().decode(cleared).includes("ITUNESADVISORY"))
-      .toBeTruthy();
+    expect(
+      !new TextDecoder().decode(cleared).includes("ITUNESADVISORY"),
+    ).toBeTruthy();
   });
 });

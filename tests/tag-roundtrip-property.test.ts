@@ -16,9 +16,9 @@ import {
 
 // Non-empty strings: TagLib's C API treats empty strings as "don't change"
 // in some backends, so we test with actual values.
-const safeString = fc.string({ minLength: 1, maxLength: 200 }).filter(
-  (s) => !s.includes("\0"),
-);
+const safeString = fc
+  .string({ minLength: 1, maxLength: 200 })
+  .filter((s) => !s.includes("\0"));
 
 const tagRecord = fc.record({
   title: safeString,
@@ -44,7 +44,7 @@ forEachBackend("Tag Roundtrip Properties", (adapter: BackendAdapter) => {
         const modified = await adapter.writeTags(flacBuffer, tags, "flac");
         if (!modified) return true; // skip if write not supported
 
-        const readBack = await adapter.readTags(modified, "flac") as Record<
+        const readBack = (await adapter.readTags(modified, "flac")) as Record<
           string,
           unknown
         >;
@@ -67,11 +67,11 @@ forEachBackend("Tag Roundtrip Properties", (adapter: BackendAdapter) => {
         const second = await adapter.writeTags(first, tags, "flac");
         if (!second) return true;
 
-        const firstTags = await adapter.readTags(first, "flac") as Record<
+        const firstTags = (await adapter.readTags(first, "flac")) as Record<
           string,
           unknown
         >;
-        const secondTags = await adapter.readTags(second, "flac") as Record<
+        const secondTags = (await adapter.readTags(second, "flac")) as Record<
           string,
           unknown
         >;
@@ -99,7 +99,7 @@ forEachBackend("Tag Roundtrip Properties", (adapter: BackendAdapter) => {
         const modified = await adapter.writeTags(flacBuffer, tags, "flac");
         if (!modified) return true;
 
-        const readBack = await adapter.readTags(modified, "flac") as Record<
+        const readBack = (await adapter.readTags(modified, "flac")) as Record<
           string,
           unknown
         >;

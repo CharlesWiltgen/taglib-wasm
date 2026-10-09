@@ -106,8 +106,10 @@ describe("Cross-Backend Parity", { skip: SKIP }, () => {
       const wasiProps = await wasi.readAudioProperties(buffer, ext);
       const emProps = await emscripten.readAudioProperties(buffer, ext);
 
-      expect(wasiProps.sampleRate, `${format}: sampleRate mismatch`)
-        .toStrictEqual(emProps.sampleRate);
+      expect(
+        wasiProps.sampleRate,
+        `${format}: sampleRate mismatch`,
+      ).toStrictEqual(emProps.sampleRate);
       expect(wasiProps.channels, `${format}: channels mismatch`).toStrictEqual(
         emProps.channels,
       );
@@ -132,12 +134,18 @@ describe("Cross-Backend Parity", { skip: SKIP }, () => {
       expect(wasiProps.codec, `${format}: codec mismatch`).toStrictEqual(
         emProps.codec,
       );
-      expect(wasiProps.containerFormat, `${format}: containerFormat mismatch`)
-        .toStrictEqual(emProps.containerFormat);
-      expect(wasiProps.isLossless, `${format}: isLossless mismatch`)
-        .toStrictEqual(emProps.isLossless);
-      expect(wasiProps.bitsPerSample, `${format}: bitsPerSample mismatch`)
-        .toStrictEqual(emProps.bitsPerSample);
+      expect(
+        wasiProps.containerFormat,
+        `${format}: containerFormat mismatch`,
+      ).toStrictEqual(emProps.containerFormat);
+      expect(
+        wasiProps.isLossless,
+        `${format}: isLossless mismatch`,
+      ).toStrictEqual(emProps.isLossless);
+      expect(
+        wasiProps.bitsPerSample,
+        `${format}: bitsPerSample mismatch`,
+      ).toStrictEqual(emProps.bitsPerSample);
     });
 
     it(`should produce matching picture count for ${format}`, async () => {
@@ -176,10 +184,7 @@ describe("Cross-Backend Parity", { skip: SKIP }, () => {
       };
 
       const modified = await wasi.writeTags(buffer, writtenTags, ext);
-      expectDefined(
-        modified,
-        `${format}: WASI writeTags returned null`,
-      );
+      expectDefined(modified, `${format}: WASI writeTags returned null`);
 
       const readBack = await emscripten.readTags(modified, ext);
       expect(
@@ -206,10 +211,7 @@ describe("Cross-Backend Parity", { skip: SKIP }, () => {
       };
 
       const modified = await emscripten.writeTags(buffer, writtenTags, ext);
-      expectDefined(
-        modified,
-        `${format}: Emscripten writeTags returned null`,
-      );
+      expectDefined(modified, `${format}: Emscripten writeTags returned null`);
 
       const readBack = await wasi.readTags(modified, ext);
       expect(

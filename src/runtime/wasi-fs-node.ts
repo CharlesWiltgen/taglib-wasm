@@ -51,10 +51,7 @@ function createNodeFileHandle(fs: NodeFs, fd: number): WasiFileHandle {
         next = stat.size + offset;
       }
       if (next < 0) {
-        throw new FileOperationError(
-          "read",
-          `Invalid seek position: ${next}`,
-        );
+        throw new FileOperationError("read", `Invalid seek position: ${next}`);
       }
       position = next;
       return position;

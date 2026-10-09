@@ -102,8 +102,8 @@ const arrayBuffer = await fetch("song.mp3").then((r) => r.arrayBuffer());
 const tagsFromArrayBuffer = await readTags(arrayBuffer);
 
 // From File object (browsers)
-const file =
-  (document.getElementById("file-input") as HTMLInputElement).files![0];
+const file = (document.getElementById("file-input") as HTMLInputElement)
+  .files![0];
 const tagsFromFile = await readTags(file);
 ```
 
@@ -145,8 +145,8 @@ const modifiedBuffer = await applyTags("song.mp3", {
 await Deno.writeFile("song-updated.mp3", modifiedBuffer);
 
 // From File object (browsers)
-const file =
-  (document.getElementById("file-input") as HTMLInputElement).files![0];
+const file = (document.getElementById("file-input") as HTMLInputElement)
+  .files![0];
 const modifiedBufferFromFile = await applyTags(file, {
   title: "New Title",
   artist: "New Artist",
@@ -158,10 +158,7 @@ const modifiedBufferFromFile = await applyTags(file, {
 Update metadata tags in an audio file and save changes to disk.
 
 ```typescript
-function applyTagsToFile(
-  file: string,
-  tags: Partial<TagInput>,
-): Promise<void>;
+function applyTagsToFile(file: string, tags: Partial<TagInput>): Promise<void>;
 ```
 
 #### Parameters
@@ -196,9 +193,7 @@ await applyTagsToFile("song.mp3", {
 Read audio properties from a file.
 
 ```typescript
-function readProperties(
-  input: AudioFileInput,
-): Promise<AudioProperties>;
+function readProperties(input: AudioFileInput): Promise<AudioProperties>;
 ```
 
 #### Parameters
@@ -264,9 +259,7 @@ Remove all metadata tags and embedded pictures from an audio file and return the
 stripped content.
 
 ```typescript
-function clearTags(
-  file: AudioFileInput,
-): Promise<Uint8Array>;
+function clearTags(file: AudioFileInput): Promise<Uint8Array>;
 ```
 
 #### Parameters
@@ -291,9 +284,7 @@ await Deno.writeFile("song-clean.mp3", stripped);
 Detect the audio format of a file.
 
 ```typescript
-function readFormat(
-  file: AudioFileInput,
-): Promise<FileType | undefined>;
+function readFormat(file: AudioFileInput): Promise<FileType | undefined>;
 ```
 
 #### Parameters
@@ -321,9 +312,7 @@ Check whether the input is an audio file TagLib can parse. Never throws —
 returns `false` on any error, so it is safe to call on untrusted input.
 
 ```typescript
-function isValidAudioFile(
-  file: AudioFileInput,
-): Promise<boolean>;
+function isValidAudioFile(file: AudioFileInput): Promise<boolean>;
 ```
 
 #### Parameters
@@ -1018,8 +1007,8 @@ const arrayBuffer = await fetch("song.mp3").then((r) => r.arrayBuffer());
 using fileFromArrayBuffer = await taglib.open(arrayBuffer);
 
 // From File object (browsers)
-const fileInput =
-  (document.getElementById("file-input") as HTMLInputElement).files![0];
+const fileInput = (document.getElementById("file-input") as HTMLInputElement)
+  .files![0];
 using fileFromInput = await taglib.open(fileInput);
 
 // Partial loading is enabled by default — only headers/footers are read.
@@ -1319,8 +1308,7 @@ Returns:
 ```typescript
 type PropertyMap =
   // Modeled keys (from PROPERTIES) are optional and autocompleted
-  & { [K in PropertyKey]?: string[] }
-  & { [key: string]: string[] | undefined };
+  { [K in PropertyKey]?: string[] } & { [key: string]: string[] | undefined };
 ```
 
 ##### setProperties()
@@ -1496,10 +1484,13 @@ const file = await taglib.open("audiobook.m4b");
 for (const ch of file.getChapters()) {
   console.log(`${ch.startTimeMs}ms ${ch.title} (${ch.source})`);
 }
-file.setChapters([
-  { startTimeMs: 0, title: "Intro" },
-  { startTimeMs: 95_000, title: "Chapter 1" },
-], { mp4ChapterStyle: "both" });
+file.setChapters(
+  [
+    { startTimeMs: 0, title: "Intro" },
+    { startTimeMs: 95_000, title: "Chapter 1" },
+  ],
+  { mp4ChapterStyle: "both" },
+);
 file.save();
 ```
 
@@ -2107,13 +2098,14 @@ fields to required after an `isFormat()` check (e.g. MP3 gains required
 ```typescript
 type TypedAudioProperties<F extends FileType> = F extends "MP3"
   ? AudioProperties & {
-    readonly mpegVersion: number;
-    readonly mpegLayer: number;
-  }
+      readonly mpegVersion: number;
+      readonly mpegLayer: number;
+    }
   : F extends "MP4" | "ASF"
     ? AudioProperties & { readonly isEncrypted: boolean }
-  : F extends "OPUS" ? AudioProperties & { readonly outputGainDb: number }
-  : AudioProperties;
+    : F extends "OPUS"
+      ? AudioProperties & { readonly outputGainDb: number }
+      : AudioProperties;
 ```
 
 #### TypedAudioFile
@@ -2123,8 +2115,10 @@ only accept keys valid for that format's tag system. Obtained via
 `file.isFormat(format)`.
 
 ```typescript
-interface TypedAudioFile<F extends FileType>
-  extends Omit<AudioFile, "getProperty" | "setProperty" | "audioProperties"> {
+interface TypedAudioFile<F extends FileType> extends Omit<
+  AudioFile,
+  "getProperty" | "setProperty" | "audioProperties"
+> {
   getFormat(): F;
   audioProperties(): TypedAudioProperties<F> | undefined;
   getProperty<K extends FormatPropertyKey<F>>(
@@ -2280,9 +2274,9 @@ try {
 } catch (error) {
   if (error instanceof UnsupportedFormatError) {
     console.error(
-      `Format not supported. Supported formats: ${
-        SUPPORTED_FORMATS.join(", ")
-      }`,
+      `Format not supported. Supported formats: ${SUPPORTED_FORMATS.join(
+        ", ",
+      )}`,
     );
   }
 }
@@ -2363,6 +2357,7 @@ try {
 ### Best Practices
 
 1. **Always check file validity**:
+
    ```typescript
    using file = await taglib.open(buffer);
    if (!file.isValid()) {
@@ -2371,6 +2366,7 @@ try {
    ```
 
 2. **Handle save failures**:
+
    ```typescript
    if (!file.save()) {
      console.error("Failed to save changes");
@@ -2378,6 +2374,7 @@ try {
    ```
 
 3. **Use `using` for automatic cleanup**:
+
    ```typescript
    using file = await taglib.open("song.mp3");
    // ... operations

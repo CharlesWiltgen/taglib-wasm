@@ -364,7 +364,7 @@ const results = await Promise.all(
       } catch (error) {
         return { file, error: error.message };
       }
-    })
+    }),
   ),
 );
 ```
@@ -564,7 +564,8 @@ class MemoryMonitor {
     const afterMemory = this.getMemoryUsage();
     const delta = afterMemory - beforeMemory;
 
-    if (delta > 1024 * 1024) { // 1MB increase
+    if (delta > 1024 * 1024) {
+      // 1MB increase
       console.warn(`Memory increase: ${(delta / 1024 / 1024).toFixed(2)}MB`);
     }
 
@@ -588,7 +589,7 @@ function validateAudioBuffer(buffer: Uint8Array): string | null {
   const magic = Array.from(buffer.slice(0, 4));
 
   // MP3
-  if (magic[0] === 0xFF && (magic[1] & 0xE0) === 0xE0) {
+  if (magic[0] === 0xff && (magic[1] & 0xe0) === 0xe0) {
     return null; // Valid MP3
   }
 

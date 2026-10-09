@@ -30,8 +30,7 @@ const TEST_FILES_DIR = resolve(PROJECT_ROOT, "tests/test-files");
 const WASM_PATH = resolve(PROJECT_ROOT, "dist/wasi/taglib-wasi.wasm");
 
 const DEEZER_DIR = "/Volumes/T9 (4TB)/Downloads/Deezer";
-const REAL_FLAC_SRC =
-  `${DEEZER_DIR}/Various Artists - 90s Acoustic Hits/Counting Crows - Mr. Jones.flac`;
+const REAL_FLAC_SRC = `${DEEZER_DIR}/Various Artists - 90s Acoustic Hits/Counting Crows - Mr. Jones.flac`;
 
 async function readTagsEmscripten(
   taglib: TagLib,
@@ -54,9 +53,7 @@ if (!HAS_WASM) {
   );
 }
 if (!HAS_DEEZER) {
-  console.warn(
-    "Deezer volume not mounted — real-file benchmarks skipped",
-  );
+  console.warn("Deezer volume not mounted — real-file benchmarks skipped");
 }
 
 let wasi: (WasiModule & Disposable) | null = null;
@@ -105,7 +102,9 @@ globalThis.addEventListener("unload", () => {
     if (dir) {
       try {
         Deno.removeSync(dir, { recursive: true });
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }
 });
@@ -219,9 +218,7 @@ Deno.bench({
   ignore: !HAS_WASM,
   async fn() {
     for (let i = 0; i < 10; i++) {
-      const buf = await Deno.readFile(
-        resolve(PROJECT_ROOT, TEST_FILES.flac),
-      );
+      const buf = await Deno.readFile(resolve(PROJECT_ROOT, TEST_FILES.flac));
       await readTagsEmscripten(emTagLib!, buf);
     }
   },

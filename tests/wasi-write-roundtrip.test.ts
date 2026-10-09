@@ -30,86 +30,14 @@ type RawTag = Record<string, unknown>;
 const WASM_PATH = resolve(process.cwd(), "dist/wasi/taglib-wasi.wasm");
 const HAS_WASM = fileExists(WASM_PATH);
 
-describe.skipIf(!HAS_WASM)(
-  "WASI Write Roundtrip - All Formats",
-  () => {
-    for (const [format, paths] of Object.entries(FORMAT_FILES)) {
-      it(`should write and read back tags (${format})`, async () => {
-        const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
-        const ext = paths.real.split(".").pop()!;
-        const destFile = `roundtrip.${ext}`;
-        const srcPath = resolve(TEST_FILES_DIR_PATH, paths.real);
-        const destPath = resolve(tempDir, destFile);
-        await copyFile(srcPath, destPath);
-
-        try {
-          using wasi = await loadWasiHost({
-            wasmPath: WASM_PATH,
-            preopens: { "/tmp": tempDir },
-          });
-
-          writeTagsWasi(wasi, `/tmp/${destFile}`, {
-            title: `Written ${format}`,
-            artist: "Roundtrip Artist",
-            album: "Roundtrip Album",
-          } as unknown as ExtendedTag);
-
-          using wasi2 = await loadWasiHost({
-            wasmPath: WASM_PATH,
-            preopens: { "/tmp": tempDir },
-          });
-
-          const tags = readTagsViaPath(
-            wasi2,
-            `/tmp/${destFile}`,
-          ) as unknown as RawTag;
-          expect(tags.title).toStrictEqual(`Written ${format}`);
-          expect(tags.artist).toStrictEqual("Roundtrip Artist");
-          expect(tags.album).toStrictEqual("Roundtrip Album");
-        } finally {
-          await rm(tempDir, { recursive: true }).catch(() => {});
-        }
-      });
-
-      it(`should preserve audio data after write (${format})`, async () => {
-        const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
-        const ext = paths.real.split(".").pop()!;
-        const destFile = `preserve.${ext}`;
-        const srcPath = resolve(TEST_FILES_DIR_PATH, paths.real);
-        const destPath = resolve(tempDir, destFile);
-        await copyFile(srcPath, destPath);
-
-        try {
-          const sizeBefore = (await stat(destPath)).size;
-
-          using wasi = await loadWasiHost({
-            wasmPath: WASM_PATH,
-            preopens: { "/tmp": tempDir },
-          });
-
-          writeTagsWasi(wasi, `/tmp/${destFile}`, {
-            title: "Size Check",
-          } as unknown as ExtendedTag);
-
-          const sizeAfter = (await stat(destPath)).size;
-          expect(sizeAfter, `${format}: file should not be empty after write`)
-            .toBeGreaterThan(0);
-          // Size should be in reasonable range (tag overhead varies)
-          const ratio = sizeAfter / sizeBefore;
-          expect(
-            ratio > 0.5 && ratio < 3.0,
-            `${format}: size ratio ${ratio.toFixed(2)} unreasonable`,
-          ).toStrictEqual(true);
-        } finally {
-          await rm(tempDir, { recursive: true }).catch(() => {});
-        }
-      });
-    }
-
-    it("should write unicode tags via path", async () => {
+describe.skipIf(!HAS_WASM)("WASI Write Roundtrip - All Formats", () => {
+  for (const [format, paths] of Object.entries(FORMAT_FILES)) {
+    it(`should write and read back tags (${format})`, async () => {
       const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
-      const srcPath = resolve(TEST_FILES_DIR_PATH, "flac/kiss-snippet.flac");
-      const destPath = resolve(tempDir, "unicode.flac");
+      const ext = paths.real.split(".").pop()!;
+      const destFile = `roundtrip.${ext}`;
+      const srcPath = resolve(TEST_FILES_DIR_PATH, paths.real);
+      const destPath = resolve(tempDir, destFile);
       await copyFile(srcPath, destPath);
 
       try {
@@ -118,11 +46,10 @@ describe.skipIf(!HAS_WASM)(
           preopens: { "/tmp": tempDir },
         });
 
-        writeTagsWasi(wasi, "/tmp/unicode.flac", {
-          title: "日本語タイトル",
-          artist: "Артист",
-          album: "专辑",
-          comment: "🎵🎸",
+        writeTagsWasi(wasi, `/tmp/${destFile}`, {
+          title: `Written ${format}`,
+          artist: "Roundtrip Artist",
+          album: "Roundtrip Album",
         } as unknown as ExtendedTag);
 
         using wasi2 = await loadWasiHost({
@@ -132,58 +59,130 @@ describe.skipIf(!HAS_WASM)(
 
         const tags = readTagsViaPath(
           wasi2,
-          "/tmp/unicode.flac",
+          `/tmp/${destFile}`,
         ) as unknown as RawTag;
-        expect(tags.title).toStrictEqual("日本語タイトル");
-        expect(tags.artist).toStrictEqual("Артист");
-        expect(tags.album).toStrictEqual("专辑");
-        expect(tags.comment).toStrictEqual("🎵🎸");
+        expect(tags.title).toStrictEqual(`Written ${format}`);
+        expect(tags.artist).toStrictEqual("Roundtrip Artist");
+        expect(tags.album).toStrictEqual("Roundtrip Album");
       } finally {
         await rm(tempDir, { recursive: true }).catch(() => {});
       }
     });
 
-    it("should overwrite tags on second write", async () => {
+    it(`should preserve audio data after write (${format})`, async () => {
       const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
-      const srcPath = resolve(TEST_FILES_DIR_PATH, "mp3/kiss-snippet.mp3");
-      const destPath = resolve(tempDir, "overwrite.mp3");
+      const ext = paths.real.split(".").pop()!;
+      const destFile = `preserve.${ext}`;
+      const srcPath = resolve(TEST_FILES_DIR_PATH, paths.real);
+      const destPath = resolve(tempDir, destFile);
       await copyFile(srcPath, destPath);
 
       try {
-        // First write
-        using wasi1 = await loadWasiHost({
+        const sizeBefore = (await stat(destPath)).size;
+
+        using wasi = await loadWasiHost({
           wasmPath: WASM_PATH,
           preopens: { "/tmp": tempDir },
         });
-        writeTagsWasi(wasi1, "/tmp/overwrite.mp3", {
-          title: "First Write",
+
+        writeTagsWasi(wasi, `/tmp/${destFile}`, {
+          title: "Size Check",
         } as unknown as ExtendedTag);
 
-        // Second write
-        using wasi2 = await loadWasiHost({
-          wasmPath: WASM_PATH,
-          preopens: { "/tmp": tempDir },
-        });
-        writeTagsWasi(wasi2, "/tmp/overwrite.mp3", {
-          title: "Second Write",
-        } as unknown as ExtendedTag);
-
-        // Verify
-        using wasi3 = await loadWasiHost({
-          wasmPath: WASM_PATH,
-          preopens: { "/tmp": tempDir },
-        });
-        const tags = readTagsViaPath(
-          wasi3,
-          "/tmp/overwrite.mp3",
-        ) as unknown as RawTag;
-        expect(tags.title).toStrictEqual("Second Write");
+        const sizeAfter = (await stat(destPath)).size;
+        expect(
+          sizeAfter,
+          `${format}: file should not be empty after write`,
+        ).toBeGreaterThan(0);
+        // Size should be in reasonable range (tag overhead varies)
+        const ratio = sizeAfter / sizeBefore;
+        expect(
+          ratio > 0.5 && ratio < 3.0,
+          `${format}: size ratio ${ratio.toFixed(2)} unreasonable`,
+        ).toStrictEqual(true);
       } finally {
         await rm(tempDir, { recursive: true }).catch(() => {});
       }
     });
-  },
-);
+  }
+
+  it("should write unicode tags via path", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
+    const srcPath = resolve(TEST_FILES_DIR_PATH, "flac/kiss-snippet.flac");
+    const destPath = resolve(tempDir, "unicode.flac");
+    await copyFile(srcPath, destPath);
+
+    try {
+      using wasi = await loadWasiHost({
+        wasmPath: WASM_PATH,
+        preopens: { "/tmp": tempDir },
+      });
+
+      writeTagsWasi(wasi, "/tmp/unicode.flac", {
+        title: "日本語タイトル",
+        artist: "Артист",
+        album: "专辑",
+        comment: "🎵🎸",
+      } as unknown as ExtendedTag);
+
+      using wasi2 = await loadWasiHost({
+        wasmPath: WASM_PATH,
+        preopens: { "/tmp": tempDir },
+      });
+
+      const tags = readTagsViaPath(
+        wasi2,
+        "/tmp/unicode.flac",
+      ) as unknown as RawTag;
+      expect(tags.title).toStrictEqual("日本語タイトル");
+      expect(tags.artist).toStrictEqual("Артист");
+      expect(tags.album).toStrictEqual("专辑");
+      expect(tags.comment).toStrictEqual("🎵🎸");
+    } finally {
+      await rm(tempDir, { recursive: true }).catch(() => {});
+    }
+  });
+
+  it("should overwrite tags on second write", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
+    const srcPath = resolve(TEST_FILES_DIR_PATH, "mp3/kiss-snippet.mp3");
+    const destPath = resolve(tempDir, "overwrite.mp3");
+    await copyFile(srcPath, destPath);
+
+    try {
+      // First write
+      using wasi1 = await loadWasiHost({
+        wasmPath: WASM_PATH,
+        preopens: { "/tmp": tempDir },
+      });
+      writeTagsWasi(wasi1, "/tmp/overwrite.mp3", {
+        title: "First Write",
+      } as unknown as ExtendedTag);
+
+      // Second write
+      using wasi2 = await loadWasiHost({
+        wasmPath: WASM_PATH,
+        preopens: { "/tmp": tempDir },
+      });
+      writeTagsWasi(wasi2, "/tmp/overwrite.mp3", {
+        title: "Second Write",
+      } as unknown as ExtendedTag);
+
+      // Verify
+      using wasi3 = await loadWasiHost({
+        wasmPath: WASM_PATH,
+        preopens: { "/tmp": tempDir },
+      });
+      const tags = readTagsViaPath(
+        wasi3,
+        "/tmp/overwrite.mp3",
+      ) as unknown as RawTag;
+      expect(tags.title).toStrictEqual("Second Write");
+    } finally {
+      await rm(tempDir, { recursive: true }).catch(() => {});
+    }
+  });
+});
 
 describe.skipIf(!HAS_WASM)(
   "WASI COMPILATION boolean contract (taglib-c9b)",

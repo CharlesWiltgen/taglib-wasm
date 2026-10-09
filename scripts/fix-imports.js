@@ -18,8 +18,8 @@ function fixImportsInFile(filePath) {
   const distRoot = "dist";
   const relFromDist = relative(distRoot, dirname(filePath));
   const depth = relFromDist === "" ? 0 : relFromDist.split("/").length;
-  const wrapperRelPath = (depth === 0 ? "./" : "../".repeat(depth)) +
-    "taglib-wrapper.js";
+  const wrapperRelPath =
+    (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-wrapper.js";
 
   content = content.replace(
     /from\s+["'][^"']*(?:build|dist)\/taglib-wrapper\.js["']/g,
@@ -31,10 +31,10 @@ function fixImportsInFile(filePath) {
   );
 
   // Fix wasm binary paths: strip "build/" so they resolve to dist/ root
-  const wasiWasmRelPath = (depth === 0 ? "./" : "../".repeat(depth)) +
-    "taglib-wasi.wasm";
-  const emscriptenWasmRelPath = (depth === 0 ? "./" : "../".repeat(depth)) +
-    "taglib-web.wasm";
+  const wasiWasmRelPath =
+    (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-wasi.wasm";
+  const emscriptenWasmRelPath =
+    (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-web.wasm";
   content = content.replace(
     /new\s+URL\(\s*["'][^"']*build\/taglib-wasi\.wasm["']/g,
     `new URL("${wasiWasmRelPath}"`,

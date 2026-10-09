@@ -12,17 +12,17 @@ import { MetadataError, UnsupportedFormatError } from "../errors.ts";
 
 export type MediaChecksum =
   | {
-    source: "audio-payload" | "file";
-    algorithm: "sha256";
-    hex: string;
-    bytesHashed: number;
-  }
+      source: "audio-payload" | "file";
+      algorithm: "sha256";
+      hex: string;
+      bytesHashed: number;
+    }
   | {
-    source: "flac-streaminfo-md5";
-    algorithm: "md5";
-    hex: string;
-    bytesHashed: 16;
-  };
+      source: "flac-streaminfo-md5";
+      algorithm: "md5";
+      hex: string;
+      bytesHashed: 16;
+    };
 
 export interface MediaChecksumOptions {
   basis?: "encoded" | "pcm";
@@ -164,11 +164,12 @@ export async function mediaChecksum(
     // always begins at offset 0) already carries it. A handle with no bytes at
     // all (WASI path mode) reads a header window first — never the file, since
     // the digest is 16 bytes.
-    const windowed = source.bytes.length > 0
-      ? source.bytes
-      : source.path && io.readPartial
-      ? await io.readPartial(source.path, STREAMINFO_WINDOW, 0)
-      : undefined;
+    const windowed =
+      source.bytes.length > 0
+        ? source.bytes
+        : source.path && io.readPartial
+          ? await io.readPartial(source.path, STREAMINFO_WINDOW, 0)
+          : undefined;
     // `flacStreamInfoMd5`, not `walkFlac`: the digest wants the marker and the
     // first block, while the walk ends the stream at the metadata chain's
     // implied end, and `flacEnd` answers an offset past the bytes in hand rather
@@ -189,10 +190,7 @@ export async function mediaChecksum(
       md5 = flacStreamInfoMd5(await fileBytes(source, io));
     }
     if (md5 === undefined) {
-      throw new MetadataError(
-        "read",
-        "STREAMINFO digest unavailable",
-      );
+      throw new MetadataError("read", "STREAMINFO digest unavailable");
     }
     return {
       source: "flac-streaminfo-md5",
@@ -207,9 +205,7 @@ export async function mediaChecksum(
   // whole-file path — `kind` is the only authority on which it was.
   const walk = mediaRanges(format, bytes);
   const payload = joinRanges(bytes, walk.ranges);
-  const digest = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", payload),
-  );
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", payload));
   let hex = "";
   for (const byte of digest) hex += byte.toString(16).padStart(2, "0");
   return {

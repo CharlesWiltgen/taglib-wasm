@@ -57,7 +57,8 @@ describe("applyTags", () => {
 describe("applyTagsToFile error paths", () => {
   it("should throw FileOperationError when given a buffer instead of path", async () => {
     const buffer = new Uint8Array(100);
-    await expectRejects( // deno-lint-ignore no-explicit-any
+    await expectRejects(
+      // deno-lint-ignore no-explicit-any
       () => applyTagsToFile(buffer as any, { title: "Test" }),
       FileOperationError,
       "requires a file path string",
@@ -66,7 +67,8 @@ describe("applyTagsToFile error paths", () => {
 
   it("should throw FileOperationError when given an ArrayBuffer instead of path", async () => {
     const buffer = new ArrayBuffer(100);
-    await expectRejects( // deno-lint-ignore no-explicit-any
+    await expectRejects(
+      // deno-lint-ignore no-explicit-any
       () => applyTagsToFile(buffer as any, { title: "Test" }),
       FileOperationError,
       "requires a file path string",
@@ -92,7 +94,7 @@ describe("clearTags", () => {
       const withPicture = await taglib.edit(withExtended, (file) => {
         file.addPicture({
           mimeType: "image/png",
-          data: new Uint8Array([0x89, 0x50, 0x4E, 0x47]),
+          data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
           type: "FrontCover",
         });
       });
@@ -112,8 +114,9 @@ describe("clearTags", () => {
         expect(verifyFile.getProperty("musicbrainzTrackId")?.[0]).toStrictEqual(
           undefined,
         );
-        expect(verifyFile.getProperty("replayGainTrackGain")?.[0])
-          .toStrictEqual(undefined);
+        expect(
+          verifyFile.getProperty("replayGainTrackGain")?.[0],
+        ).toStrictEqual(undefined);
         expect(verifyFile.getPictures().length).toStrictEqual(0);
       } finally {
         verifyFile.dispose();

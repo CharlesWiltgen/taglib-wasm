@@ -111,9 +111,12 @@ function stripId3v2(bytes: Uint8Array): Uint8Array {
   if (!(bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33)) {
     return bytes;
   }
-  const size = ((bytes[6] & 0x7f) << 21) | ((bytes[7] & 0x7f) << 14) |
-    ((bytes[8] & 0x7f) << 7) | (bytes[9] & 0x7f);
-  return bytes.subarray(10 + size + ((bytes[5] & 0x10) ? 10 : 0));
+  const size =
+    ((bytes[6] & 0x7f) << 21) |
+    ((bytes[7] & 0x7f) << 14) |
+    ((bytes[8] & 0x7f) << 7) |
+    (bytes[9] & 0x7f);
+  return bytes.subarray(10 + size + (bytes[5] & 0x10 ? 10 : 0));
 }
 
 /** `bytes` with a fresh ID3v2.4 title tag in place of whatever tag led it, the
@@ -185,8 +188,10 @@ function payloadBytes(format: string, bytes: Uint8Array): Uint8Array {
  * range: an edit only a payload writer can make. */
 function flipPayloadBit(bytes: Uint8Array, format: string): Uint8Array {
   const walk = mediaRanges(format, bytes);
-  expect(walk.kind === "ranges", `${format}: no payload ranges to mutate`)
-    .toBeTruthy();
+  expect(
+    walk.kind === "ranges",
+    `${format}: no payload ranges to mutate`,
+  ).toBeTruthy();
   const range = walk.ranges[0];
   expect(range.length > 0, `${format}: empty payload range`).toBeTruthy();
   const out = bytes.slice();
@@ -211,8 +216,9 @@ async function assertPayloadIdentity(
   digest: MediaChecksum,
 ): Promise<void> {
   const payload = payloadBytes(format, bytes);
-  expect(digest.bytesHashed, `${label}: bytesHashed`)
-    .toStrictEqual(payload.length);
+  expect(digest.bytesHashed, `${label}: bytesHashed`).toStrictEqual(
+    payload.length,
+  );
   expect(digest.hex, `${label}: hex`).toStrictEqual(await sha256Hex(payload));
 }
 
@@ -235,8 +241,9 @@ async function assertInputFormsAgree(
   const byFile = await readMediaChecksum(new File([bytes], label));
   expect(byBuffer.hex, `${label}: buffer vs path`).toStrictEqual(byPath.hex);
   expect(byFile.hex, `${label}: File vs path`).toStrictEqual(byPath.hex);
-  expect(byFile.bytesHashed, `${label}: bytesHashed`)
-    .toStrictEqual(byPath.bytesHashed);
+  expect(byFile.bytesHashed, `${label}: bytesHashed`).toStrictEqual(
+    byPath.bytesHashed,
+  );
 }
 
 /** The fallback contract: the whole file, and honest about it. */
@@ -288,9 +295,8 @@ function toolSkipReason(tools: string[]): string | undefined {
   if (path === undefined || path.length === 0) return "PATH is unset";
   const dirs = path.split(process.platform === "win32" ? ";" : ":");
   const missing = tools.filter((tool) => {
-    const names = process.platform === "win32"
-      ? [`${tool}.exe`, `${tool}.cmd`]
-      : [tool];
+    const names =
+      process.platform === "win32" ? [`${tool}.exe`, `${tool}.cmd`] : [tool];
     for (const dir of dirs) {
       for (const name of names) {
         try {
@@ -338,10 +344,9 @@ async function run(tool: string, args: string[]): Promise<void> {
       stderr?: string;
       message?: string;
     };
-    const detail = (failure.stderr ?? failure.message ?? "").trim().slice(
-      0,
-      300,
-    );
+    const detail = (failure.stderr ?? failure.message ?? "")
+      .trim()
+      .slice(0, 300);
     throw new Error(
       `${tool} ${args.join(" ")} exited ${failure.code}: ${detail}`,
     );
@@ -430,8 +435,9 @@ async function assertDigestFollowsPayload(
       digestAfter.hex === digestBefore.hex ? "did not move" : "moved"
     }`,
   ).toStrictEqual(payloadSame);
-  expect(digestAfter.source, `${label}: source`)
-    .toStrictEqual(digestBefore.source);
+  expect(digestAfter.source, `${label}: source`).toStrictEqual(
+    digestBefore.source,
+  );
   // The other direction, on a copy: a payload edit must move the digest.
   const mutatedPath = join(dir, `mutation-${randomUUID()}`);
   await writeFile(mutatedPath, flipPayloadBit(after, format));
@@ -460,15 +466,16 @@ async function assertHandWrittenRetagIsInvisible(
     bytesEqual(payloadBytes("MP3", original), payloadBytes("MP3", retagged)),
     `${label}: a tag-only writer must not touch the frames`,
   ).toBeTruthy();
-  expect(after.hex, `${label}: tag-only edit moved the digest`)
-    .toStrictEqual(before.hex);
-  expect(after.bytesHashed, `${label}: bytesHashed`)
-    .toStrictEqual(before.bytesHashed);
+  expect(after.hex, `${label}: tag-only edit moved the digest`).toStrictEqual(
+    before.hex,
+  );
+  expect(after.bytesHashed, `${label}: bytesHashed`).toStrictEqual(
+    before.bytesHashed,
+  );
   expect(
     await sha256Hex(retagged),
     `${label}: the digest must not be the whole-file hash`,
-  )
-    .not.toStrictEqual(before.hex);
+  ).not.toStrictEqual(before.hex);
 }
 
 // ---------------------------------------------------------------- always runs
@@ -480,8 +487,10 @@ it("stripping the fixture's ID3v2 tag does not move its digest", async () => {
   await withTempDir(async (dir) => {
     const fixture = new Uint8Array(readFileSync(MP3));
     const bare = stripId3v2(fixture);
-    expect(bare.length < fixture.length, "fixture must carry an ID3v2 tag")
-      .toBeTruthy();
+    expect(
+      bare.length < fixture.length,
+      "fixture must carry an ID3v2 tag",
+    ).toBeTruthy();
     const digest = await readMediaChecksum(
       await writeTemp(dir, "bare.mp3", bare),
     );
@@ -525,15 +534,16 @@ it("foreign ID3v2 variants ahead of the frames leave the MP3 digest alone", asyn
         await writeTemp(dir, `${name}.mp3`, bytes),
       );
       await assertPayloadIdentity(label, "MP3", bytes, digest);
-      expect(digest.hex, `${label}: the tag is not payload`)
-        .toStrictEqual(base.hex);
-      expect(digest.bytesHashed, `${label}: bytesHashed`)
-        .toStrictEqual(bare.length);
+      expect(digest.hex, `${label}: the tag is not payload`).toStrictEqual(
+        base.hex,
+      );
+      expect(digest.bytesHashed, `${label}: bytesHashed`).toStrictEqual(
+        bare.length,
+      );
       expect(
         await sha256Hex(bytes),
         `${label}: the digest must not be the whole-file hash`,
-      )
-        .not.toStrictEqual(digest.hex);
+      ).not.toStrictEqual(digest.hex);
     }
     // The half that keeps the invariance from being vacuous: the same shape with
     // one payload byte flipped must move.
@@ -541,8 +551,10 @@ it("foreign ID3v2 variants ahead of the frames leave the MP3 digest alone", asyn
     const mutated = await readMediaChecksum(
       await writeTemp(dir, "mutated.mp3", flipPayloadBit(tagged, "MP3")),
     );
-    expect(mutated.hex, "a payload edit must move the digest")
-      .not.toStrictEqual(base.hex);
+    expect(
+      mutated.hex,
+      "a payload edit must move the digest",
+    ).not.toStrictEqual(base.hex);
   });
 });
 
@@ -582,10 +594,12 @@ it("appended tag systems (Lyrics3v2, APEv2, ID3v1) leave the digest alone", asyn
         await writeTemp(dir, `${name}.mp3`, bytes),
       );
       await assertPayloadIdentity(label, "MP3", bytes, digest);
-      expect(digest.hex, `${label}: the tail is not payload`)
-        .toStrictEqual(base.hex);
-      expect(digest.bytesHashed, `${label}: bytesHashed`)
-        .toStrictEqual(bare.length);
+      expect(digest.hex, `${label}: the tail is not payload`).toStrictEqual(
+        base.hex,
+      );
+      expect(digest.bytesHashed, `${label}: bytesHashed`).toStrictEqual(
+        bare.length,
+      );
     }
   });
 });
@@ -604,12 +618,15 @@ it("a 4 KiB APEv2 tag in front of the frames is crossed by the scan", async () =
       await writeTemp(dir, "front-4k.mp3", bytes),
     );
     await assertPayloadIdentity("4 KiB front tag", "MP3", bytes, digest);
-    expect(digest.source, "4 KiB front tag: source")
-      .toStrictEqual("audio-payload");
-    expect(digest.hex, "4 KiB front tag: the tag is not payload")
-      .toStrictEqual(base.hex);
-    expect(digest.bytesHashed, "4 KiB front tag: bytesHashed")
-      .toStrictEqual(bare.length);
+    expect(digest.source, "4 KiB front tag: source").toStrictEqual(
+      "audio-payload",
+    );
+    expect(digest.hex, "4 KiB front tag: the tag is not payload").toStrictEqual(
+      base.hex,
+    );
+    expect(digest.bytesHashed, "4 KiB front tag: bytesHashed").toStrictEqual(
+      bare.length,
+    );
   });
 });
 
@@ -643,8 +660,9 @@ it("a 70 KiB APEv2 tag in front falls back to the whole file", async () => {
 it("two flac files that differ only in padding hash the same payload", async () => {
   await withTempDir(async (dir) => {
     const flac = new Uint8Array(readFileSync(FLAC));
-    expect(flac[4] & 0x7f, "fixture must lead with STREAMINFO")
-      .toStrictEqual(0);
+    expect(flac[4] & 0x7f, "fixture must lead with STREAMINFO").toStrictEqual(
+      0,
+    );
     const small = flacWithPadding(flac, 4096);
     const large = flacWithPadding(flac, 65_536);
     const smallPath = await writeTemp(dir, "pad-4k.flac", small);
@@ -657,8 +675,9 @@ it("two flac files that differ only in padding hash the same payload", async () 
       b.hex,
       "the frames are the same bytes, so the payload digests must be equal",
     ).toStrictEqual(a.hex);
-    expect(b.bytesHashed, "bytesHashed must be the frames")
-      .toStrictEqual(a.bytesHashed);
+    expect(b.bytesHashed, "bytesHashed must be the frames").toStrictEqual(
+      a.bytesHashed,
+    );
     expect(
       await sha256Hex(large),
       "the two files must differ outside the payload",
@@ -703,8 +722,9 @@ it("an MP4 `free` atom before the first mdat leaves the digest alone", async () 
       "free atom: the mdat contents must be untouched",
     ).toBeTruthy();
     expect(after.hex, "free atom: digest").toStrictEqual(before.hex);
-    expect(after.bytesHashed, "free atom: bytesHashed")
-      .toStrictEqual(before.bytesHashed);
+    expect(after.bytesHashed, "free atom: bytesHashed").toStrictEqual(
+      before.bytesHashed,
+    );
     expect(
       await sha256Hex(spliced),
       "free atom: the file really changed, so this is not a no-op case",
@@ -825,15 +845,7 @@ toolTest(
   async () => {
     await withTempDir(async (dir) => {
       const path = resolve(dir, "vbr.mp3");
-      await run("lame", [
-        "--quiet",
-        "-V",
-        "2",
-        "--tt",
-        "Original",
-        WAV,
-        path,
-      ]);
+      await run("lame", ["--quiet", "-V", "2", "--tt", "Original", WAV, path]);
       await assertHandWrittenRetagIsInvisible(dir, "lame-vbr", path);
       await assertDigestFollowsPayload(
         dir,
@@ -896,12 +908,8 @@ toolTest("ffmpeg m4a remux (-c copy)", ["ffmpeg"], async () => {
       "title=Remux",
       path,
     ]);
-    await assertDigestFollowsPayload(
-      dir,
-      "m4a remux",
-      "MP4",
-      path,
-      () => ffmpegRetag(path, [], "album=Retag"),
+    await assertDigestFollowsPayload(dir, "m4a remux", "MP4", path, () =>
+      ffmpegRetag(path, [], "album=Retag"),
     );
   });
 });
@@ -924,12 +932,8 @@ toolTest("ffmpeg m4a +faststart (moov before mdat)", ["ffmpeg"], async () => {
       ...flags,
       path,
     ]);
-    await assertDigestFollowsPayload(
-      dir,
-      "m4a faststart",
-      "MP4",
-      path,
-      () => ffmpegRetag(path, flags, "title=Retag"),
+    await assertDigestFollowsPayload(dir, "m4a faststart", "MP4", path, () =>
+      ffmpegRetag(path, flags, "title=Retag"),
     );
   });
 });
@@ -955,12 +959,8 @@ toolTest(
         ...flags,
         path,
       ]);
-      await assertDigestFollowsPayload(
-        dir,
-        "m4a fragmented",
-        "MP4",
-        path,
-        () => ffmpegRetag(path, flags, "title=Retag"),
+      await assertDigestFollowsPayload(dir, "m4a fragmented", "MP4", path, () =>
+        ffmpegRetag(path, flags, "title=Retag"),
       );
     });
   },
@@ -984,12 +984,8 @@ toolTest("ffmpeg WAV LIST/INFO tags", ["ffmpeg"], async () => {
       "title=FF",
       path,
     ]);
-    await assertDigestFollowsPayload(
-      dir,
-      "wav LIST/INFO",
-      "WAV",
-      path,
-      () => ffmpegRetag(path, [], "album=Retag"),
+    await assertDigestFollowsPayload(dir, "wav LIST/INFO", "WAV", path, () =>
+      ffmpegRetag(path, [], "album=Retag"),
     );
   });
 });
@@ -1031,67 +1027,71 @@ toolTest(
 // with `sha256(file)`. That is the audio-payload path, *not* the fallback: the
 // "uncovered format" expectation would be wrong here, and a tag in front of the
 // frames would move the range.
-toolTest("ffmpeg's mp2 output has no tag, so the whole file is payload", [
-  "ffmpeg",
-], async () => {
-  await withTempDir(async (dir) => {
-    const path = resolve(dir, "fb.mp2");
-    await run("ffmpeg", [
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-y",
-      "-i",
-      WAV,
-      "-c:a",
-      "mp2",
-      path,
-    ]);
-    const bytes = new Uint8Array(await readFile(path));
-    const digest = await readMediaChecksum(path);
-    expect(digest.source, "mp2: source").toStrictEqual("audio-payload");
-    await assertPayloadIdentity("mp2", "MP3", bytes, digest);
-    const mutated = await writeTemp(
-      dir,
-      "fb-mutated.mp2",
-      flipPayloadBit(bytes, "MP3"),
-    );
-    expect(
-      (await readMediaChecksum(mutated)).hex,
-      "mp2: a payload edit must move the digest",
-    ).not.toStrictEqual(digest.hex);
-  });
-});
+toolTest(
+  "ffmpeg's mp2 output has no tag, so the whole file is payload",
+  ["ffmpeg"],
+  async () => {
+    await withTempDir(async (dir) => {
+      const path = resolve(dir, "fb.mp2");
+      await run("ffmpeg", [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        WAV,
+        "-c:a",
+        "mp2",
+        path,
+      ]);
+      const bytes = new Uint8Array(await readFile(path));
+      const digest = await readMediaChecksum(path);
+      expect(digest.source, "mp2: source").toStrictEqual("audio-payload");
+      await assertPayloadIdentity("mp2", "MP3", bytes, digest);
+      const mutated = await writeTemp(
+        dir,
+        "fb-mutated.mp2",
+        flipPayloadBit(bytes, "MP3"),
+      );
+      expect(
+        (await readMediaChecksum(mutated)).hex,
+        "mp2: a payload edit must move the digest",
+      ).not.toStrictEqual(digest.hex);
+    });
+  },
+);
 
 // Shape guarded: a real multi-minute encode — 0.7 MB, below the loader's
 // partition threshold, so the three input forms agree without anything splicing.
-toolTest("a real 3-minute lame MP3: path == buffer == File", [
-  "lame",
-  "ffmpeg",
-], async () => {
-  await withTempDir(async (dir) => {
-    const wav = await makeSineWav(dir);
-    const path = resolve(dir, "long.mp3");
-    await run("lame", ["--quiet", "-V", "4", "--tt", "Long", wav, path]);
-    await assertInputFormsAgree(path, "MP3", "long mp3");
-  });
-});
+toolTest(
+  "a real 3-minute lame MP3: path == buffer == File",
+  ["lame", "ffmpeg"],
+  async () => {
+    await withTempDir(async (dir) => {
+      const wav = await makeSineWav(dir);
+      const path = resolve(dir, "long.mp3");
+      await run("lame", ["--quiet", "-V", "4", "--tt", "Long", wav, path]);
+      await assertInputFormsAgree(path, "MP3", "long mp3");
+    });
+  },
+);
 
 // Shape guarded: the same, at 2.3 MB — measured to be the one case here whose
 // `File` form really does partition (the handle's image is the 1,179,648-byte
 // header+footer window), so this is where "the digest belongs to the file" is
 // asserted on a partial handle.
-toolTest("a real 3-minute flac: path == buffer == File", [
-  "flac",
-  "ffmpeg",
-], async () => {
-  await withTempDir(async (dir) => {
-    const wav = await makeSineWav(dir);
-    const path = resolve(dir, "long.flac");
-    await run("flac", ["--silent", "--force", "--best", "-o", path, wav]);
-    await assertInputFormsAgree(path, "FLAC", "long flac");
-  });
-});
+toolTest(
+  "a real 3-minute flac: path == buffer == File",
+  ["flac", "ffmpeg"],
+  async () => {
+    await withTempDir(async (dir) => {
+      const wav = await makeSineWav(dir);
+      const path = resolve(dir, "long.flac");
+      await run("flac", ["--silent", "--force", "--best", "-o", path, wav]);
+      await assertInputFormsAgree(path, "FLAC", "long flac");
+    });
+  },
+);
 
 // Shape guarded: a real 1.6 MB m4a that does *not* partition (measured: a plain
 // `-c:a aac` leaves `moov` at EOF, past the header window) — a large foreign

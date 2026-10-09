@@ -105,8 +105,8 @@ export async function prepareWasmForEmbedding(
   outputPath = "./taglib-web.wasm",
 ): Promise<void> {
   try {
-    const possiblePaths = WASM_EMBED_SEARCH_PATHS.map((p) =>
-      new URL(p, import.meta.url)
+    const possiblePaths = WASM_EMBED_SEARCH_PATHS.map(
+      (p) => new URL(p, import.meta.url),
     );
 
     let wasmData: Uint8Array | null = null;

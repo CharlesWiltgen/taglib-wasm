@@ -114,10 +114,7 @@ async function loadWasmBinary(
   try {
     return await fs.readFile(path);
   } catch (cause) {
-    throw new WasiHostLoadError(
-      `Failed to read Wasm binary: ${path}`,
-      cause,
-    );
+    throw new WasiHostLoadError(`Failed to read Wasm binary: ${path}`, cause);
   }
 }
 
@@ -148,30 +145,36 @@ function createWasiModuleFromInstance(
       (exports.tl_malloc as (size: number) => number)(size),
     free: (ptr: number) => (exports.tl_free as (ptr: number) => void)(ptr),
     tl_read_tags: (pathPtr, bufPtr, len, outSizePtr) =>
-      (exports.tl_read_tags as (
-        p: number,
-        b: number,
-        l: number,
-        o: number,
-      ) => number)(pathPtr, bufPtr, len, outSizePtr),
+      (
+        exports.tl_read_tags as (
+          p: number,
+          b: number,
+          l: number,
+          o: number,
+        ) => number
+      )(pathPtr, bufPtr, len, outSizePtr),
     tl_read_id3v2_frames: (pathPtr, bufPtr, len, idPtr, outSizePtr) =>
-      (exports.tl_read_id3v2_frames as (
-        p: number,
-        b: number,
-        l: number,
-        i: number,
-        o: number,
-      ) => number)(pathPtr, bufPtr, len, idPtr, outSizePtr),
+      (
+        exports.tl_read_id3v2_frames as (
+          p: number,
+          b: number,
+          l: number,
+          i: number,
+          o: number,
+        ) => number
+      )(pathPtr, bufPtr, len, idPtr, outSizePtr),
     tl_write_tags: (pathPtr, bufPtr, len, tagsPtr, tagsSz, outPtr, outSzPtr) =>
-      (exports.tl_write_tags as (
-        p: number,
-        b: number,
-        l: number,
-        t: number,
-        ts: number,
-        o: number,
-        os: number,
-      ) => number)(pathPtr, bufPtr, len, tagsPtr, tagsSz, outPtr, outSzPtr),
+      (
+        exports.tl_write_tags as (
+          p: number,
+          b: number,
+          l: number,
+          t: number,
+          ts: number,
+          o: number,
+          os: number,
+        ) => number
+      )(pathPtr, bufPtr, len, tagsPtr, tagsSz, outPtr, outSzPtr),
     tl_detect_format: (bufPtr, len) =>
       (exports.tl_detect_format as (b: number, l: number) => number)(
         bufPtr,

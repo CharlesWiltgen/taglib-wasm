@@ -18,27 +18,12 @@
     "scripts/**/*.{ts,mjs,js}",
     "*.ts"
   ],
-  "ignoreDependencies": [
-    "@std/.*",
-    "npm",
-    "tsx"
-  ],
+  "ignoreDependencies": ["@std/.*", "npm", "tsx"],
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
-    "src/file-utils/index.ts": [
-      "exports",
-      "types"
-    ],
-    "src/constants/properties.ts": [
-      "exports",
-      "types"
-    ],
-    "src/folder-api/types.ts": [
-      "exports",
-      "types"
-    ],
-    "scripts/build-js.mjs": [
-      "unresolved"
-    ]
+    "src/file-utils/index.ts": ["exports", "types"],
+    "src/constants/properties.ts": ["exports", "types"],
+    "src/folder-api/types.ts": ["exports", "types"],
+    "scripts/build-js.mjs": ["unresolved"]
   }
 }

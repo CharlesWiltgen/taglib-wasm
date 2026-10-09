@@ -126,17 +126,21 @@ function isBrowser(): boolean {
 }
 
 function isWebWorker(): boolean {
-  return g.WorkerGlobalScope !== undefined &&
+  return (
+    g.WorkerGlobalScope !== undefined &&
     g.self !== undefined &&
-    g.self instanceof (g.WorkerGlobalScope as any);
+    g.self instanceof (g.WorkerGlobalScope as any)
+  );
 }
 
 function isCloudflareWorker(): boolean {
-  return g.caches !== undefined &&
+  return (
+    g.caches !== undefined &&
     g.Request !== undefined &&
     typeof g.addEventListener === "function" &&
     g.Deno === undefined &&
-    g.process === undefined;
+    g.process === undefined
+  );
 }
 
 // Must check before Node — Bun sets process.versions.node
@@ -145,8 +149,9 @@ function isBun(): boolean {
 }
 
 function isNode(): boolean {
-  return g.process !== undefined &&
-    (g.process as any).versions?.node !== undefined;
+  return (
+    g.process !== undefined && (g.process as any).versions?.node !== undefined
+  );
 }
 
 /** Shared Deno-runtime check — do not hand-roll `typeof Deno` tests (taglib-rfr). */
@@ -197,11 +202,22 @@ export function detectRuntime(): RuntimeDetectionResult {
 
 // deno-fmt-ignore
 const EXNREF_PROBE = new Uint8Array([
-  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, // Wasm header
-  0x06, 0x06,                                       // Global section, 6 bytes
-  0x01,                                             // 1 global
-  0x69, 0x00,                                       // exnref, const
-  0xd0, 0x69, 0x0b,                                 // ref.null exnref, end
+  0x00,
+  0x61,
+  0x73,
+  0x6d,
+  0x01,
+  0x00,
+  0x00,
+  0x00, // Wasm header
+  0x06,
+  0x06, // Global section, 6 bytes
+  0x01, // 1 global
+  0x69,
+  0x00, // exnref, const
+  0xd0,
+  0x69,
+  0x0b, // ref.null exnref, end
 ]);
 
 /**

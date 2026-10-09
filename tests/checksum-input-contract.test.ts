@@ -83,7 +83,7 @@ type Outcome = `ok:${string}` | `throw:${string}`;
  * else — the contract is about the class, not about a message. */
 async function outcome(run: () => Promise<unknown>): Promise<Outcome> {
   try {
-    const { source } = await run() as { source: string };
+    const { source } = (await run()) as { source: string };
     return `ok:${source}`;
   } catch (error) {
     return `throw:${(error as TagLibError).code}`;
@@ -94,9 +94,7 @@ async function outcome(run: () => Promise<unknown>): Promise<Outcome> {
  * must reach. `INVALID_FORMAT` is "not audio"; `FILE_OPERATION` is "not there",
  * which a path reaches by the same route a buffer-mode open does: the read
  * fails before anything is asked of the decoder. */
-const UNREADABLE: Array<
-  [string, (dir: string) => AudioFileInput, Outcome]
-> = [
+const UNREADABLE: Array<[string, (dir: string) => AudioFileInput, Outcome]> = [
   ["zero-length Uint8Array", () => new Uint8Array(0), "throw:INVALID_FORMAT"],
   ["zero-length ArrayBuffer", () => new ArrayBuffer(0), "throw:INVALID_FORMAT"],
   [
@@ -132,11 +130,7 @@ const UNREADABLE: Array<
   ["junk path (.mp3)", (dir) => `${dir}/junk.mp3`, "throw:INVALID_FORMAT"],
   ["junk path (.bin)", (dir) => `${dir}/junk.bin`, "throw:INVALID_FORMAT"],
   ["junk path (.txt)", (dir) => `${dir}/junk.txt`, "throw:INVALID_FORMAT"],
-  [
-    "missing path (.mp3)",
-    (dir) => `${dir}/absent.mp3`,
-    "throw:FILE_OPERATION",
-  ],
+  ["missing path (.mp3)", (dir) => `${dir}/absent.mp3`, "throw:FILE_OPERATION"],
 ];
 
 /** The two backends the contract holds on. `setBufferMode(false)` is the
@@ -156,7 +150,7 @@ const instances: Partial<Record<BackendId, Promise<TagLib>>> = {};
  * times — and lazily, so a backend that cannot load fails in its own test
  * rather than at this file's import. */
 function taglib(backend: BackendId): Promise<TagLib> {
-  return instances[backend] ??= TagLib.initialize({ forceWasmType: backend });
+  return (instances[backend] ??= TagLib.initialize({ forceWasmType: backend }));
 }
 
 /** The verdict an open reaches: the format it reports, or the class it throws.
@@ -209,7 +203,7 @@ describe("readable inputs", () => {
         ).toStrictEqual(`ok:${source}`);
         expect(
           await outcome(() =>
-            readMediaChecksum(new Uint8Array(readFileSync(path)))
+            readMediaChecksum(new Uint8Array(readFileSync(path))),
           ),
           `${backend.id}: ${path} by buffer`,
         ).toStrictEqual(`ok:${source}`);
@@ -513,16 +507,17 @@ describe("corpus: a path and a buffer reach the verdict their bytes earn", () =>
         expect(
           await openVerdict("wasi", new Uint8Array(readFileSync(path))),
           `buffer: ${path}`,
-        )
-          .toStrictEqual(expectedBuffer);
+        ).toStrictEqual(expectedBuffer);
       }
     });
   }
 
   it("[wasi] a path never accepts what the buffer form refuses, bar the pinned rows", () => {
     const asymmetric = [...OWN_CORPUS, ...UPSTREAM_CORPUS]
-      .filter(([, pathVerdict, bufferVerdict]) =>
-        bufferVerdict.startsWith("throw:") && !pathVerdict.startsWith("throw:")
+      .filter(
+        ([, pathVerdict, bufferVerdict]) =>
+          bufferVerdict.startsWith("throw:") &&
+          !pathVerdict.startsWith("throw:"),
       )
       .map(([path]) => path)
       .sort();
@@ -533,8 +528,10 @@ describe("corpus: a path and a buffer reach the verdict their bytes earn", () =>
 
   it("[emscripten] tests/test-files, both forms", async () => {
     for (const [path, expectedPath, expectedBuffer] of OWN_CORPUS_EMSCRIPTEN) {
-      expect(await openVerdict("emscripten", path), `path: ${path}`)
-        .toStrictEqual(expectedPath);
+      expect(
+        await openVerdict("emscripten", path),
+        `path: ${path}`,
+      ).toStrictEqual(expectedPath);
       expect(
         await openVerdict("emscripten", new Uint8Array(readFileSync(path))),
         `buffer: ${path}`,
@@ -621,12 +618,10 @@ describe("a path outside every preopen", () => {
     "[wasi] fails as a file operation, like a path that is not there",
     { skip: !HAS_WASI },
     async () => {
-      const { loadWasiHost } = await import(
-        "../src/runtime/wasi-host-loader.ts"
-      );
-      const { WasiToTagLibAdapter } = await import(
-        "../src/runtime/wasi-adapter/adapter.ts"
-      );
+      const { loadWasiHost } =
+        await import("../src/runtime/wasi-host-loader.ts");
+      const { WasiToTagLibAdapter } =
+        await import("../src/runtime/wasi-adapter/adapter.ts");
       using wasi = await loadWasiHost({
         wasmPath: resolve("dist/wasi/taglib-wasi.wasm"),
         preopens: { "/mapped": TEMP_DIR },
