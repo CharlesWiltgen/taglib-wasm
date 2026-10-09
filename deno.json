@@ -181,6 +181,7 @@
       "tests/utils-unit.test.ts",
       "tests/wasi-adapter-unit.test.ts",
       "tests/wasi-fs-node.test.ts",
+      "tests/wasi-fs-provider.test.ts",
       "tests/wasi-host.test.ts",
       "tests/wasi-memory-raii.test.ts",
       "tests/wasi-path-io.test.ts",

@@ -1,15 +1,19 @@
 /**
  * @fileoverview Tests for filesystem provider implementations
  *
- * Verifies that both Deno and Node providers satisfy the FileSystemProvider
- * contract using real temp files for seek, read, write, and truncate.
+ * Verifies the Node provider satisfies the FileSystemProvider contract using
+ * real temp files for seek, read, write, and truncate.
  */
 
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
-import { createDenoFsProvider } from "../src/runtime/wasi-fs-deno.ts";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, describe, expect, it } from "vite-plus/test";
+import { cleanupTempFiles, createTempFile } from "./test-utils.ts";
 import { createNodeFsProvider } from "../src/runtime/wasi-fs-node.ts";
 import type { FileSystemProvider } from "../src/runtime/wasi-fs-provider.ts";
+
+afterAll(cleanupTempFiles);
 
 function runProviderTests(
   name: string,
@@ -18,27 +22,27 @@ function runProviderTests(
   describe(`FileSystemProvider (${name})`, () => {
     it("should open, write, seek to start, and read back", async () => {
       const fs = await getProvider();
-      const path = await Deno.makeTempFile();
+      const path = await createTempFile();
       try {
         const handle = fs.openSync(path, { read: true, write: true });
         const data = new TextEncoder().encode("hello");
         const written = handle.writeSync(data);
-        assertEquals(written, 5);
+        expect(written).toStrictEqual(5);
 
         handle.seekSync(0, 0); // SEEK_SET
         const buf = new Uint8Array(5);
         const n = handle.readSync(buf);
-        assertEquals(n, 5);
-        assertEquals(new TextDecoder().decode(buf), "hello");
+        expect(n).toStrictEqual(5);
+        expect(new TextDecoder().decode(buf)).toStrictEqual("hello");
         handle.close();
       } finally {
-        await Deno.remove(path);
+        await rm(path, { force: true });
       }
     });
 
     it("should support SEEK_CUR (whence=1)", async () => {
       const fs = await getProvider();
-      const path = await Deno.makeTempFile();
+      const path = await createTempFile();
       try {
         const handle = fs.openSync(path, { read: true, write: true });
         handle.writeSync(new TextEncoder().encode("abcde"));
@@ -47,35 +51,35 @@ function runProviderTests(
 
         const buf = new Uint8Array(3);
         handle.readSync(buf);
-        assertEquals(new TextDecoder().decode(buf), "cde");
+        expect(new TextDecoder().decode(buf)).toStrictEqual("cde");
         handle.close();
       } finally {
-        await Deno.remove(path);
+        await rm(path, { force: true });
       }
     });
 
     it("should support SEEK_END (whence=2)", async () => {
       const fs = await getProvider();
-      const path = await Deno.makeTempFile();
+      const path = await createTempFile();
       try {
         const handle = fs.openSync(path, { read: true, write: true });
         handle.writeSync(new TextEncoder().encode("abcde"));
 
         const pos = handle.seekSync(-2, 2); // SEEK_END: 2 before end
-        assertEquals(pos, 3);
+        expect(pos).toStrictEqual(3);
 
         const buf = new Uint8Array(2);
         handle.readSync(buf);
-        assertEquals(new TextDecoder().decode(buf), "de");
+        expect(new TextDecoder().decode(buf)).toStrictEqual("de");
         handle.close();
       } finally {
-        await Deno.remove(path);
+        await rm(path, { force: true });
       }
     });
 
     it("should truncate file", async () => {
       const fs = await getProvider();
-      const path = await Deno.makeTempFile();
+      const path = await createTempFile();
       try {
         const handle = fs.openSync(path, { read: true, write: true });
         handle.writeSync(new TextEncoder().encode("hello world"));
@@ -84,38 +88,40 @@ function runProviderTests(
 
         const buf = new Uint8Array(10);
         const n = handle.readSync(buf);
-        assertEquals(n, 5);
-        assertEquals(new TextDecoder().decode(buf.subarray(0, 5)), "hello");
+        expect(n).toStrictEqual(5);
+        expect(new TextDecoder().decode(buf.subarray(0, 5))).toStrictEqual(
+          "hello",
+        );
         handle.close();
       } finally {
-        await Deno.remove(path);
+        await rm(path, { force: true });
       }
     });
 
     it("should return null on EOF read", async () => {
       const fs = await getProvider();
-      const path = await Deno.makeTempFile();
+      const path = await createTempFile();
       try {
         const handle = fs.openSync(path, { read: true, write: true });
         // File is empty, reading should return null
         const buf = new Uint8Array(10);
         const n = handle.readSync(buf);
-        assertEquals(n, null);
+        expect(n).toStrictEqual(null);
         handle.close();
       } finally {
-        await Deno.remove(path);
+        await rm(path, { force: true });
       }
     });
 
     it("should read file as Uint8Array via readFile", async () => {
       const fs = await getProvider();
-      const path = await Deno.makeTempFile();
+      const path = await createTempFile();
       try {
-        await Deno.writeTextFile(path, "test content");
+        await writeFile(path, "test content");
         const data = await fs.readFile(path);
-        assertEquals(new TextDecoder().decode(data), "test content");
+        expect(new TextDecoder().decode(data)).toStrictEqual("test content");
       } finally {
-        await Deno.remove(path);
+        await rm(path, { force: true });
       }
     });
 
@@ -124,19 +130,19 @@ function runProviderTests(
       try {
         fs.openSync("/nonexistent/path/file.txt", { read: true, write: false });
       } catch (e) {
-        assertEquals(fs.isNotFoundError(e), true);
+        expect(fs.isNotFoundError(e)).toStrictEqual(true);
       }
     });
 
     it("should not misidentify other errors as not-found", async () => {
       const fs = await getProvider();
-      assertEquals(fs.isNotFoundError(new Error("generic")), false);
-      assertEquals(fs.isNotFoundError(null), false);
+      expect(fs.isNotFoundError(new Error("generic"))).toStrictEqual(false);
+      expect(fs.isNotFoundError(null)).toStrictEqual(false);
     });
 
     it("should create file when create option is set", async () => {
       const fs = await getProvider();
-      const dir = await Deno.makeTempDir();
+      const dir = await mkdtemp(join(tmpdir(), "taglib-fs-"));
       const path = `${dir}/new-file.txt`;
       try {
         const handle = fs.openSync(path, {
@@ -149,16 +155,16 @@ function runProviderTests(
         handle.seekSync(0, 0);
         const buf = new Uint8Array(7);
         handle.readSync(buf);
-        assertEquals(new TextDecoder().decode(buf), "created");
+        expect(new TextDecoder().decode(buf)).toStrictEqual("created");
         handle.close();
       } finally {
-        await Deno.remove(dir, { recursive: true });
+        await rm(dir, { recursive: true, force: true });
       }
     });
 
     it("should create file with create-without-truncate", async () => {
       const fs = await getProvider();
-      const dir = await Deno.makeTempDir();
+      const dir = await mkdtemp(join(tmpdir(), "taglib-fs-"));
       const path = `${dir}/create-no-trunc.txt`;
       try {
         const handle = fs.openSync(path, {
@@ -171,16 +177,16 @@ function runProviderTests(
         handle.seekSync(0, 0);
         const buf = new Uint8Array(8);
         handle.readSync(buf);
-        assertEquals(new TextDecoder().decode(buf), "new file");
+        expect(new TextDecoder().decode(buf)).toStrictEqual("new file");
         handle.close();
       } finally {
-        await Deno.remove(dir, { recursive: true });
+        await rm(dir, { recursive: true, force: true });
       }
     });
 
     it("should write after SEEK_END", async () => {
       const fs = await getProvider();
-      const path = await Deno.makeTempFile();
+      const path = await createTempFile();
       try {
         const handle = fs.openSync(path, { read: true, write: true });
         handle.writeSync(new TextEncoder().encode("hello"));
@@ -189,16 +195,16 @@ function runProviderTests(
         handle.seekSync(0, 0);
         const buf = new Uint8Array(6);
         handle.readSync(buf);
-        assertEquals(new TextDecoder().decode(buf), "hello!");
+        expect(new TextDecoder().decode(buf)).toStrictEqual("hello!");
         handle.close();
       } finally {
-        await Deno.remove(path);
+        await rm(path, { force: true });
       }
     });
 
     it("should throw on negative seek position", async () => {
       const fs = await getProvider();
-      const path = await Deno.makeTempFile();
+      const path = await createTempFile();
       try {
         const handle = fs.openSync(path, { read: true, write: true });
         handle.writeSync(new TextEncoder().encode("ab"));
@@ -209,14 +215,13 @@ function runProviderTests(
         } catch {
           threw = true;
         }
-        assertEquals(threw, true);
+        expect(threw).toStrictEqual(true);
         handle.close();
       } finally {
-        await Deno.remove(path);
+        await rm(path, { force: true });
       }
     });
   });
 }
 
-runProviderTests("Deno", async () => createDenoFsProvider());
 runProviderTests("Node", () => createNodeFsProvider());

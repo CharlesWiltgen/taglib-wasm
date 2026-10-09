@@ -223,13 +223,12 @@ export default defineConfig({
     // Test files that must NOT run under Vitest:
     //  - bun-integration.test.ts registers with bun:test (npm run test:bun)
     //  - cross-runtime/ runs under three runtimes via tests/cross-runtime/run.sh
-    //  - the two Deno-gated files import Deno-only modules, so `deno task test`
-    //    owns them until phase 2 deletes or rewrites them.
+    //  - the Deno-gated file imports Deno-only modules, so `deno task test`
+    //    owns it until phase 2 deletes or rewrites it.
     exclude: [
       "tests/bun-integration.test.ts",
       "tests/cross-runtime/**",
       "tests/deno-compat-patches.test.ts",
-      "tests/wasi-fs-provider.test.ts",
     ],
     pool: "forks",
     execArgv: ["--expose-gc"],

@@ -14,7 +14,6 @@ import type { FileSystemProvider } from "./wasi-fs-provider.ts";
 import type { WasiModule } from "./wasmer-sdk-loader/types.ts";
 import { TagLibError } from "../errors/base.ts";
 import { fileUrlToPath, hostPathForPreopens } from "../utils/path.ts";
-import { isDeno } from "./detector.ts";
 
 export interface WasiHostLoaderConfig {
   wasmPath?: string;
@@ -35,10 +34,6 @@ async function resolveFs(
   provided?: FileSystemProvider,
 ): Promise<FileSystemProvider> {
   if (provided) return provided;
-  if (isDeno()) {
-    const { createDenoFsProvider } = await import("./wasi-fs-deno.ts");
-    return createDenoFsProvider();
-  }
   const { createNodeFsProvider } = await import("./wasi-fs-node.ts");
   return createNodeFsProvider();
 }
