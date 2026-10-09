@@ -142,9 +142,17 @@ If not done automatically:
 
 ### Tests Failing
 
-- Run `deno task fmt` to fix formatting
-- Fix any linting errors shown by `deno lint`
-- Ensure all tests pass locally before releasing
+> The release path is blocked pending phase 3 (see **Release Process** above), so
+> these steps apply only once it is restored.
+
+- **Do not run `deno task fmt`.** The script reports a formatting failure only
+  because its first gate is the retired `deno fmt --check`, which fails by design
+  on the vp-formatted tree; `deno task fmt` would revert the whole tree to Deno
+  style and break `npx vp fmt --check`.
+- Fix formatting with `npx vp fmt` and verify with `npx vp fmt --check`
+- Fix any linting errors with `npx vp lint --type-aware`
+- Ensure all tests pass locally (`npx vp test`, plus `deno task test` for the
+  four Deno-only files) before releasing
 
 ### Version Mismatch
 
