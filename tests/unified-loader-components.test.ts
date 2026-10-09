@@ -29,14 +29,6 @@ const createMockWasiExports = (
   }),
 });
 
-const mockRuntime = {
-  environment: "deno-wasi" as const,
-  supportsFilesystem: true,
-  supportsStreaming: true,
-  wasmType: "wasi" as const,
-  performanceTier: 2,
-};
-
 // Since the functions are not exported, we'll test through the public interface
 // and check behavior rather than testing internals directly
 

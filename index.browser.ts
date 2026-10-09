@@ -9,9 +9,8 @@
  * name is a compile error naming it rather than a bundler error. Two kinds of
  * omission, each marked where it applies below:
  *
- *  - the filesystem-bound halves of `file-utils` and `folder-api`, plus the
- *    Deno-compile helpers — a function that writes to a path or walks a
- *    directory has no browser implementation;
+ *  - the filesystem-bound halves of `file-utils` and `folder-api` — a function
+ *    that writes to a path or walks a directory has no browser implementation;
  *  - nothing else. Types are not omitted: a type describes data, and data
  *    crosses networks, so the type surface here matches `index.ts` exactly.
  *

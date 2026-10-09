@@ -29,7 +29,6 @@ import {
 import { writeFileData } from "../utils/write.ts";
 import { getNodeFsSync } from "../utils/node-fs.ts";
 import { normalized, type NormalizedRating } from "../utils/rating.ts";
-import { isDeno } from "../runtime/detector.ts";
 import type { AudioFile } from "./audio-file-interface.ts";
 import { BaseAudioFileImpl } from "./audio-file-base.ts";
 import {
@@ -59,7 +58,6 @@ function inferEndTimeMs(
 
 /** @internal Exported for unit tests (tests/node-fs-acquisition.test.ts). */
 export function readFileSync(path: string): Uint8Array {
-  if (isDeno()) return Deno.readFileSync(path);
   const fs = getNodeFsSync();
   if (fs) return new Uint8Array(fs.readFileSync(path));
   throw new FileOperationError(

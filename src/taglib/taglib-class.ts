@@ -6,7 +6,6 @@ import {
   type NamedAudioInput,
 } from "../types/audio-formats.ts";
 import { InvalidFormatError, TagLibInitializationError } from "../errors.ts";
-import { isDeno } from "../runtime/detector.ts";
 import type { AudioFile } from "./audio-file-interface.ts";
 import { AudioFileImpl } from "./audio-file-impl.ts";
 import { loadAudioData } from "./load-audio-data.ts";
@@ -29,9 +28,7 @@ function toWasiPath(osPath: string): string {
   // Resolve relative paths against CWD
   if (!p.startsWith("/") && !/^[A-Za-z]:/.test(p)) {
     const g = globalThis as Record<string, unknown>;
-    const cwd = isDeno()
-      ? Deno.cwd()
-      : (g.process as { cwd(): string })?.cwd?.();
+    const cwd = (g.process as { cwd(): string })?.cwd?.();
     if (cwd) {
       p = cwd.replace(/[/\\]+$/, "") + "/" + p;
     }

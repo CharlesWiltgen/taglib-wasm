@@ -31,58 +31,6 @@ async function readFullFile(
   return (await readFile(path)).slice(0, fileSize);
 }
 
-function createDenoIO(): PlatformIO {
-  const D = (globalThis as Record<string, unknown>).Deno as typeof Deno;
-  return {
-    readFile: (path) => D.readFile(path),
-    writeFile: (path, data) => D.writeFile(path, data),
-    stat: async (path) => {
-      const s = await D.stat(path);
-      return { size: s.size };
-    },
-    async *readDir(path) {
-      for await (const entry of D.readDir(path)) {
-        yield {
-          name: entry.name,
-          isDirectory: entry.isDirectory,
-          isFile: entry.isFile,
-        };
-      }
-    },
-    readPartial: async (path, headerSize, footerSize) => {
-      const file = await D.open(path, { read: true });
-      try {
-        const fileSize = (await file.stat()).size;
-        const full = await readFullFile(
-          (p) => D.readFile(p),
-          path,
-          headerSize,
-          footerSize,
-          fileSize,
-        );
-        if (full) return full;
-
-        const actualHeader = Math.min(headerSize, fileSize);
-        const header = new Uint8Array(actualHeader);
-        await file.read(header);
-
-        const actualFooter = Math.min(footerSize, fileSize);
-        const footerStart = fileSize - actualFooter;
-        await file.seek(footerStart, D.SeekMode.Start);
-        const footer = new Uint8Array(actualFooter);
-        await file.read(footer);
-
-        const combined = new Uint8Array(actualHeader + actualFooter);
-        combined.set(header, 0);
-        combined.set(footer, actualHeader);
-        return combined;
-      } finally {
-        void file.close();
-      }
-    },
-  };
-}
-
 type NodeFs = typeof import("node:fs/promises");
 type NodeBuffer = typeof import("node:buffer");
 
@@ -207,8 +155,6 @@ function createBunIO(): PlatformIO {
  */
 export function createPlatformIOFor(env: RuntimeEnvironment): PlatformIO {
   switch (env) {
-    case "deno-wasi":
-      return createDenoIO();
     case "bun-wasi":
       return createBunIO();
     case "node-wasi":
