@@ -2,12 +2,17 @@
  * Tests for Smart Partial Loading functionality
  */
 
-import { assert, assertEquals, assertExists } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { afterAll, describe, expect, it } from "vite-plus/test";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { expectDefined } from "./_assert-helpers.ts";
+import { cleanupTempFiles, createTempFile } from "./test-utils.ts";
 import { TagLib } from "../src/taglib.ts";
-import { join } from "@std/path";
+import { join } from "node:path";
 
-const TEST_FILES_DIR = join(Deno.cwd(), "tests/test-files");
+const TEST_FILES_DIR = join(process.cwd(), "tests/test-files");
+
+afterAll(cleanupTempFiles);
 
 /**
  * The fixture's audio carrying an ID3v2.3 tag of `frameCount` TXXX frames, each
@@ -18,7 +23,9 @@ const TEST_FILES_DIR = join(Deno.cwd(), "tests/test-files");
  * is syncsafe (7 bits per byte), frame headers are plain 32-bit big-endian.
  */
 function oversizedTagMp3(payloadSize: number, frameCount: number): Uint8Array {
-  const src = Deno.readFileSync(join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3"));
+  const src = new Uint8Array(
+    readFileSync(join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3")),
+  );
   let audioStart = 0;
   if (String.fromCharCode(...src.slice(0, 3)) === "ID3") {
     audioStart = 10 +
@@ -69,8 +76,8 @@ describe("Partial Loading", () => {
     const file = await taglib.open(filePath, { partial: true });
 
     const tag = file.tag();
-    assertExists(tag.title);
-    assertExists(tag.artist);
+    expectDefined(tag.title);
+    expectDefined(tag.artist);
 
     file.dispose();
   });
@@ -81,15 +88,17 @@ describe("Partial Loading", () => {
     const file = await taglib.open(filePath, { partial: true });
 
     const tag = file.tag();
-    assertExists(tag);
+    expectDefined(tag);
 
     file.dispose();
   });
 
   it("should work with File objects in browser-like environment", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const fileData = await Deno.readFile(
-      join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3"),
+    const fileData = new Uint8Array(
+      await readFile(
+        join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3"),
+      ),
     );
     const file = {
       size: fileData.byteLength,
@@ -99,7 +108,7 @@ describe("Partial Loading", () => {
     };
 
     const audioFile = await taglib.open(fileData);
-    assertExists(audioFile.tag());
+    expectDefined(audioFile.tag());
     audioFile.dispose();
   });
 
@@ -113,7 +122,7 @@ describe("Partial Loading", () => {
     });
 
     const tag = file.tag();
-    assertExists(tag);
+    expectDefined(tag);
 
     file.dispose();
   });
@@ -138,11 +147,11 @@ describe("Partial Loading", () => {
 
     const savedFile = await taglib.open(outputPath);
     const savedTag = savedFile.tag();
-    assertEquals(savedTag.title, "Partial Load Test");
-    assertEquals(savedTag.artist, "Test Artist");
+    expect(savedTag.title).toStrictEqual("Partial Load Test");
+    expect(savedTag.artist).toStrictEqual("Test Artist");
     savedFile.dispose();
 
-    await Deno.remove(outputPath);
+    await rm(outputPath);
   });
 
   it("should preserve audio data when saving partially loaded file", async () => {
@@ -153,7 +162,7 @@ describe("Partial Loading", () => {
       "mp3/kiss-snippet-partial-preserve.mp3",
     );
 
-    const originalData = await Deno.readFile(filePath);
+    const originalData = new Uint8Array(await readFile(filePath));
     const originalSize = originalData.byteLength;
 
     const file = await taglib.open(filePath, { partial: true });
@@ -161,13 +170,14 @@ describe("Partial Loading", () => {
     await file.saveToFile(outputPath);
     file.dispose();
 
-    const savedData = await Deno.readFile(outputPath);
+    const savedData = new Uint8Array(await readFile(outputPath));
     const savedSize = savedData.byteLength;
 
     const sizeDiff = Math.abs(savedSize - originalSize);
-    assert(sizeDiff < 10240, `File size changed too much: ${sizeDiff} bytes`);
+    expect(sizeDiff < 10240, `File size changed too much: ${sizeDiff} bytes`)
+      .toBeTruthy();
 
-    await Deno.remove(outputPath);
+    await rm(outputPath);
   });
 
   it("should throw error when calling save() on partially loaded file", async () => {
@@ -181,12 +191,12 @@ describe("Partial Loading", () => {
 
     try {
       file.save();
-      assert(false, "Should have thrown error");
+      expect(false, "Should have thrown error").toBeTruthy();
     } catch (error) {
-      assert(error instanceof Error);
-      assert(
+      if (!(error instanceof Error)) throw error;
+      expect(
         error.message.includes("Cannot save partially loaded file directly"),
-      );
+      ).toBeTruthy();
     }
 
     file.dispose();
@@ -202,7 +212,7 @@ describe("Partial Loading", () => {
     });
 
     const tag = file.tag();
-    assertExists(tag);
+    expectDefined(tag);
 
     file.dispose();
   });
@@ -215,9 +225,11 @@ describe("Partial Loading", () => {
     // Isolated copy — never mutate the shared fixture.
     const src = join(TEST_FILES_DIR, "mp3/_upg-src.mp3");
     const out = join(TEST_FILES_DIR, "mp3/_upg-out.mp3");
-    await Deno.writeFile(
+    await writeFile(
       src,
-      await Deno.readFile(join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3")),
+      new Uint8Array(
+        await readFile(join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3")),
+      ),
     );
     try {
       const file = await taglib.open(src, {
@@ -230,16 +242,20 @@ describe("Partial Loading", () => {
       await file.saveToFile(out);
       file.dispose();
 
-      const reopened = await taglib.open(await Deno.readFile(out));
+      const reopened = await taglib.open(new Uint8Array(await readFile(out)));
       try {
-        assertEquals(reopened.getChapters().length, 1, "chapters dropped");
-        assertEquals(reopened.getRatings().length, 1, "ratings dropped");
+        expect(reopened.getChapters().length, "chapters dropped").toStrictEqual(
+          1,
+        );
+        expect(reopened.getRatings().length, "ratings dropped").toStrictEqual(
+          1,
+        );
       } finally {
         reopened.dispose();
       }
     } finally {
-      await Deno.remove(src).catch(() => {});
-      await Deno.remove(out).catch(() => {});
+      await rm(src).catch(() => {});
+      await rm(out).catch(() => {});
     }
   });
 
@@ -253,9 +269,11 @@ describe("Partial Loading", () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const src = join(TEST_FILES_DIR, "mp3/_d14-src.mp3");
     const out = join(TEST_FILES_DIR, "mp3/_d14-out.mp3");
-    await Deno.writeFile(
+    await writeFile(
       src,
-      await Deno.readFile(join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3")),
+      new Uint8Array(
+        await readFile(join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3")),
+      ),
     );
     try {
       // Seed exactly three text props on the full file (replace wipes the rest).
@@ -266,7 +284,7 @@ describe("Partial Loading", () => {
         albumArtist: ["Delete Me"],
       });
       seed.save();
-      await Deno.writeFile(src, seed.getFileBuffer());
+      await writeFile(src, seed.getFileBuffer());
       seed.dispose();
 
       // Partial-load, then delete only albumArtist via a replace that omits it.
@@ -275,18 +293,17 @@ describe("Partial Loading", () => {
         maxHeaderSize: 10 * 1024,
         maxFooterSize: 5 * 1024,
       });
-      assertEquals(
+      expect(
         file.properties().albumArtist,
-        ["Delete Me"],
         "precondition: albumArtist present in partial header",
-      );
+      ).toStrictEqual(["Delete Me"]);
       const props = file.properties();
       delete props.albumArtist;
       file.setProperties(props);
       await file.saveToFile(out);
       file.dispose();
 
-      const reopened = await taglib.open(await Deno.readFile(out));
+      const reopened = await taglib.open(new Uint8Array(await readFile(out)));
       const result = {
         albumArtist: reopened.properties().albumArtist,
         title: reopened.properties().title,
@@ -294,14 +311,14 @@ describe("Partial Loading", () => {
       };
       reopened.dispose();
 
-      assertEquals(result, {
+      expect(result).toStrictEqual({
         albumArtist: undefined,
         title: ["Keep Title"],
         artist: ["Keep Artist"],
       });
     } finally {
-      await Deno.remove(src).catch(() => {});
-      await Deno.remove(out).catch(() => {});
+      await rm(src).catch(() => {});
+      await rm(out).catch(() => {});
     }
   });
 
@@ -319,18 +336,18 @@ describe("Partial Loading", () => {
   for (const backend of ["wasi", "emscripten"] as const) {
     it(`agrees with a full load when metadata exceeds the header window [${backend}]`, async () => {
       const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const path = await Deno.makeTempFile({ suffix: ".mp3" });
+      const path = await createTempFile(".mp3");
       try {
         // Built by hand rather than written through the library, so the fixture
         // does not depend on the write path this test is not exercising: the
         // fixture's audio behind one oversized TXXX frame that pushes the
         // ID3v2 tag past the 1 MB header window.
-        await Deno.writeFile(path, oversizedTagMp3(400_000, 4));
-        const size = (await Deno.stat(path)).size;
-        assert(
+        await writeFile(path, oversizedTagMp3(400_000, 4));
+        const size = (await stat(path)).size;
+        expect(
           size > 1024 * 1024 + 128 * 1024,
           `fixture must exceed the partial-load threshold, got ${size}`,
-        );
+        ).toBeTruthy();
 
         // A path input on WASI returns from taglib-class.ts:99-127 BEFORE
         // partial loading is considered, so opening by path here compared a
@@ -338,7 +355,7 @@ describe("Partial Loading", () => {
         // the same loadAudioData branch on both backends, so it actually
         // exercises the gate under test.
         const source = backend === "wasi"
-          ? new File([await Deno.readFile(path)], "oversized.mp3")
+          ? new File([new Uint8Array(await readFile(path))], "oversized.mp3")
           : path;
         const readWith = async (options?: { partial: boolean }) => {
           const f = await taglib.open(source, options);
@@ -349,13 +366,12 @@ describe("Partial Loading", () => {
           }
         };
 
-        assertEquals(
+        expect(
           await readWith(),
-          await readWith({ partial: false }),
           `${backend}: the default (partial) read disagrees with a full read`,
-        );
+        ).toStrictEqual(await readWith({ partial: false }));
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }

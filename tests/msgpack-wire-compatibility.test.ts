@@ -3,8 +3,7 @@
  * Ensures our C implementation produces identical binary output
  */
 
-import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertInstanceOf, assertLessOrEqual } from "@std/assert";
+import { describe, expect, it } from "vite-plus/test";
 import {
   decode as msgpackDecode,
   encode as msgpackEncode,
@@ -86,24 +85,24 @@ describe("MessagePack Wire Format Compatibility", () => {
   describe("JavaScript reference implementation", () => {
     it("should encode test data correctly", () => {
       const encoded = msgpackEncode(TEST_TAG_DATA);
-      assertInstanceOf(encoded, Uint8Array);
-      assertLessOrEqual(1, encoded.length); // length > 0
+      expect(encoded).toBeInstanceOf(Uint8Array);
+      expect(1).toBeLessThanOrEqual(encoded.length); // length > 0
 
       // Decode to verify round-trip
       const decoded = msgpackDecode(encoded) as TagData;
-      assertEquals(decoded, TEST_TAG_DATA);
+      expect(decoded).toStrictEqual(TEST_TAG_DATA);
     });
 
     it("should handle Unicode correctly", () => {
       const encoded = msgpackEncode(UNICODE_TEST_DATA);
       const decoded = msgpackDecode(encoded) as TagData;
-      assertEquals(decoded, UNICODE_TEST_DATA);
+      expect(decoded).toStrictEqual(UNICODE_TEST_DATA);
     });
 
     it("should handle minimal data", () => {
       const encoded = msgpackEncode(MINIMAL_TEST_DATA);
       const decoded = msgpackDecode(encoded) as TagData;
-      assertEquals(decoded, MINIMAL_TEST_DATA);
+      expect(decoded).toStrictEqual(MINIMAL_TEST_DATA);
     });
   });
 
@@ -111,7 +110,7 @@ describe("MessagePack Wire Format Compatibility", () => {
     it("should produce deterministic output", () => {
       const encoded1 = msgpackEncode(TEST_TAG_DATA);
       const encoded2 = msgpackEncode(TEST_TAG_DATA);
-      assertEquals(encoded1, encoded2);
+      expect(encoded1).toStrictEqual(encoded2);
     });
 
     it("should handle field order independence", () => {
@@ -125,7 +124,7 @@ describe("MessagePack Wire Format Compatibility", () => {
       // Decode both to verify they contain the same data
       const decoded1 = msgpackDecode(encoded1);
       const decoded2 = msgpackDecode(encoded2);
-      assertEquals(decoded1, decoded2);
+      expect(decoded1).toStrictEqual(decoded2);
     });
 
     it("should analyze binary structure", () => {
@@ -154,7 +153,7 @@ describe("MessagePack Wire Format Compatibility", () => {
       }
 
       // Basic validation
-      assertLessOrEqual(50, encoded.length); // Should be reasonable size
+      expect(50).toBeLessThanOrEqual(encoded.length); // Should be reasonable size
     });
   });
 });

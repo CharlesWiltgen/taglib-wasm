@@ -13,8 +13,9 @@
  * asserted here too so the fix can't over-correct and break them.
  */
 
-import { assertEquals } from "@std/assert";
-import { beforeAll, describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import { cleanupTempFiles, createTempFile } from "./test-utils.ts";
 import { TagLib } from "../src/taglib.ts";
 import {
   applyTags,
@@ -26,6 +27,8 @@ import type { AudioFile } from "../src/taglib/audio-file-interface.ts";
 
 const BACKENDS = ["wasi", "emscripten"] as const;
 type Backend = (typeof BACKENDS)[number];
+
+afterAll(cleanupTempFiles);
 
 /**
  * Formats grouped by how the shim treats their track field. The distinction is
@@ -69,11 +72,13 @@ beforeAll(async () => {
 
 /** Copy a fixture to a temp path so each case mutates an isolated file. */
 async function tempCopy(format: string): Promise<string> {
-  const src = await Deno.readFile(
-    FIXTURE_PATH[format as keyof typeof FIXTURE_PATH],
+  const src = new Uint8Array(
+    await readFile(
+      FIXTURE_PATH[format as keyof typeof FIXTURE_PATH],
+    ),
   );
-  const tmp = await Deno.makeTempFile({ suffix: `.${format}` });
-  await Deno.writeFile(tmp, src);
+  const tmp = await createTempFile(`.${format}`);
+  await writeFile(tmp, src);
   return tmp;
 }
 
@@ -88,7 +93,7 @@ async function seedProperties(
     file.setProperties(props);
     file.save();
     const buf = file.getFileBuffer();
-    await Deno.writeFile(path, buf);
+    await writeFile(path, buf);
   } finally {
     file.dispose();
   }
@@ -117,14 +122,13 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
         try {
           await seedProperties(backend, path, { trackNumber: ["3/12"] });
           for (const reader of BACKENDS) {
-            assertEquals(
+            expect(
               await readProperty(reader, path, "trackNumber"),
-              ["3/12"],
               `${reader} disagrees about a file written by ${backend}`,
-            );
+            ).toStrictEqual(["3/12"]);
           }
         } finally {
-          await Deno.remove(path).catch(() => {});
+          await rm(path).catch(() => {});
         }
       }
     });
@@ -148,22 +152,18 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
                 path,
                 "trackNumber",
               );
-              assertEquals(
-                readByWriter,
-                [value],
-                `${backend} lost the raw string it wrote`,
-              );
+              expect(readByWriter, `${backend} lost the raw string it wrote`)
+                .toStrictEqual([value]);
 
               // And the OTHER backend must agree about the same bytes.
               for (const reader of BACKENDS) {
-                assertEquals(
+                expect(
                   await readProperty(reader, path, "trackNumber"),
-                  [value],
                   `${reader} disagrees about a file written by ${backend}`,
-                );
+                ).toStrictEqual([value]);
               }
             } finally {
-              await Deno.remove(path).catch(() => {});
+              await rm(path).catch(() => {});
             }
           }
         },
@@ -187,16 +187,12 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
             const file = await taglibs[reader].open(path);
             try {
               const props = file.properties() as Record<string, string[]>;
-              assertEquals(
-                props.trackNumber,
-                ["3/12"],
-                `${reader} did not report the raw pair`,
-              );
-              assertEquals(
+              expect(props.trackNumber, `${reader} did not report the raw pair`)
+                .toStrictEqual(["3/12"]);
+              expect(
                 props.totalTracks,
-                undefined,
                 `${reader} still splits the pair into a separate total`,
-              );
+              ).toStrictEqual(undefined);
             } finally {
               file.dispose();
             }
@@ -204,11 +200,11 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
           // The total stays reachable on the TYPED surface, where narrowing is
           // additive and cannot destroy the raw value.
           const tags = await readTags(path);
-          assertEquals(tags.trackNumber, "3/12");
-          assertEquals(tags.track, 3);
-          assertEquals(tags.totalTracks, 12);
+          expect(tags.trackNumber).toStrictEqual("3/12");
+          expect(tags.track).toStrictEqual(3);
+          expect(tags.totalTracks).toStrictEqual(12);
         } finally {
-          await Deno.remove(path).catch(() => {});
+          await rm(path).catch(() => {});
         }
       }
     });
@@ -221,9 +217,11 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
       const path = await tempCopy(INT_PAIR_FORMAT);
       try {
         await seedProperties(backend, path, { trackNumber: ["03"] });
-        assertEquals(await readProperty(backend, path, "trackNumber"), ["3"]);
+        expect(await readProperty(backend, path, "trackNumber")).toStrictEqual([
+          "3",
+        ]);
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     }
   });
@@ -247,9 +245,11 @@ describe("properties() raw-string fidelity (taglib-qpl)", () => {
           const path = await tempCopy("flac");
           try {
             await seedProperties(backend, path, { [key]: [value] });
-            assertEquals(await readProperty(backend, path, key), [value]);
+            expect(await readProperty(backend, path, key)).toStrictEqual([
+              value,
+            ]);
           } finally {
-            await Deno.remove(path).catch(() => {});
+            await rm(path).catch(() => {});
           }
         }
       },
@@ -267,17 +267,16 @@ describe("read-modify-write preserves an untouched raw track total", () => {
         await seedProperties("emscripten", path, { trackNumber: ["3/12"] });
 
         const out = await applyTags(path, { title: "Unrelated edit" });
-        await Deno.writeFile(path, out);
+        await writeFile(path, out);
 
         for (const reader of BACKENDS) {
-          assertEquals(
+          expect(
             await readProperty(reader, path, "trackNumber"),
-            ["3/12"],
             `${reader} sees a truncated total after a title-only edit`,
-          );
+          ).toStrictEqual(["3/12"]);
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -293,35 +292,37 @@ describe("readTags() preserves the raw track string", () => {
       await seedProperties("emscripten", path, { trackNumber: ["3/12"] });
 
       const tags = await readTags(path);
-      assertEquals(tags.trackNumber, "3/12", "raw string must be exposed");
-      assertEquals(tags.track, 3, "numeric mirror still narrows");
+      expect(tags.trackNumber, "raw string must be exposed").toStrictEqual(
+        "3/12",
+      );
+      expect(tags.track, "numeric mirror still narrows").toStrictEqual(3);
 
-      await Deno.writeFile(path, await applyTags(path, tags));
+      await writeFile(path, await applyTags(path, tags));
 
       for (const reader of BACKENDS) {
-        assertEquals(
+        expect(
           await readProperty(reader, path, "trackNumber"),
-          ["3/12"],
           `${reader} sees a truncated total after a readTags round-trip`,
-        );
+        ).toStrictEqual(["3/12"]);
       }
     } finally {
-      await Deno.remove(path).catch(() => {});
+      await rm(path).catch(() => {});
     }
   });
 
   it("prefers an explicit raw trackNumber over a numeric track [flac]", async () => {
     const path = await tempCopy("flac");
     try {
-      await Deno.writeFile(
+      await writeFile(
         path,
         await applyTags(path, { track: 9, trackNumber: "3/12" }),
       );
-      assertEquals(await readProperty("emscripten", path, "trackNumber"), [
-        "3/12",
-      ]);
+      expect(await readProperty("emscripten", path, "trackNumber"))
+        .toStrictEqual([
+          "3/12",
+        ]);
     } finally {
-      await Deno.remove(path).catch(() => {});
+      await rm(path).catch(() => {});
     }
   });
 });
@@ -336,23 +337,21 @@ describe("the numeric track mirror never outlives its raw string", () => {
         const file = await taglibs[backend].open(path);
         try {
           file.setProperty("trackNumber", "");
-          assertEquals(
+          expect(
             file.properties().trackNumber,
-            undefined,
             `${backend} still reports a cleared track in-handle`,
-          );
+          ).toStrictEqual(undefined);
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
-        assertEquals(
+        expect(
           await readProperty("emscripten", path, "trackNumber"),
-          undefined,
           `${backend} wrote the stale number back to disk`,
-        );
+        ).toStrictEqual(undefined);
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     }
   });
@@ -365,16 +364,13 @@ describe("the numeric track mirror never outlives its raw string", () => {
         const file = await taglibs[backend].open(path);
         try {
           file.setProperty("trackNumber", "unknown");
-          assertEquals(
-            file.tag().track,
-            0,
-            `${backend} reports a stale numeric track`,
-          );
+          expect(file.tag().track, `${backend} reports a stale numeric track`)
+            .toStrictEqual(0);
         } finally {
           file.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     }
   });
@@ -391,13 +387,13 @@ describe("typed surfaces still narrow to numbers", () => {
         await seedProperties(backend, path, { trackNumber: ["3/12"] });
         const file = await taglibs[backend].open(path);
         try {
-          assertEquals(file.properties().trackNumber, ["3/12"]);
-          assertEquals(file.tag().track, 3);
+          expect(file.properties().trackNumber).toStrictEqual(["3/12"]);
+          expect(file.tag().track).toStrictEqual(3);
         } finally {
           file.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -410,10 +406,10 @@ describe("typed surfaces still narrow to numbers", () => {
         bpm: ["120.5"],
       });
       const tags = await readTags(path);
-      assertEquals(tags.track, 3);
-      assertEquals(tags.bpm, 120);
+      expect(tags.track).toStrictEqual(3);
+      expect(tags.bpm).toStrictEqual(120);
     } finally {
-      await Deno.remove(path).catch(() => {});
+      await rm(path).catch(() => {});
     }
   });
 
@@ -425,13 +421,13 @@ describe("typed surfaces still narrow to numbers", () => {
         const file = await taglibs[backend].open(path);
         try {
           file.tag().setTrack(7);
-          assertEquals(file.properties().trackNumber, ["7"]);
-          assertEquals(file.tag().track, 7);
+          expect(file.properties().trackNumber).toStrictEqual(["7"]);
+          expect(file.tag().track).toStrictEqual(7);
         } finally {
           file.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     }
   });
@@ -453,7 +449,7 @@ describe("setTrack() preserves an existing track total (taglib-eq3)", () => {
         try {
           file.tag().setTrack(7);
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
@@ -461,17 +457,20 @@ describe("setTrack() preserves an existing track total (taglib-eq3)", () => {
         const reopened = await taglibs[backend].open(path);
         try {
           const frames = reopened.getId3v2Frames("TRCK");
-          assertEquals(frames.length, 1, "expected exactly one TRCK frame");
+          expect(frames.length, "expected exactly one TRCK frame")
+            .toStrictEqual(1);
           // Text frame body: 1 encoding byte, then the value.
           const raw = new TextDecoder().decode(frames[0]!.data.slice(1))
             .replace(/\0+$/, "");
-          assertEquals(raw, "7/12", `${backend} dropped the track total`);
-          assertEquals(reopened.tag().track, 7);
+          expect(raw, `${backend} dropped the track total`).toStrictEqual(
+            "7/12",
+          );
+          expect(reopened.tag().track).toStrictEqual(7);
         } finally {
           reopened.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -488,14 +487,13 @@ describe("setTrack() preserves an existing track total (taglib-eq3)", () => {
         const file = await taglibs[backend].open(path);
         try {
           file.tag().setTrack(0);
-          assertEquals(
+          expect(
             file.properties().trackNumber,
-            undefined,
             `${backend} staged a zeroed pair instead of clearing`,
-          );
-          assertEquals(file.tag().track, 0);
+          ).toStrictEqual(undefined);
+          expect(file.tag().track).toStrictEqual(0);
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
@@ -504,16 +502,15 @@ describe("setTrack() preserves an existing track total (taglib-eq3)", () => {
         // int-pair format, which the in-handle assertion above cannot see.
         const reopened = await taglibs[backend].open(path);
         try {
-          assertEquals(
+          expect(
             (reopened.properties() as Record<string, string[]>).trackNumber,
-            undefined,
             `${backend}: a cleared track came back from disk`,
-          );
+          ).toStrictEqual(undefined);
         } finally {
           reopened.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -543,16 +540,15 @@ describe("the date/year mirror obeys the same rules as trackNumber/track", () =>
           const file = await taglibs[backend].open(path);
           try {
             file.setProperty(raw, "unknown");
-            assertEquals(
+            expect(
               readNumeric(file),
-              0,
               `${backend}: stale numeric mirror for ${raw}`,
-            );
+            ).toStrictEqual(0);
           } finally {
             file.dispose();
           }
         } finally {
-          await Deno.remove(path).catch(() => {});
+          await rm(path).catch(() => {});
         }
       });
 
@@ -563,21 +559,17 @@ describe("the date/year mirror obeys the same rules as trackNumber/track", () =>
           const file = await taglibs[backend].open(path);
           try {
             file.setProperty(raw, "");
-            assertEquals(
+            expect(
               (file.properties() as Record<string, string[]>)[raw],
-              undefined,
               `${backend}: ${raw} not cleared`,
-            );
-            assertEquals(
-              readNumeric(file),
-              0,
-              `${backend}: mirror not cleared`,
-            );
+            ).toStrictEqual(undefined);
+            expect(readNumeric(file), `${backend}: mirror not cleared`)
+              .toStrictEqual(0);
           } finally {
             file.dispose();
           }
         } finally {
-          await Deno.remove(path).catch(() => {});
+          await rm(path).catch(() => {});
         }
       });
     }
@@ -640,7 +632,7 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
     try {
       file.setId3v2Frames(frameId, [textFrameBody(value)]);
       file.save();
-      await Deno.writeFile(path, file.getFileBuffer());
+      await writeFile(path, file.getFileBuffer());
     } finally {
       file.dispose();
     }
@@ -656,30 +648,28 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
           const path = await tempCopy("mp3");
           try {
             await seedRawFrame(path, frameId, value);
-            assertEquals(
+            expect(
               await readProperty("emscripten", path, property),
-              [value],
               "seed did not land — the rest of this test would be vacuous",
-            );
+            ).toStrictEqual([value]);
 
             // The reported scenario: open and save, changing nothing at all.
             const file = await taglibs[backend].open(path);
             try {
               file.save();
-              await Deno.writeFile(path, file.getFileBuffer());
+              await writeFile(path, file.getFileBuffer());
             } finally {
               file.dispose();
             }
 
             for (const reader of BACKENDS) {
-              assertEquals(
+              expect(
                 await readProperty(reader, path, property),
-                [value],
                 `${backend} deleted ${frameId} on a save that changed nothing`,
-              );
+              ).toStrictEqual([value]);
             }
           } finally {
-            await Deno.remove(path).catch(() => {});
+            await rm(path).catch(() => {});
           }
         },
       );
@@ -694,13 +684,12 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
           const path = await tempCopy("mp3");
           try {
             await seedProperties(backend, path, { [property]: [value] });
-            assertEquals(
+            expect(
               await readProperty("emscripten", path, property),
-              [value],
               `${backend} could not write ${frameId}=${value}`,
-            );
+            ).toStrictEqual([value]);
           } finally {
-            await Deno.remove(path).catch(() => {});
+            await rm(path).catch(() => {});
           }
         },
       );
@@ -732,11 +721,10 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
         await seedRawFrame(path, "TCON", "255");
         const seeded = await taglibs[backend].open(path);
         try {
-          assertEquals(
+          expect(
             seeded.getId3v2Frames("TCON").length,
-            1,
             "seed did not land — the rest of this test would be vacuous",
-          );
+          ).toStrictEqual(1);
         } finally {
           seeded.dispose();
         }
@@ -744,23 +732,22 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
         const file = await taglibs[backend].open(path);
         try {
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
 
         const reopened = await taglibs.emscripten.open(path);
         try {
-          assertEquals(
+          expect(
             reopened.getId3v2Frames("TCON").length,
-            1,
             `${backend} deleted TCON on a save that changed nothing`,
-          );
+          ).toStrictEqual(1);
         } finally {
           reopened.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -776,23 +763,22 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
         const file = await taglibs[backend].open(path);
         try {
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
 
         // v2 -> v1: MPEG::File::save() creates and populates an ID3v1 tag on
         // every save, and skipping duplication outright would silently stop it.
-        const bytes = await Deno.readFile(path);
-        assertEquals(
+        const bytes = new Uint8Array(await readFile(path));
+        expect(
           new TextDecoder().decode(
             bytes.slice(bytes.length - 128, bytes.length - 125),
           ),
-          "TAG",
           `${backend} stopped writing the ID3v1 tag`,
-        );
+        ).toStrictEqual("TAG");
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
 
@@ -813,55 +799,50 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
         // Clear every frame, then seed only the hidden TDRC — no TRCK.
         await seedProperties("emscripten", path, { title: ["Kiss"] });
         await seedRawFrame(path, "TDRC", "unknown");
-        assertEquals(
+        expect(
           await readProperty("emscripten", path, "trackNumber"),
-          undefined,
           "fixture still carries a TRCK, so the fill-in cannot be observed",
-        );
+        ).toStrictEqual(undefined);
 
         // Patch the ID3v1.1 track byte in place (offset 125 is 0, 126 is track).
-        const seeded = await Deno.readFile(path);
-        assertEquals(
+        const seeded = new Uint8Array(await readFile(path));
+        expect(
           new TextDecoder().decode(
             seeded.slice(seeded.length - 128, seeded.length - 125),
           ),
-          "TAG",
           "expected an ID3v1 tag to patch",
-        );
+        ).toStrictEqual("TAG");
         seeded[seeded.length - 3] = 0x00;
         seeded[seeded.length - 2] = 5;
-        await Deno.writeFile(path, seeded);
+        await writeFile(path, seeded);
 
         const file = await taglibs[backend].open(path);
         try {
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
 
-        assertEquals(
+        expect(
           await readProperty("emscripten", path, "trackNumber"),
-          ["5"],
           `${backend} dropped the ID3v1 -> ID3v2 track fill-in`,
-        );
+        ).toStrictEqual(["5"]);
 
         // And the ID3v1 tag still holds its own copy: the write must PRESERVE
         // the value, not move it. Reading it back by hand because properties()
         // never surfaces ID3v1 (TagUnion returns ID3v2's map wholesale).
-        const saved = await Deno.readFile(path);
-        assertEquals(
+        const saved = new Uint8Array(await readFile(path));
+        expect(
           saved[saved.length - 2],
-          5,
           `${backend} erased the ID3v1 track byte`,
-        );
-        assertEquals(
+        ).toStrictEqual(5);
+        expect(
           await readProperty("emscripten", path, "date"),
-          ["unknown"],
           `${backend} destroyed the hidden TDRC`,
-        );
+        ).toStrictEqual(["unknown"]);
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
 
@@ -874,15 +855,15 @@ describe("an MPEG save keeps a TRCK/TDRC that narrows to 0 (taglib-9m0w)", () =>
         });
         const file = await taglibs[backend].open(path);
         try {
-          assertEquals(file.properties().date, ["1986-03-25"]);
-          assertEquals(file.properties().trackNumber, ["3/12"]);
-          assertEquals(file.tag().year, 1986);
-          assertEquals(file.tag().track, 3);
+          expect(file.properties().date).toStrictEqual(["1986-03-25"]);
+          expect(file.properties().trackNumber).toStrictEqual(["3/12"]);
+          expect(file.tag().year).toStrictEqual(1986);
+          expect(file.tag().track).toStrictEqual(3);
         } finally {
           file.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -924,27 +905,25 @@ describe("an empty value survives a save and is visible on both backends (taglib
             }
           };
 
-          assertEquals(
+          expect(
             await barcodeFrames(),
-            1,
             "seed did not land — the rest of this test would be vacuous",
-          );
+          ).toStrictEqual(1);
 
           const file = await taglibs[backend].open(path);
           try {
             file.save();
-            await Deno.writeFile(path, file.getFileBuffer());
+            await writeFile(path, file.getFileBuffer());
           } finally {
             file.dispose();
           }
 
-          assertEquals(
+          expect(
             await barcodeFrames(),
-            1,
             `${backend} destroyed the ${label} TXXX:BARCODE on a save that changed nothing`,
-          );
+          ).toStrictEqual(1);
         } finally {
-          await Deno.remove(path).catch(() => {});
+          await rm(path).catch(() => {});
         }
       });
     }
@@ -973,21 +952,19 @@ describe("an empty value survives a save and is visible on both backends (taglib
             f.dispose();
           }
         };
-        assertEquals(
+        expect(
           await tconCount(),
-          1,
           "seed did not land — the rest of this test would be vacuous",
-        );
+        ).toStrictEqual(1);
 
-        await Deno.writeFile(path, await applyTags(path, await readTags(path)));
+        await writeFile(path, await applyTags(path, await readTags(path)));
 
-        assertEquals(
+        expect(
           await tconCount(),
-          1,
           `${backend}: the round trip destroyed the frame it exists to preserve`,
-        );
+        ).toStrictEqual(1);
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -1014,10 +991,10 @@ describe("an empty value survives a save and is visible on both backends (taglib
           await seedProperties(backend, path, { barcode: [""] });
           seen[backend] = await readProperty(backend, path, "barcode");
         } finally {
-          await Deno.remove(path).catch(() => {});
+          await rm(path).catch(() => {});
         }
       }
-      assertEquals(seen, {
+      expect(seen).toStrictEqual({
         wasi: retained ? [""] : undefined,
         emscripten: retained ? [""] : undefined,
       });
@@ -1042,9 +1019,9 @@ describe("an empty value survives a save and is visible on both backends (taglib
           file.dispose();
         }
       }
-      assertEquals(seen, { wasi: [""], emscripten: [""] });
+      expect(seen).toStrictEqual({ wasi: [""], emscripten: [""] });
     } finally {
-      await Deno.remove(path).catch(() => {});
+      await rm(path).catch(() => {});
     }
   });
 });
@@ -1069,13 +1046,12 @@ describe("ID3v1-only values are visible, writable and clearable (taglib-nft5)", 
     // A non-empty ID3v2 that deliberately omits the field under test, and a
     // save so TagLib writes the ID3v1 tag this then patches.
     await seedProperties("emscripten", path, { artist: ["KeepArtist"] });
-    const bytes = await Deno.readFile(path);
+    const bytes = new Uint8Array(await readFile(path));
     const tag = bytes.length - 128;
-    assertEquals(
+    expect(
       new TextDecoder().decode(bytes.slice(tag, tag + 3)),
-      "TAG",
       "expected an ID3v1 tag to patch",
-    );
+    ).toStrictEqual("TAG");
     if (field === "title") {
       bytes.set(new Uint8Array(30), tag + 3);
       bytes.set(new TextEncoder().encode(value), tag + 3);
@@ -1083,7 +1059,7 @@ describe("ID3v1-only values are visible, writable and clearable (taglib-nft5)", 
       bytes[bytes.length - 3] = 0x00; // ID3v1.1 marker
       bytes[bytes.length - 2] = Number(value);
     }
-    await Deno.writeFile(path, bytes);
+    await writeFile(path, bytes);
     return path;
   }
 
@@ -1091,13 +1067,12 @@ describe("ID3v1-only values are visible, writable and clearable (taglib-nft5)", 
     it(`reports an ID3v1-only value from properties() [${backend}]`, async () => {
       const path = await id3v1Only("title", "GhostTitle");
       try {
-        assertEquals(
+        expect(
           await readProperty(backend, path, "title"),
-          ["GhostTitle"],
           `${backend} cannot see a value held only in ID3v1`,
-        );
+        ).toStrictEqual(["GhostTitle"]);
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
 
@@ -1106,20 +1081,20 @@ describe("ID3v1-only values are visible, writable and clearable (taglib-nft5)", 
       // ghost in ID3v2 after a clear, because the clear could not name it.
       const path = await id3v1Only("title", "GhostTitle");
       try {
-        await Deno.writeFile(path, await clearTags(path));
-        assertEquals(
+        await writeFile(path, await clearTags(path));
+        expect(
           await readProperty(backend, path, "title"),
-          undefined,
           `${backend}: a cleared ID3v1 value came back`,
-        );
+        ).toStrictEqual(undefined);
         const file = await taglibs[backend].open(path);
         try {
-          assertEquals(file.tag().title, "", `${backend}: stale typed title`);
+          expect(file.tag().title, `${backend}: stale typed title`)
+            .toStrictEqual("");
         } finally {
           file.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
 
@@ -1131,17 +1106,16 @@ describe("ID3v1-only values are visible, writable and clearable (taglib-nft5)", 
         try {
           file.setProperty("title", "Unrelated edit");
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
-        assertEquals(
+        expect(
           await readProperty(backend, path, "trackNumber"),
-          ["5"],
           `${backend} lost an ID3v1-only track across an unrelated edit`,
-        );
+        ).toStrictEqual(["5"]);
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -1172,20 +1146,19 @@ describe("a described COMM does not attract a duplicate (taglib-o3sl)", () => {
       file.setProperties({ title: ["Song"], artist: ["Band"] });
       file.setId3v2Frames("COMM", [commFrame("iTunNORM", " 00000A1B")]);
       file.save();
-      await Deno.writeFile(path, file.getFileBuffer());
+      await writeFile(path, file.getFileBuffer());
     } finally {
       file.dispose();
     }
-    const bytes = await Deno.readFile(path);
+    const bytes = new Uint8Array(await readFile(path));
     const tag = bytes.length - 128;
-    assertEquals(
+    expect(
       new TextDecoder().decode(bytes.slice(tag, tag + 3)),
-      "TAG",
       "expected an ID3v1 tag to patch",
-    );
+    ).toStrictEqual("TAG");
     bytes.set(new Uint8Array(30), tag + 97);
     bytes.set(new TextEncoder().encode("V1RealComment"), tag + 97);
-    await Deno.writeFile(path, bytes);
+    await writeFile(path, bytes);
     return path;
   }
 
@@ -1200,42 +1173,37 @@ describe("a described COMM does not attract a duplicate (taglib-o3sl)", () => {
         const file = await taglibs[backend].open(path);
         try {
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
 
-        assertEquals(
-          id3v1Comment(await Deno.readFile(path)),
-          "V1RealComment",
+        expect(
+          id3v1Comment(new Uint8Array(await readFile(path))),
           `${backend} destroyed the ID3v1 comment`,
-        );
+        ).toStrictEqual("V1RealComment");
         const reopened = await taglibs[backend].open(path);
         try {
           const frames = reopened.getId3v2Frames("COMM");
-          assertEquals(
-            frames.length,
-            1,
-            `${backend} added a duplicate COMM frame`,
-          );
+          expect(frames.length, `${backend} added a duplicate COMM frame`)
+            .toStrictEqual(1);
           // The COUNT alone blessed silent data loss: withdrawing the bare frame
           // before the typed COMMENT mirror ran left setComment() with no bare
           // frame to write to, so it fell through to the DESCRIBED frame and
           // overwrote the Sound Check value — still exactly one frame. Assert
           // what the defect actually destroys.
           const text = new TextDecoder("latin1").decode(frames[0]!.data);
-          assertEquals(
+          expect(
             text.includes(" 00000A1B"),
-            true,
             `${backend} overwrote the described frame's payload: ${
               JSON.stringify(text)
             }`,
-          );
+          ).toStrictEqual(true);
         } finally {
           reopened.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
 
@@ -1250,42 +1218,36 @@ describe("a described COMM does not attract a duplicate (taglib-o3sl)", () => {
         try {
           file.setProperty("album", "NewAlbum");
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
 
-        assertEquals(
-          id3v1Comment(await Deno.readFile(path)),
-          "V1RealComment",
+        expect(
+          id3v1Comment(new Uint8Array(await readFile(path))),
           `${backend} destroyed the ID3v1 comment`,
-        );
-        assertEquals(
+        ).toStrictEqual("V1RealComment");
+        expect(
           await readProperty(backend, path, "album"),
-          ["NewAlbum"],
           `${backend} lost the property write itself`,
-        );
+        ).toStrictEqual(["NewAlbum"]);
         const reopened = await taglibs[backend].open(path);
         try {
           const frames = reopened.getId3v2Frames("COMM");
-          assertEquals(
-            frames.length,
-            1,
-            `${backend} added a duplicate COMM frame`,
-          );
+          expect(frames.length, `${backend} added a duplicate COMM frame`)
+            .toStrictEqual(1);
           const text = new TextDecoder("latin1").decode(frames[0]!.data);
-          assertEquals(
+          expect(
             text.includes(" 00000A1B"),
-            true,
             `${backend} overwrote the described frame's payload: ${
               JSON.stringify(text)
             }`,
-          );
+          ).toStrictEqual(true);
         } finally {
           reopened.dispose();
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
 
@@ -1297,17 +1259,16 @@ describe("a described COMM does not attract a duplicate (taglib-o3sl)", () => {
         try {
           file.setProperty("comment", "CallerSet");
           file.save();
-          await Deno.writeFile(path, file.getFileBuffer());
+          await writeFile(path, file.getFileBuffer());
         } finally {
           file.dispose();
         }
-        assertEquals(
+        expect(
           await readProperty(backend, path, "comment"),
-          ["CallerSet"],
           `${backend} withdrew a comment the caller set`,
-        );
+        ).toStrictEqual(["CallerSet"]);
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -1323,7 +1284,7 @@ describe("track and disc totals land in the standard on-disk field", () => {
     it(`stores a separate track/disc total in the combined field [${format}]`, async () => {
       const path = await tempCopy(format);
       try {
-        await Deno.writeFile(
+        await writeFile(
           path,
           await applyTags(path, {
             track: 3,
@@ -1337,25 +1298,23 @@ describe("track and disc totals land in the standard on-disk field", () => {
           const file = await taglibs[reader].open(path);
           try {
             const props = file.properties() as Record<string, string[]>;
-            assertEquals(
+            expect(
               props.trackNumber,
-              ["3/12"],
               `${reader}: the track total is not in the combined field`,
-            );
-            assertEquals(
+            ).toStrictEqual(["3/12"]);
+            expect(
               props.discNumber,
-              ["1/2"],
               `${reader}: the disc total is not in the combined field`,
-            );
+            ).toStrictEqual(["1/2"]);
             // And not ALSO stashed in a separate tag.
-            assertEquals(props.totalTracks, undefined);
-            assertEquals(props.totalDiscs, undefined);
+            expect(props.totalTracks).toStrictEqual(undefined);
+            expect(props.totalDiscs).toStrictEqual(undefined);
           } finally {
             file.dispose();
           }
         }
       } finally {
-        await Deno.remove(path).catch(() => {});
+        await rm(path).catch(() => {});
       }
     });
   }
@@ -1366,14 +1325,13 @@ describe("track and disc totals land in the standard on-disk field", () => {
     const path = await tempCopy("mp3");
     try {
       await seedProperties("emscripten", path, { trackNumber: ["3/12"] });
-      await Deno.writeFile(path, await applyTags(path, { track: 5 }));
-      assertEquals(
+      await writeFile(path, await applyTags(path, { track: 5 }));
+      expect(
         await readProperty("emscripten", path, "trackNumber"),
-        ["5/12"],
         "applyTags dropped the total that setTrack preserves",
-      );
+      ).toStrictEqual(["5/12"]);
     } finally {
-      await Deno.remove(path).catch(() => {});
+      await rm(path).catch(() => {});
     }
   });
 
@@ -1386,21 +1344,21 @@ describe("track and disc totals land in the standard on-disk field", () => {
         trackNumber: ["1"],
         totalTracks: ["5"],
       });
-      await Deno.writeFile(
+      await writeFile(
         path,
         await applyTags(path, { trackNumber: "3/12", totalTracks: 12 }),
       );
       const props = await readProperty("wasi", path, "trackNumber");
-      assertEquals(props, ["3/12"]);
-      assertEquals(
+      expect(props).toStrictEqual(["3/12"]);
+      expect(
         await readProperty("wasi", path, "totalTracks"),
-        undefined,
         "a stale total survived alongside the new pair",
-      );
+      ).toStrictEqual(undefined);
       const tags = await readTags(path);
-      assertEquals(tags.totalTracks, 12, "readTags reported the stale total");
+      expect(tags.totalTracks, "readTags reported the stale total")
+        .toStrictEqual(12);
     } finally {
-      await Deno.remove(path).catch(() => {});
+      await rm(path).catch(() => {});
     }
   });
 });
@@ -1409,7 +1367,7 @@ describe("removeProperty (taglib-qyw2)", () => {
   for (const backend of BACKENDS) {
     it(`[${backend}] removes a property through save`, async () => {
       const taglib = taglibs[backend];
-      const src = await Deno.readFile(FIXTURE_PATH.mp3);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
 
       const seed = await taglib.open(src);
       seed.setProperty("album", "to-remove");
@@ -1418,22 +1376,20 @@ describe("removeProperty (taglib-qyw2)", () => {
       seed.dispose();
 
       const reopened = await taglib.open(seeded);
-      assertEquals(
+      expect(
         reopened.getProperty("album")?.[0],
-        "to-remove",
         `${backend}: seed did not write the property`,
-      );
+      ).toStrictEqual("to-remove");
       reopened.removeProperty("album");
       reopened.save();
       const removed = reopened.getFileBuffer();
       reopened.dispose();
 
       const final = await taglib.open(removed);
-      assertEquals(
+      expect(
         final.getProperty("album")?.[0],
-        undefined,
         `${backend}: removeProperty did not persist through save`,
-      );
+      ).toStrictEqual(undefined);
       final.dispose();
     });
 
@@ -1443,29 +1399,27 @@ describe("removeProperty (taglib-qyw2)", () => {
       // defect: before the fix, [""] wrote an empty iTunNORM atom that
       // survived the save (taglib-qyw2 review).
       const taglib = taglibs[backend];
-      const src = await Deno.readFile(FIXTURE_PATH.m4a);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.m4a));
 
       const seed = await taglib.open(src);
       seed.setProperty("appleSoundCheck", "to-remove");
       seed.save();
       const seeded = seed.getFileBuffer();
       seed.dispose();
-      assertEquals(
+      expect(
         new TextDecoder().decode(seeded).includes("iTunNORM"),
-        true,
         `${backend}: seed did not write the freeform atom`,
-      );
+      ).toStrictEqual(true);
 
       const file = await taglib.open(seeded);
       file.removeProperty("appleSoundCheck");
       file.save();
       const removed = file.getFileBuffer();
       file.dispose();
-      assertEquals(
+      expect(
         new TextDecoder().decode(removed).includes("iTunNORM"),
-        false,
         `${backend}: empty freeform atom survives removeProperty`,
-      );
+      ).toStrictEqual(false);
     });
   }
 });
@@ -1474,7 +1428,7 @@ describe("getProperty array shape (taglib-sip2)", () => {
   for (const backend of BACKENDS) {
     it(`[${backend}] returns ALL values for a multi-value property`, async () => {
       const taglib = taglibs[backend];
-      const src = await Deno.readFile(FIXTURE_PATH.mp3);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
 
       const file = await taglib.open(src);
       file.setProperties({ genre: ["Rock", "Alternative"] });
@@ -1484,16 +1438,15 @@ describe("getProperty array shape (taglib-sip2)", () => {
 
       const reopened = await taglib.open(buf);
       const values = reopened.getProperty("genre");
-      assertEquals(
+      expect(
         values,
-        ["Rock", "Alternative"],
         `${backend}: getProperty must return every value, not just the first`,
-      );
+      ).toStrictEqual(["Rock", "Alternative"]);
       // Scalar access is the documented `?.[0]` idiom.
-      assertEquals(values?.[0], "Rock");
-      assertEquals(reopened.getProperty("genre")?.[0], "Rock");
+      expect(values?.[0]).toStrictEqual("Rock");
+      expect(reopened.getProperty("genre")?.[0]).toStrictEqual("Rock");
       // Absent keys read as undefined, not [].
-      assertEquals(reopened.getProperty("totallyAbsentKey"), undefined);
+      expect(reopened.getProperty("totallyAbsentKey")).toStrictEqual(undefined);
       reopened.dispose();
     });
   }

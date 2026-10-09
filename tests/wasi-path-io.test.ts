@@ -5,9 +5,10 @@
  * filesystem syscalls instead of loading entire files into memory.
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
-import { resolve } from "@std/path";
+import { describe, expect, it } from "vite-plus/test";
+import { copyFile, rm } from "node:fs/promises";
+import { expectDefined } from "./_assert-helpers.ts";
+import { resolve } from "node:path";
 import { TagLib } from "../index.ts";
 import { applyTagsToFile, readTags } from "../simple.ts";
 import { loadWasiHost } from "../src/runtime/wasi-host-loader.ts";
@@ -22,7 +23,7 @@ const TEST_FILES_DIR = resolve("tests/test-files");
 const WASM_PATH = resolve("build/taglib-wasi.wasm");
 const WASI_AVAILABLE = supportsExnref();
 
-describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
+describe.skipIf(!WASI_AVAILABLE)("WASI path-based I/O", () => {
   describe("readTagsFromWasmPath", () => {
     it("reads tags from MP3 via path", async () => {
       using wasi = await loadWasiHost({
@@ -30,8 +31,8 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
         preopens: { "/test": TEST_FILES_DIR },
       });
       const result = readTagsFromWasmPath(wasi, "/test/mp3/kiss-snippet.mp3");
-      assertExists(result);
-      assertEquals(result.length > 0, true);
+      expectDefined(result);
+      expect(result.length > 0).toStrictEqual(true);
     });
 
     it("reads tags from M4A via path", async () => {
@@ -40,7 +41,7 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
         preopens: { "/test": TEST_FILES_DIR },
       });
       const result = readTagsFromWasmPath(wasi, "/test/mp4/kiss-snippet.m4a");
-      assertExists(result);
+      expectDefined(result);
     });
 
     it("throws on nonexistent file", async () => {
@@ -53,12 +54,10 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
         readTagsFromWasmPath(wasi, "/test/nonexistent.mp3");
       } catch (e) {
         threw = true;
-        assertEquals(
-          (e as Error).message.includes("/test/nonexistent.mp3"),
-          true,
-        );
+        expect((e as Error).message.includes("/test/nonexistent.mp3"))
+          .toStrictEqual(true);
       }
-      assertEquals(threw, true);
+      expect(threw).toStrictEqual(true);
     });
   });
 
@@ -66,7 +65,7 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
     it("writes tags and re-reads via path", async () => {
       const tmpPath = resolve(TEST_FILES_DIR, "../path-write-test.mp3");
       try {
-        await Deno.copyFile(
+        await copyFile(
           resolve(TEST_FILES_DIR, "mp3/kiss-snippet.mp3"),
           tmpPath,
         );
@@ -85,10 +84,10 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
           wasi,
           "/tmp/path-write-test.mp3",
         );
-        assertExists(result);
+        expectDefined(result);
       } finally {
         try {
-          await Deno.remove(tmpPath);
+          await rm(tmpPath);
         } catch { /* cleanup */ }
       }
     });
@@ -99,16 +98,16 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
       const taglib = await TagLib.initialize();
       const mp3Path = resolve(TEST_FILES_DIR, "mp3/kiss-snippet.mp3");
       using file = await taglib.open(mp3Path);
-      assertEquals(file.tag().title, "Kiss");
-      assertEquals(file.tag().artist, "Prince");
+      expect(file.tag().title).toStrictEqual("Kiss");
+      expect(file.tag().artist).toStrictEqual("Prince");
     });
 
     it("opens file by relative path", async () => {
       const taglib = await TagLib.initialize();
       const absPath = resolve(TEST_FILES_DIR, "mp3/kiss-snippet.mp3");
-      const relPath = absPath.slice(Deno.cwd().length + 1);
+      const relPath = absPath.slice(process.cwd().length + 1);
       using file = await taglib.open(relPath);
-      assertEquals(file.tag().title, "Kiss");
+      expect(file.tag().title).toStrictEqual("Kiss");
     });
 
     it("returns correct audio properties", async () => {
@@ -116,16 +115,16 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
       const mp3Path = resolve(TEST_FILES_DIR, "mp3/kiss-snippet.mp3");
       using file = await taglib.open(mp3Path);
       const props = file.audioProperties();
-      assertExists(props);
-      assertExists(props!.duration);
-      assertExists(props!.bitrate);
-      assertExists(props!.sampleRate);
+      expectDefined(props);
+      expectDefined(props!.duration);
+      expectDefined(props!.bitrate);
+      expectDefined(props!.sampleRate);
     });
 
     it("save() writes in-place for path-opened files", async () => {
       const tmpPath = resolve(TEST_FILES_DIR, "../path-save-test.mp3");
       try {
-        await Deno.copyFile(
+        await copyFile(
           resolve(TEST_FILES_DIR, "mp3/kiss-snippet.mp3"),
           tmpPath,
         );
@@ -133,15 +132,15 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
         {
           using file = await taglib.open(tmpPath);
           file.tag().setTitle("Path Save");
-          assertEquals(file.save(), true);
+          expect(file.save()).toStrictEqual(true);
         }
         {
           using file = await taglib.open(tmpPath);
-          assertEquals(file.tag().title, "Path Save");
+          expect(file.tag().title).toStrictEqual("Path Save");
         }
       } finally {
         try {
-          await Deno.remove(tmpPath);
+          await rm(tmpPath);
         } catch { /* cleanup */ }
       }
     });
@@ -151,14 +150,14 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
     it("readTags works with file paths", async () => {
       const mp3Path = resolve(TEST_FILES_DIR, "mp3/kiss-snippet.mp3");
       const tags = await readTags(mp3Path);
-      assertEquals(tags.title?.[0], "Kiss");
-      assertEquals(tags.artist?.[0], "Prince");
+      expect(tags.title?.[0]).toStrictEqual("Kiss");
+      expect(tags.artist?.[0]).toStrictEqual("Prince");
     });
 
     it("applyTagsToFile writes and persists", async () => {
       const tmpPath = resolve(TEST_FILES_DIR, "../simple-path-test.mp3");
       try {
-        await Deno.copyFile(
+        await copyFile(
           resolve(TEST_FILES_DIR, "mp3/kiss-snippet.mp3"),
           tmpPath,
         );
@@ -167,11 +166,11 @@ describe("WASI path-based I/O", { ignore: !WASI_AVAILABLE }, () => {
           artist: "Test",
         });
         const tags = await readTags(tmpPath);
-        assertEquals(tags.title?.[0], "Simple Path Write");
-        assertEquals(tags.artist?.[0], "Test");
+        expect(tags.title?.[0]).toStrictEqual("Simple Path Write");
+        expect(tags.artist?.[0]).toStrictEqual("Test");
       } finally {
         try {
-          await Deno.remove(tmpPath);
+          await rm(tmpPath);
         } catch { /* cleanup */ }
       }
     });

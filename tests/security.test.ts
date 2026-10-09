@@ -3,18 +3,17 @@
  * input boundary conditions.
  */
 
-import { assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
-import { resolve } from "@std/path";
+import { describe, expect, it } from "vite-plus/test";
+import { resolve } from "node:path";
 import { loadWasiHost } from "../src/runtime/wasi-host-loader.ts";
 import { WasmArena, type WasmExports } from "../src/runtime/wasi-memory.ts";
 import { fileExists, TEST_FILES_DIR_PATH } from "./shared-fixtures.ts";
 
-const WASM_PATH = resolve(Deno.cwd(), "dist/wasi/taglib-wasi.wasm");
+const WASM_PATH = resolve(process.cwd(), "dist/wasi/taglib-wasi.wasm");
 const HAS_WASM = fileExists(WASM_PATH);
 
-describe(
-  { name: "Security - WASI Path Traversal", ignore: !HAS_WASM },
+describe.skipIf(!HAS_WASM)(
+  "Security - WASI Path Traversal",
   () => {
     it("should reject absolute path outside preopens", async () => {
       using wasi = await loadWasiHost({
@@ -32,7 +31,7 @@ describe(
         0,
         outSizePtr.ptr,
       );
-      assertEquals(result, 0, "should reject /etc/passwd");
+      expect(result, "should reject /etc/passwd").toStrictEqual(0);
     });
 
     it("should reject path traversal with ..", async () => {
@@ -53,7 +52,7 @@ describe(
         0,
         outSizePtr.ptr,
       );
-      assertEquals(result, 0, "should reject path traversal");
+      expect(result, "should reject path traversal").toStrictEqual(0);
     });
 
     it("should reject write to path outside preopens", async () => {
@@ -77,17 +76,16 @@ describe(
         outSizePtr.ptr,
       );
       // Non-zero = error (write failed), or zero but no output
-      assertEquals(
+      expect(
         result === 0 && outSizePtr.readUint32() === 0 || result !== 0,
-        true,
         "should fail to write outside preopens",
-      );
+      ).toStrictEqual(true);
     });
   },
 );
 
-describe(
-  { name: "Security - Buffer Edge Cases", ignore: !HAS_WASM },
+describe.skipIf(!HAS_WASM)(
+  "Security - Buffer Edge Cases",
   () => {
     it("should handle null bytes in tag strings", async () => {
       using wasi = await loadWasiHost({
@@ -108,7 +106,7 @@ describe(
         0,
         outSizePtr.ptr,
       );
-      assertEquals(result > 0, true, "should read valid file");
+      expect(result > 0, "should read valid file").toStrictEqual(true);
     });
 
     it("should handle zero-length buffer for read", async () => {
@@ -122,7 +120,7 @@ describe(
 
       // Pass null path and zero-length buffer
       const result = wasi.tl_read_tags(0, 0, 0, outSizePtr.ptr);
-      assertEquals(result, 0, "should return NULL for zero input");
+      expect(result, "should return NULL for zero input").toStrictEqual(0);
     });
   },
 );

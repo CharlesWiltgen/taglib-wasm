@@ -5,8 +5,8 @@
  * performance comparisons, and integration with the C API data format.
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import {
   compareEncodingEfficiency,
   decodeAudioProperties,
@@ -61,9 +61,9 @@ describe("MessagePack", () => {
   it("encodeTagData - encodes tag data to MessagePack", () => {
     const encoded = encodeTagData(sampleTagData);
 
-    assertEquals(encoded instanceof Uint8Array, true);
-    assertEquals(encoded.length > 0, true);
-    assertEquals(isValidMessagePack(encoded), true);
+    expect(encoded instanceof Uint8Array).toStrictEqual(true);
+    expect(encoded.length > 0).toStrictEqual(true);
+    expect(isValidMessagePack(encoded)).toStrictEqual(true);
   });
 
   it("decodeTagData - decodes MessagePack tag data", () => {
@@ -71,143 +71,144 @@ describe("MessagePack", () => {
     const decoded = decodeTagData(encoded) as Record<string, unknown>;
     const expected = sampleTagData as unknown as Record<string, unknown>;
 
-    assertEquals(decoded.title, expected.title);
-    assertEquals(decoded.artist, expected.artist);
-    assertEquals(decoded.album, expected.album);
-    assertEquals(decoded.date, expected.date);
-    assertEquals(decoded.trackNumber, expected.trackNumber);
+    expect(decoded.title).toStrictEqual(expected.title);
+    expect(decoded.artist).toStrictEqual(expected.artist);
+    expect(decoded.album).toStrictEqual(expected.album);
+    expect(decoded.date).toStrictEqual(expected.date);
+    expect(decoded.trackNumber).toStrictEqual(expected.trackNumber);
   });
 
   it("encodeAudioProperties - encodes audio properties to MessagePack", () => {
     const encoded = encodeAudioProperties(sampleAudioProperties);
 
-    assertEquals(encoded instanceof Uint8Array, true);
-    assertEquals(encoded.length > 0, true);
-    assertEquals(isValidMessagePack(encoded), true);
+    expect(encoded instanceof Uint8Array).toStrictEqual(true);
+    expect(encoded.length > 0).toStrictEqual(true);
+    expect(isValidMessagePack(encoded)).toStrictEqual(true);
   });
 
   it("decodeAudioProperties - decodes MessagePack audio properties", () => {
     const encoded = encodeAudioProperties(sampleAudioProperties);
     const decoded = decodeAudioProperties(encoded);
 
-    assertEquals(decoded.duration, sampleAudioProperties.duration);
-    assertEquals(decoded.bitrate, sampleAudioProperties.bitrate);
-    assertEquals(decoded.sampleRate, sampleAudioProperties.sampleRate);
-    assertEquals(decoded.channels, sampleAudioProperties.channels);
-    assertEquals(decoded.codec, sampleAudioProperties.codec);
+    expect(decoded.duration).toStrictEqual(sampleAudioProperties.duration);
+    expect(decoded.bitrate).toStrictEqual(sampleAudioProperties.bitrate);
+    expect(decoded.sampleRate).toStrictEqual(sampleAudioProperties.sampleRate);
+    expect(decoded.channels).toStrictEqual(sampleAudioProperties.channels);
+    expect(decoded.codec).toStrictEqual(sampleAudioProperties.codec);
   });
 
   it("encodePicture - encodes picture data to MessagePack", () => {
     const encoded = encodePicture(samplePicture);
 
-    assertEquals(encoded instanceof Uint8Array, true);
-    assertEquals(encoded.length > 0, true);
-    assertEquals(isValidMessagePack(encoded), true);
+    expect(encoded instanceof Uint8Array).toStrictEqual(true);
+    expect(encoded.length > 0).toStrictEqual(true);
+    expect(isValidMessagePack(encoded)).toStrictEqual(true);
   });
 
   it("decodePicture - decodes MessagePack picture data", () => {
     const encoded = encodePicture(samplePicture);
     const decoded = decodePicture(encoded);
 
-    assertEquals(decoded.mimeType, samplePicture.mimeType);
-    assertEquals(decoded.type, samplePicture.type);
-    assertEquals(decoded.description, samplePicture.description);
-    assertEquals(decoded.data instanceof Uint8Array, true);
-    assertEquals(decoded.data.length, samplePicture.data.length);
+    expect(decoded.mimeType).toStrictEqual(samplePicture.mimeType);
+    expect(decoded.type).toStrictEqual(samplePicture.type);
+    expect(decoded.description).toStrictEqual(samplePicture.description);
+    expect(decoded.data instanceof Uint8Array).toStrictEqual(true);
+    expect(decoded.data.length).toStrictEqual(samplePicture.data.length);
   });
 
   it("decodeMessagePackAuto - automatically detects data type", () => {
     const encodedTag = encodeTagData(sampleTagData);
     const decodedTag = decodeMessagePackAuto(encodedTag);
-    assertEquals(typeof decodedTag, "object");
-    assertEquals((decodedTag as ExtendedTag).title, sampleTagData.title);
+    expect(typeof decodedTag).toStrictEqual("object");
+    expect((decodedTag as ExtendedTag).title).toStrictEqual(
+      sampleTagData.title,
+    );
 
     const encodedAudio = encodeAudioProperties(sampleAudioProperties);
     const decodedAudio = decodeMessagePackAuto(encodedAudio);
-    assertEquals(typeof decodedAudio, "object");
-    assertEquals(
-      (decodedAudio as AudioProperties).bitrate,
+    expect(typeof decodedAudio).toStrictEqual("object");
+    expect((decodedAudio as AudioProperties).bitrate).toStrictEqual(
       sampleAudioProperties.bitrate,
     );
   });
 
   it("isValidMessagePack - validates MessagePack data", () => {
     const validData = encodeTagData(sampleTagData);
-    assertEquals(isValidMessagePack(validData), true);
+    expect(isValidMessagePack(validData)).toStrictEqual(true);
 
     const invalidData = new Uint8Array([0x00, 0x01, 0x02, 0x03]);
-    assertEquals(isValidMessagePack(invalidData), false);
+    expect(isValidMessagePack(invalidData)).toStrictEqual(false);
 
     const emptyData = new Uint8Array(0);
-    assertEquals(isValidMessagePack(emptyData), false);
+    expect(isValidMessagePack(emptyData)).toStrictEqual(false);
   });
 
   it("getMessagePackInfo - provides data information", () => {
     const encoded = encodeTagData(sampleTagData);
     const info = getMessagePackInfo(encoded);
 
-    assertEquals(info.isValid, true);
-    assertEquals(info.approximateSize, encoded.length);
-    assertEquals(info.type, "map"); // Tag data is object/map
+    expect(info.isValid).toStrictEqual(true);
+    expect(info.approximateSize).toStrictEqual(encoded.length);
+    expect(info.type).toStrictEqual("map"); // Tag data is object/map
   });
 
   it("compareEncodingEfficiency - compares MessagePack vs JSON", () => {
     const comparison = compareEncodingEfficiency(sampleTagData);
 
-    assertEquals(comparison.messagePackSize > 0, true);
-    assertEquals(comparison.jsonSize > 0, true);
-    assertEquals(comparison.sizeReduction >= 0, true);
-    assertEquals(comparison.speedImprovement, 10);
+    expect(comparison.messagePackSize > 0).toStrictEqual(true);
+    expect(comparison.jsonSize > 0).toStrictEqual(true);
+    expect(comparison.sizeReduction >= 0).toStrictEqual(true);
+    expect(comparison.speedImprovement).toStrictEqual(10);
   });
 
   it("MessagePackUtils.decode - smart decode functionality", () => {
     const encodedTag = encodeTagData(sampleTagData);
     const decoded = MessagePackUtils.decode(encodedTag);
 
-    assertEquals(typeof decoded, "object");
-    assertEquals((decoded as ExtendedTag).title, sampleTagData.title);
+    expect(typeof decoded).toStrictEqual("object");
+    expect((decoded as ExtendedTag).title).toStrictEqual(sampleTagData.title);
   });
 
   it("MessagePackUtils.safeDecodeTagData - safe decoding with error handling", () => {
     const validEncoded = encodeTagData(sampleTagData);
     const validDecoded = MessagePackUtils.safeDecodeTagData(validEncoded);
-    assertEquals(validDecoded?.title, sampleTagData.title);
+    expect(validDecoded?.title).toStrictEqual(sampleTagData.title);
 
     const invalidData = new Uint8Array([0x00, 0x01, 0x02]);
     const invalidDecoded = MessagePackUtils.safeDecodeTagData(invalidData);
-    assertEquals(invalidDecoded, null);
+    expect(invalidDecoded).toStrictEqual(null);
   });
 
   it("MessagePackUtils.getPerformanceComparison - performance metrics", () => {
     const metrics = MessagePackUtils.getPerformanceComparison(sampleTagData);
 
-    assertEquals(typeof metrics.messagePackSize, "number");
-    assertEquals(typeof metrics.jsonSize, "number");
-    assertEquals(typeof metrics.sizeReduction, "number");
-    assertEquals(metrics.estimatedSpeedImprovement, 10);
-    assertEquals(metrics.messagePackSize > 0, true);
-    assertEquals(metrics.jsonSize > 0, true);
+    expect(typeof metrics.messagePackSize).toStrictEqual("number");
+    expect(typeof metrics.jsonSize).toStrictEqual("number");
+    expect(typeof metrics.sizeReduction).toStrictEqual("number");
+    expect(metrics.estimatedSpeedImprovement).toStrictEqual(10);
+    expect(metrics.messagePackSize > 0).toStrictEqual(true);
+    expect(metrics.jsonSize > 0).toStrictEqual(true);
   });
 
   it("MessagePackUtils.toJson - convert MessagePack to JSON", () => {
     const encoded = encodeTagData(sampleTagData);
     const jsonString = MessagePackUtils.toJson(encoded);
 
-    assertEquals(typeof jsonString, "string");
+    expect(typeof jsonString).toStrictEqual("string");
     const parsed = JSON.parse(jsonString);
-    assertEquals(parsed.title, sampleTagData.title);
-    assertEquals(parsed.artist, sampleTagData.artist);
+    expect(parsed.title).toStrictEqual(sampleTagData.title);
+    expect(parsed.artist).toStrictEqual(sampleTagData.artist);
   });
 
   it("MessagePackUtils.fromJson - convert JSON to MessagePack", () => {
     const jsonString = JSON.stringify(sampleTagData);
     const encoded = MessagePackUtils.fromJson(jsonString);
 
-    assertEquals(encoded instanceof Uint8Array, true);
-    assertEquals(isValidMessagePack(encoded), true);
+    expect(encoded instanceof Uint8Array).toStrictEqual(true);
+    expect(isValidMessagePack(encoded)).toStrictEqual(true);
 
     const decoded = decodeTagData(encoded);
-    assertEquals(decoded.title, sampleTagData.title);
+    expect(decoded.title).toStrictEqual(sampleTagData.title);
   });
 
   it("MessagePackUtils.batchDecode - batch processing", () => {
@@ -221,28 +222,28 @@ describe("MessagePack", () => {
       invalidData,
     ]);
 
-    assertEquals(results.length, 3);
-    assertEquals(results[0].success, true);
-    assertEquals(results[1].success, true);
-    assertEquals(results[2].success, false);
-    assertExists(results[0].data);
-    assertExists(results[1].data);
-    assertExists(results[2].error);
+    expect(results.length).toStrictEqual(3);
+    expect(results[0].success).toStrictEqual(true);
+    expect(results[1].success).toStrictEqual(true);
+    expect(results[2].success).toStrictEqual(false);
+    expectDefined(results[0].data);
+    expectDefined(results[1].data);
+    expectDefined(results[2].error);
   });
 
   it("MessagePackUtils.isTagLibCompatible - compatibility check", () => {
-    assertEquals(MessagePackUtils.isTagLibCompatible(sampleTagData), true);
-    assertEquals(
-      MessagePackUtils.isTagLibCompatible(sampleAudioProperties),
+    expect(MessagePackUtils.isTagLibCompatible(sampleTagData)).toStrictEqual(
       true,
     );
-    assertEquals(MessagePackUtils.isTagLibCompatible(samplePicture), true);
-    assertEquals(
-      MessagePackUtils.isTagLibCompatible({ random: "data" }),
-      false,
+    expect(MessagePackUtils.isTagLibCompatible(sampleAudioProperties))
+      .toStrictEqual(true);
+    expect(MessagePackUtils.isTagLibCompatible(samplePicture)).toStrictEqual(
+      true,
     );
-    assertEquals(MessagePackUtils.isTagLibCompatible("string"), false);
-    assertEquals(MessagePackUtils.isTagLibCompatible(null), false);
+    expect(MessagePackUtils.isTagLibCompatible({ random: "data" }))
+      .toStrictEqual(false);
+    expect(MessagePackUtils.isTagLibCompatible("string")).toStrictEqual(false);
+    expect(MessagePackUtils.isTagLibCompatible(null)).toStrictEqual(false);
   });
 
   it("round-trip - encode then decode preserves data", () => {
@@ -258,7 +259,7 @@ describe("MessagePack", () => {
 
       for (const [key, value] of Object.entries(testData)) {
         if (value !== undefined) {
-          assertEquals((decoded as any)[key], value);
+          expect((decoded as any)[key]).toStrictEqual(value);
         }
       }
     }
@@ -277,11 +278,11 @@ describe("MessagePack", () => {
     const encoded = encodeTagData(specialData);
     const decoded = decodeTagData(encoded) as Record<string, unknown>;
 
-    assertEquals(decoded.title, "Test");
-    assertEquals(decoded.date, 0); // Zero should be preserved
-    assertEquals(decoded.albumArtist, "Valid Artist");
-    assertEquals("trackNumber" in decoded, false); // Undefined should be omitted
-    assertEquals("comment" in decoded, false); // Empty string should be omitted
+    expect(decoded.title).toStrictEqual("Test");
+    expect(decoded.date).toStrictEqual(0); // Zero should be preserved
+    expect(decoded.albumArtist).toStrictEqual("Valid Artist");
+    expect("trackNumber" in decoded).toStrictEqual(false); // Undefined should be omitted
+    expect("comment" in decoded).toStrictEqual(false); // Empty string should be omitted
   });
 
   it("handles large binary data", () => {
@@ -297,17 +298,19 @@ describe("MessagePack", () => {
     const encoded = encodePicture(largePicture);
     const decoded = decodePicture(encoded);
 
-    assertEquals(decoded.data.length, largePicture.data.length);
-    assertEquals(decoded.data[0], 0);
-    assertEquals(decoded.data[255], 255);
-    assertEquals(decoded.data[256], 0); // Pattern should repeat
+    expect(decoded.data.length).toStrictEqual(largePicture.data.length);
+    expect(decoded.data[0]).toStrictEqual(0);
+    expect(decoded.data[255]).toStrictEqual(255);
+    expect(decoded.data[256]).toStrictEqual(0); // Pattern should repeat
   });
 
   it("performance comparison is reasonable", () => {
     const comparison = compareEncodingEfficiency(sampleTagData);
 
-    assertEquals(comparison.messagePackSize <= comparison.jsonSize, true);
-    assertEquals(comparison.sizeReduction >= 0, true);
-    assertEquals(comparison.sizeReduction <= 90, true);
+    expect(comparison.messagePackSize <= comparison.jsonSize).toStrictEqual(
+      true,
+    );
+    expect(comparison.sizeReduction >= 0).toStrictEqual(true);
+    expect(comparison.sizeReduction <= 90).toStrictEqual(true);
   });
 });

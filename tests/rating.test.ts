@@ -2,8 +2,8 @@
  * @fileoverview Tests for rating utilities and branded types
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { expectDefined } from "./_assert-helpers.ts";
 import type { Rating } from "../src/constants/complex-properties.ts";
 import {
   clamp,
@@ -23,115 +23,115 @@ import {
 
 describe("Rating Utilities", () => {
   it("toNormalized - converts POPM (0-255) to normalized (0.0-1.0)", () => {
-    assertEquals(toNormalized(popm(0)), 0);
-    assertEquals(toNormalized(popm(255)), 1);
-    assertEquals(toNormalized(popm(128)), 128 / 255);
-    assertEquals(toNormalized(popm(64)), 64 / 255);
+    expect(toNormalized(popm(0))).toStrictEqual(0);
+    expect(toNormalized(popm(255))).toStrictEqual(1);
+    expect(toNormalized(popm(128))).toStrictEqual(128 / 255);
+    expect(toNormalized(popm(64))).toStrictEqual(64 / 255);
   });
 
   it("fromNormalized - converts normalized to POPM with rounding", () => {
-    assertEquals(fromNormalized(normalized(0)), 0);
-    assertEquals(fromNormalized(normalized(1)), 255);
-    assertEquals(fromNormalized(normalized(0.5)), 128); // Rounds 127.5 to 128
-    assertEquals(fromNormalized(normalized(0.25)), 64); // Rounds 63.75 to 64
+    expect(fromNormalized(normalized(0))).toStrictEqual(0);
+    expect(fromNormalized(normalized(1))).toStrictEqual(255);
+    expect(fromNormalized(normalized(0.5))).toStrictEqual(128); // Rounds 127.5 to 128
+    expect(fromNormalized(normalized(0.25))).toStrictEqual(64); // Rounds 63.75 to 64
   });
 
   it("toStars - converts normalized to star rating", () => {
     // 5-star scale (default)
-    assertEquals(toStars(normalized(0)), 0);
-    assertEquals(toStars(normalized(0.2)), 1);
-    assertEquals(toStars(normalized(0.4)), 2);
-    assertEquals(toStars(normalized(0.6)), 3);
-    assertEquals(toStars(normalized(0.8)), 4);
-    assertEquals(toStars(normalized(1.0)), 5);
+    expect(toStars(normalized(0))).toStrictEqual(0);
+    expect(toStars(normalized(0.2))).toStrictEqual(1);
+    expect(toStars(normalized(0.4))).toStrictEqual(2);
+    expect(toStars(normalized(0.6))).toStrictEqual(3);
+    expect(toStars(normalized(0.8))).toStrictEqual(4);
+    expect(toStars(normalized(1.0))).toStrictEqual(5);
 
     // 10-star scale
-    assertEquals(toStars(normalized(0.5), 10), 5);
-    assertEquals(toStars(normalized(1.0), 10), 10);
+    expect(toStars(normalized(0.5), 10)).toStrictEqual(5);
+    expect(toStars(normalized(1.0), 10)).toStrictEqual(10);
   });
 
   it("fromStars - converts star rating to normalized", () => {
     // 5-star scale (default)
-    assertEquals(fromStars(0), 0);
-    assertEquals(fromStars(1), 0.2);
-    assertEquals(fromStars(2.5), 0.5);
-    assertEquals(fromStars(5), 1.0);
+    expect(fromStars(0)).toStrictEqual(0);
+    expect(fromStars(1)).toStrictEqual(0.2);
+    expect(fromStars(2.5)).toStrictEqual(0.5);
+    expect(fromStars(5)).toStrictEqual(1.0);
 
     // 10-star scale
-    assertEquals(fromStars(5, 10), 0.5);
-    assertEquals(fromStars(10, 10), 1.0);
+    expect(fromStars(5, 10)).toStrictEqual(0.5);
+    expect(fromStars(10, 10)).toStrictEqual(1.0);
   });
 
   it("toPopm - converts normalized to standard POPM values", () => {
-    assertEquals(toPopm(normalized(0)), 0); // Unrated
-    assertEquals(toPopm(normalized(0.2)), 1); // 1 star
-    assertEquals(toPopm(normalized(0.4)), 64); // 2 stars
-    assertEquals(toPopm(normalized(0.6)), 128); // 3 stars
-    assertEquals(toPopm(normalized(0.8)), 196); // 4 stars
-    assertEquals(toPopm(normalized(1.0)), 255); // 5 stars
+    expect(toPopm(normalized(0))).toStrictEqual(0); // Unrated
+    expect(toPopm(normalized(0.2))).toStrictEqual(1); // 1 star
+    expect(toPopm(normalized(0.4))).toStrictEqual(64); // 2 stars
+    expect(toPopm(normalized(0.6))).toStrictEqual(128); // 3 stars
+    expect(toPopm(normalized(0.8))).toStrictEqual(196); // 4 stars
+    expect(toPopm(normalized(1.0))).toStrictEqual(255); // 5 stars
   });
 
   it("fromPopm - converts POPM to normalized star levels", () => {
-    assertEquals(fromPopm(popm(0)), 0); // Unrated
-    assertEquals(fromPopm(popm(1)), 0.2); // 1 star
-    assertEquals(fromPopm(popm(64)), 0.4); // 2 stars
-    assertEquals(fromPopm(popm(128)), 0.6); // 3 stars
-    assertEquals(fromPopm(popm(196)), 0.8); // 4 stars
-    assertEquals(fromPopm(popm(255)), 1.0); // 5 stars
+    expect(fromPopm(popm(0))).toStrictEqual(0); // Unrated
+    expect(fromPopm(popm(1))).toStrictEqual(0.2); // 1 star
+    expect(fromPopm(popm(64))).toStrictEqual(0.4); // 2 stars
+    expect(fromPopm(popm(128))).toStrictEqual(0.6); // 3 stars
+    expect(fromPopm(popm(196))).toStrictEqual(0.8); // 4 stars
+    expect(fromPopm(popm(255))).toStrictEqual(1.0); // 5 stars
 
     // In-between values should map to lower star level
-    assertEquals(fromPopm(popm(50)), 0.4); // Still 2 stars
-    assertEquals(fromPopm(popm(100)), 0.6); // Still 3 stars
-    assertEquals(fromPopm(popm(200)), 1.0); // 5 stars (>196)
+    expect(fromPopm(popm(50))).toStrictEqual(0.4); // Still 2 stars
+    expect(fromPopm(popm(100))).toStrictEqual(0.6); // Still 3 stars
+    expect(fromPopm(popm(200))).toStrictEqual(1.0); // 5 stars (>196)
   });
 
   it("toPercent - converts normalized to percentage", () => {
-    assertEquals(toPercent(normalized(0)), 0);
-    assertEquals(toPercent(normalized(0.5)), 50);
-    assertEquals(toPercent(normalized(1.0)), 100);
-    assertEquals(toPercent(normalized(0.75)), 75);
+    expect(toPercent(normalized(0))).toStrictEqual(0);
+    expect(toPercent(normalized(0.5))).toStrictEqual(50);
+    expect(toPercent(normalized(1.0))).toStrictEqual(100);
+    expect(toPercent(normalized(0.75))).toStrictEqual(75);
   });
 
   it("fromPercent - converts percentage to normalized", () => {
-    assertEquals(fromPercent(0), 0);
-    assertEquals(fromPercent(50), 0.5);
-    assertEquals(fromPercent(100), 1.0);
-    assertEquals(fromPercent(75), 0.75);
+    expect(fromPercent(0)).toStrictEqual(0);
+    expect(fromPercent(50)).toStrictEqual(0.5);
+    expect(fromPercent(100)).toStrictEqual(1.0);
+    expect(fromPercent(75)).toStrictEqual(0.75);
   });
 
   it("clamp - clamps values to 0.0-1.0 range", () => {
-    assertEquals(clamp(0.5), 0.5);
-    assertEquals(clamp(0), 0);
-    assertEquals(clamp(1), 1);
-    assertEquals(clamp(-0.5), 0);
-    assertEquals(clamp(1.5), 1);
-    assertEquals(clamp(-100), 0);
-    assertEquals(clamp(100), 1);
+    expect(clamp(0.5)).toStrictEqual(0.5);
+    expect(clamp(0)).toStrictEqual(0);
+    expect(clamp(1)).toStrictEqual(1);
+    expect(clamp(-0.5)).toStrictEqual(0);
+    expect(clamp(1.5)).toStrictEqual(1);
+    expect(clamp(-100)).toStrictEqual(0);
+    expect(clamp(100)).toStrictEqual(1);
   });
 
   it("isValid - validates rating values", () => {
-    assertEquals(isValid(0), true);
-    assertEquals(isValid(0.5), true);
-    assertEquals(isValid(1), true);
-    assertEquals(isValid(-0.1), false);
-    assertEquals(isValid(1.1), false);
-    assertEquals(isValid(NaN), false);
+    expect(isValid(0)).toStrictEqual(true);
+    expect(isValid(0.5)).toStrictEqual(true);
+    expect(isValid(1)).toStrictEqual(true);
+    expect(isValid(-0.1)).toStrictEqual(false);
+    expect(isValid(1.1)).toStrictEqual(false);
+    expect(isValid(NaN)).toStrictEqual(false);
   });
 
   it("RatingUtils namespace - exports all utilities", () => {
-    assertExists(RatingUtils.normalized);
-    assertExists(RatingUtils.popm);
-    assertExists(RatingUtils.toNormalized);
-    assertExists(RatingUtils.fromNormalized);
-    assertExists(RatingUtils.toStars);
-    assertExists(RatingUtils.fromStars);
-    assertExists(RatingUtils.toPopm);
-    assertExists(RatingUtils.fromPopm);
-    assertExists(RatingUtils.toPercent);
-    assertExists(RatingUtils.fromPercent);
-    assertExists(RatingUtils.clamp);
-    assertExists(RatingUtils.isValid);
-    assertExists(RatingUtils.POPM_STAR_VALUES);
+    expectDefined(RatingUtils.normalized);
+    expectDefined(RatingUtils.popm);
+    expectDefined(RatingUtils.toNormalized);
+    expectDefined(RatingUtils.fromNormalized);
+    expectDefined(RatingUtils.toStars);
+    expectDefined(RatingUtils.fromStars);
+    expectDefined(RatingUtils.toPopm);
+    expectDefined(RatingUtils.fromPopm);
+    expectDefined(RatingUtils.toPercent);
+    expectDefined(RatingUtils.fromPercent);
+    expectDefined(RatingUtils.clamp);
+    expectDefined(RatingUtils.isValid);
+    expectDefined(RatingUtils.POPM_STAR_VALUES);
   });
 });
 
@@ -140,7 +140,7 @@ describe("Roundtrip Tests", () => {
     for (let i = 0; i <= 255; i++) {
       const nr = toNormalized(popm(i));
       const recovered = fromNormalized(nr);
-      assertEquals(recovered, i);
+      expect(recovered).toStrictEqual(i);
     }
   });
 
@@ -148,7 +148,7 @@ describe("Roundtrip Tests", () => {
     for (let stars = 0; stars <= 5; stars++) {
       const nr = fromStars(stars);
       const recovered = toStars(nr);
-      assertEquals(recovered, stars);
+      expect(recovered).toStrictEqual(stars);
     }
   });
 
@@ -157,7 +157,7 @@ describe("Roundtrip Tests", () => {
     for (const p of popmValues) {
       const nr = fromPopm(popm(p));
       const recovered = toPopm(nr);
-      assertEquals(recovered, p);
+      expect(recovered).toStrictEqual(p);
     }
   });
 });
@@ -165,18 +165,18 @@ describe("Roundtrip Tests", () => {
 describe("Rating Interface", () => {
   it("Rating interface - type compatibility", () => {
     const minRating: Rating = { rating: 0.8 };
-    assertEquals(minRating.rating, 0.8);
-    assertEquals(minRating.email, undefined);
-    assertEquals(minRating.counter, undefined);
+    expect(minRating.rating).toStrictEqual(0.8);
+    expect(minRating.email).toStrictEqual(undefined);
+    expect(minRating.counter).toStrictEqual(undefined);
 
     const fullRating: Rating = {
       rating: 0.8,
       email: "user@example.com",
       counter: 42,
     };
-    assertEquals(fullRating.rating, 0.8);
-    assertEquals(fullRating.email, "user@example.com");
-    assertEquals(fullRating.counter, 42);
+    expect(fullRating.rating).toStrictEqual(0.8);
+    expect(fullRating.email).toStrictEqual("user@example.com");
+    expect(fullRating.counter).toStrictEqual(42);
   });
 });
 
@@ -204,7 +204,7 @@ describe("Branded Type Safety", () => {
   it("allows branded values to be used as numbers", () => {
     const n = normalized(0.8);
     const p = popm(196);
-    assertEquals(n + 0.1 > 0, true);
-    assertEquals(p - 1 >= 0, true);
+    expect(n + 0.1 > 0).toStrictEqual(true);
+    expect(p - 1 >= 0).toStrictEqual(true);
   });
 });

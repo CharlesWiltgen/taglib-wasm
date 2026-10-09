@@ -1,5 +1,5 @@
-import { assertEquals, assertRejects, assertThrows } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { expectRejects, expectThrows } from "./_assert-helpers.ts";
 import {
   canvasToPicture,
   createPictureDownloadURL,
@@ -28,7 +28,7 @@ describe("pictureToDataURL", () => {
     const picture = makePicture({ data: new Uint8Array([0x89, 0x50, 0x4E]) });
     const result = pictureToDataURL(picture);
 
-    assertEquals(result.startsWith("data:image/jpeg;base64,"), true);
+    expect(result.startsWith("data:image/jpeg;base64,")).toStrictEqual(true);
   });
 
   it("should be byte-identical to per-byte conversion across the chunk boundary (taglib-1zc.5lx)", () => {
@@ -51,10 +51,8 @@ describe("pictureToDataURL", () => {
     for (const length of [CHUNK + 3, CHUNK * 2, CHUNK * 2 + 1, 1]) {
       const data = patterned(length);
       const result = pictureToDataURL(makePicture({ data }));
-      assertEquals(
-        result,
+      expect(result, `length ${length}`).toStrictEqual(
         `data:image/jpeg;base64,${reference(data)}`,
-        `length ${length}`,
       );
     }
   });
@@ -66,7 +64,7 @@ describe("pictureToDataURL", () => {
     });
     const result = pictureToDataURL(picture);
 
-    assertEquals(result.startsWith("data:image/png;base64,"), true);
+    expect(result.startsWith("data:image/png;base64,")).toStrictEqual(true);
   });
 
   it("should produce valid base64 for known input", () => {
@@ -74,21 +72,21 @@ describe("pictureToDataURL", () => {
     const picture = makePicture({ data });
     const result = pictureToDataURL(picture);
 
-    assertEquals(result, "data:image/jpeg;base64,SGVsbG8=");
+    expect(result).toStrictEqual("data:image/jpeg;base64,SGVsbG8=");
   });
 
   it("should handle empty data", () => {
     const picture = makePicture({ data: new Uint8Array(0) });
     const result = pictureToDataURL(picture);
 
-    assertEquals(result, "data:image/jpeg;base64,");
+    expect(result).toStrictEqual("data:image/jpeg;base64,");
   });
 
   it("should handle single byte data", () => {
     const picture = makePicture({ data: new Uint8Array([0xFF]) });
     const result = pictureToDataURL(picture);
 
-    assertEquals(result, "data:image/jpeg;base64,/w==");
+    expect(result).toStrictEqual("data:image/jpeg;base64,/w==");
   });
 
   it("should handle all byte values 0-255", () => {
@@ -97,8 +95,8 @@ describe("pictureToDataURL", () => {
     const picture = makePicture({ data: allBytes });
     const result = pictureToDataURL(picture);
 
-    assertEquals(result.startsWith("data:image/jpeg;base64,"), true);
-    assertEquals(result.length > 23, true);
+    expect(result.startsWith("data:image/jpeg;base64,")).toStrictEqual(true);
+    expect(result.length > 23).toStrictEqual(true);
   });
 });
 
@@ -107,50 +105,50 @@ describe("dataURLToPicture", () => {
     const dataURL = "data:image/jpeg;base64,SGVsbG8=";
     const result = dataURLToPicture(dataURL);
 
-    assertEquals(result.mimeType, "image/jpeg");
-    assertEquals(result.data, new Uint8Array([72, 101, 108, 108, 111]));
-    assertEquals(result.type, "FrontCover");
-    assertEquals(result.description, undefined);
+    expect(result.mimeType).toStrictEqual("image/jpeg");
+    expect(result.data).toStrictEqual(new Uint8Array([72, 101, 108, 108, 111]));
+    expect(result.type).toStrictEqual("FrontCover");
+    expect(result.description).toStrictEqual(undefined);
   });
 
   it("should parse a valid PNG data URL", () => {
     const dataURL = "data:image/png;base64,AAEC";
     const result = dataURLToPicture(dataURL);
 
-    assertEquals(result.mimeType, "image/png");
-    assertEquals(result.data, new Uint8Array([0x00, 0x01, 0x02]));
+    expect(result.mimeType).toStrictEqual("image/png");
+    expect(result.data).toStrictEqual(new Uint8Array([0x00, 0x01, 0x02]));
   });
 
   it("should default to FrontCover type when no type specified", () => {
     const dataURL = "data:image/jpeg;base64,AA==";
     const result = dataURLToPicture(dataURL);
 
-    assertEquals(result.type, "FrontCover");
+    expect(result.type).toStrictEqual("FrontCover");
   });
 
   it("should accept a string PictureType", () => {
     const dataURL = "data:image/jpeg;base64,AA==";
     const result = dataURLToPicture(dataURL, "BackCover");
 
-    assertEquals(result.type, "BackCover");
+    expect(result.type).toStrictEqual("BackCover");
   });
 
   it("should accept a PictureType string", () => {
     const dataURL = "data:image/jpeg;base64,AA==";
     const result = dataURLToPicture(dataURL, "LeadArtist");
 
-    assertEquals(result.type, "LeadArtist");
+    expect(result.type).toStrictEqual("LeadArtist");
   });
 
   it("should include description when provided", () => {
     const dataURL = "data:image/jpeg;base64,AA==";
     const result = dataURLToPicture(dataURL, "FrontCover", "Album cover art");
 
-    assertEquals(result.description, "Album cover art");
+    expect(result.description).toStrictEqual("Album cover art");
   });
 
   it("should throw on missing data: prefix", () => {
-    assertThrows(
+    expectThrows(
       () => dataURLToPicture("image/jpeg;base64,AA=="),
       Error,
       "Invalid data URL format",
@@ -158,7 +156,7 @@ describe("dataURLToPicture", () => {
   });
 
   it("should throw on missing base64 marker", () => {
-    assertThrows(
+    expectThrows(
       () => dataURLToPicture("data:image/jpeg,AA=="),
       Error,
       "Invalid data URL format",
@@ -166,15 +164,11 @@ describe("dataURLToPicture", () => {
   });
 
   it("should throw on empty string", () => {
-    assertThrows(
-      () => dataURLToPicture(""),
-      Error,
-      "Invalid data URL format",
-    );
+    expectThrows(() => dataURLToPicture(""), Error, "Invalid data URL format");
   });
 
   it("should throw on plain text", () => {
-    assertThrows(
+    expectThrows(
       () => dataURLToPicture("not a data url at all"),
       Error,
       "Invalid data URL format",
@@ -182,7 +176,7 @@ describe("dataURLToPicture", () => {
   });
 
   it("should throw on data URL with empty base64 payload", () => {
-    assertThrows(
+    expectThrows(
       () => dataURLToPicture("data:image/jpeg;base64,"),
       Error,
       "Invalid data URL format",
@@ -201,8 +195,8 @@ describe("pictureToDataURL and dataURLToPicture roundtrip", () => {
     const dataURL = pictureToDataURL(original);
     const restored = dataURLToPicture(dataURL);
 
-    assertEquals(restored.mimeType, original.mimeType);
-    assertEquals(restored.data, original.data);
+    expect(restored.mimeType).toStrictEqual(original.mimeType);
+    expect(restored.data).toStrictEqual(original.data);
   });
 
   it("should preserve PNG data through roundtrip", () => {
@@ -224,8 +218,8 @@ describe("pictureToDataURL and dataURLToPicture roundtrip", () => {
     const dataURL = pictureToDataURL(original);
     const restored = dataURLToPicture(dataURL);
 
-    assertEquals(restored.mimeType, "image/png");
-    assertEquals(restored.data, originalData);
+    expect(restored.mimeType).toStrictEqual("image/png");
+    expect(restored.data).toStrictEqual(originalData);
   });
 
   it("should preserve all 256 byte values through roundtrip", () => {
@@ -236,7 +230,7 @@ describe("pictureToDataURL and dataURLToPicture roundtrip", () => {
     const dataURL = pictureToDataURL(original);
     const restored = dataURLToPicture(dataURL);
 
-    assertEquals(restored.data, allBytes);
+    expect(restored.data).toStrictEqual(allBytes);
   });
 
   it("should preserve single byte through roundtrip", () => {
@@ -245,7 +239,7 @@ describe("pictureToDataURL and dataURLToPicture roundtrip", () => {
     const dataURL = pictureToDataURL(original);
     const restored = dataURLToPicture(dataURL);
 
-    assertEquals(restored.data, new Uint8Array([0x00]));
+    expect(restored.data).toStrictEqual(new Uint8Array([0x00]));
   });
 
   it("should preserve image/webp MIME type through roundtrip", () => {
@@ -257,8 +251,8 @@ describe("pictureToDataURL and dataURLToPicture roundtrip", () => {
     const dataURL = pictureToDataURL(original);
     const restored = dataURLToPicture(dataURL);
 
-    assertEquals(restored.mimeType, "image/webp");
-    assertEquals(restored.data, original.data);
+    expect(restored.mimeType).toStrictEqual("image/webp");
+    expect(restored.data).toStrictEqual(original.data);
   });
 });
 
@@ -269,10 +263,10 @@ describe("imageFileToPicture", () => {
 
     const result = await imageFileToPicture(file);
 
-    assertEquals(result.mimeType, "image/jpeg");
-    assertEquals(result.data, fileData);
-    assertEquals(result.type, "FrontCover");
-    assertEquals(result.description, "cover.jpg");
+    expect(result.mimeType).toStrictEqual("image/jpeg");
+    expect(result.data).toStrictEqual(fileData);
+    expect(result.type).toStrictEqual("FrontCover");
+    expect(result.description).toStrictEqual("cover.jpg");
   });
 
   it("should use provided type and description", async () => {
@@ -281,9 +275,9 @@ describe("imageFileToPicture", () => {
 
     const result = await imageFileToPicture(file, "BackCover", "Back cover");
 
-    assertEquals(result.mimeType, "image/png");
-    assertEquals(result.type, "BackCover");
-    assertEquals(result.description, "Back cover");
+    expect(result.mimeType).toStrictEqual("image/png");
+    expect(result.type).toStrictEqual("BackCover");
+    expect(result.description).toStrictEqual("Back cover");
   });
 
   it("should fall back to file name when description is omitted", async () => {
@@ -293,7 +287,7 @@ describe("imageFileToPicture", () => {
 
     const result = await imageFileToPicture(file);
 
-    assertEquals(result.description, "art.webp");
+    expect(result.description).toStrictEqual("art.webp");
   });
 
   it("should handle empty file", async () => {
@@ -301,8 +295,8 @@ describe("imageFileToPicture", () => {
 
     const result = await imageFileToPicture(file);
 
-    assertEquals(result.data, new Uint8Array(0));
-    assertEquals(result.mimeType, "image/jpeg");
+    expect(result.data).toStrictEqual(new Uint8Array(0));
+    expect(result.mimeType).toStrictEqual("image/jpeg");
   });
 });
 
@@ -333,10 +327,10 @@ describe("canvasToPicture", () => {
 
     const result = await canvasToPicture(canvas);
 
-    assertEquals(result.mimeType, "image/jpeg");
-    assertEquals(result.data, pixelData);
-    assertEquals(result.type, "FrontCover");
-    assertEquals(result.description, undefined);
+    expect(result.mimeType).toStrictEqual("image/jpeg");
+    expect(result.data).toStrictEqual(pixelData);
+    expect(result.type).toStrictEqual("FrontCover");
+    expect(result.description).toStrictEqual(undefined);
   });
 
   it("should use provided options", async () => {
@@ -350,15 +344,15 @@ describe("canvasToPicture", () => {
       description: "Canvas art",
     });
 
-    assertEquals(result.mimeType, "image/png");
-    assertEquals(result.type, "BackCover");
-    assertEquals(result.description, "Canvas art");
+    expect(result.mimeType).toStrictEqual("image/png");
+    expect(result.type).toStrictEqual("BackCover");
+    expect(result.description).toStrictEqual("Canvas art");
   });
 
   it("should reject when canvas produces null blob", async () => {
     const canvas = mockCanvas(null);
 
-    await assertRejects(
+    await expectRejects(
       () => canvasToPicture(canvas),
       Error,
       "Failed to convert canvas to blob",
@@ -385,9 +379,9 @@ describe("setCoverArtFromCanvas", () => {
       // applyPictures will throw because TagLib is not initialized
     }
 
-    assertEquals(calls.length, 1);
-    assertEquals(calls[0].format, "image/png");
-    assertEquals(calls[0].quality, 0.8);
+    expect(calls.length).toStrictEqual(1);
+    expect(calls[0].format).toStrictEqual("image/png");
+    expect(calls[0].quality).toStrictEqual(0.8);
   });
 
   it("should use default format and quality", async () => {
@@ -405,9 +399,9 @@ describe("setCoverArtFromCanvas", () => {
       // applyPictures will throw because TagLib is not initialized
     }
 
-    assertEquals(calls.length, 1);
-    assertEquals(calls[0].format, "image/jpeg");
-    assertEquals(calls[0].quality, 0.92);
+    expect(calls.length).toStrictEqual(1);
+    expect(calls[0].format).toStrictEqual("image/jpeg");
+    expect(calls[0].quality).toStrictEqual(0.92);
   });
 });
 
@@ -428,9 +422,9 @@ describe("displayPicture", () => {
 
     displayPicture(picture, imgElement);
 
-    assertEquals(imgElement.src.startsWith("blob:"), true);
-    assertEquals(listeners.length, 1);
-    assertEquals(listeners[0].event, "load");
+    expect(imgElement.src.startsWith("blob:")).toStrictEqual(true);
+    expect(listeners.length).toStrictEqual(1);
+    expect(listeners[0].event).toStrictEqual("load");
   });
 
   it("should revoke previous blob URL before setting new one", () => {
@@ -449,11 +443,9 @@ describe("displayPicture", () => {
 
       displayPicture(picture, imgElement);
 
-      assertEquals(
-        revokedURLs.includes("blob:http://localhost/old-uuid"),
-        true,
-      );
-      assertEquals(imgElement.src.startsWith("blob:"), true);
+      expect(revokedURLs.includes("blob:http://localhost/old-uuid"))
+        .toStrictEqual(true);
+      expect(imgElement.src.startsWith("blob:")).toStrictEqual(true);
     } finally {
       URL.revokeObjectURL = originalRevoke;
     }
@@ -475,7 +467,7 @@ describe("displayPicture", () => {
 
       displayPicture(picture, imgElement);
 
-      assertEquals(revokedURLs.length, 0);
+      expect(revokedURLs.length).toStrictEqual(0);
     } finally {
       URL.revokeObjectURL = originalRevoke;
     }
@@ -490,7 +482,7 @@ describe("createPictureDownloadURL", () => {
 
     const url = createPictureDownloadURL(picture);
 
-    assertEquals(url.startsWith("blob:"), true);
+    expect(url.startsWith("blob:")).toStrictEqual(true);
     URL.revokeObjectURL(url);
   });
 
@@ -501,7 +493,7 @@ describe("createPictureDownloadURL", () => {
     const url1 = createPictureDownloadURL(picture1);
     const url2 = createPictureDownloadURL(picture2);
 
-    assertEquals(url1 !== url2, true);
+    expect(url1 !== url2).toStrictEqual(true);
     URL.revokeObjectURL(url1);
     URL.revokeObjectURL(url2);
   });
@@ -514,7 +506,7 @@ describe("createPictureDownloadURL", () => {
 
     const url = createPictureDownloadURL(picture, "cover.png");
 
-    assertEquals(url.startsWith("blob:"), true);
+    expect(url.startsWith("blob:")).toStrictEqual(true);
     URL.revokeObjectURL(url);
   });
 });

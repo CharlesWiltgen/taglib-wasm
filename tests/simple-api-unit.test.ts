@@ -1,5 +1,7 @@
-import { assertEquals, assertExists, assertRejects } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { afterAll, describe, expect, it } from "vite-plus/test";
+import { copyFile, readFile, rm } from "node:fs/promises";
+import { expectDefined, expectRejects } from "./_assert-helpers.ts";
+import { cleanupTempFiles, createTempFile } from "./test-utils.ts";
 import {
   addPicture,
   applyCoverArt,
@@ -33,37 +35,42 @@ import { TEST_PICTURES } from "./test-utils.ts";
 // Force Emscripten backend
 setBufferMode(true);
 
+afterAll(cleanupTempFiles);
+
 describe("isValidAudioFile", () => {
   it("should return true for valid audio files", async () => {
-    assertEquals(await isValidAudioFile(FIXTURE_PATH.mp3), true);
-    assertEquals(await isValidAudioFile(FIXTURE_PATH.flac), true);
-    assertEquals(await isValidAudioFile(FIXTURE_PATH.ogg), true);
+    expect(await isValidAudioFile(FIXTURE_PATH.mp3)).toStrictEqual(true);
+    expect(await isValidAudioFile(FIXTURE_PATH.flac)).toStrictEqual(true);
+    expect(await isValidAudioFile(FIXTURE_PATH.ogg)).toStrictEqual(true);
   });
 
   it("should return false for invalid data", async () => {
-    assertEquals(await isValidAudioFile(new Uint8Array([0, 0, 0, 0])), false);
+    expect(await isValidAudioFile(new Uint8Array([0, 0, 0, 0]))).toStrictEqual(
+      false,
+    );
   });
 
   it("should return false for non-existent path", async () => {
-    assertEquals(await isValidAudioFile("/nonexistent/file.mp3"), false);
+    expect(await isValidAudioFile("/nonexistent/file.mp3")).toStrictEqual(
+      false,
+    );
   });
 });
 
 describe("clearTags", () => {
   it("should return buffer with tags cleared", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const cleared = await clearTags(new Uint8Array(original));
 
-    assertEquals(cleared instanceof Uint8Array, true);
-    assertEquals(cleared.length > 0, true);
+    expect(cleared instanceof Uint8Array).toStrictEqual(true);
+    expect(cleared.length > 0).toStrictEqual(true);
 
     // Read back and verify tags are empty
     const tags = await readTags(cleared);
-    assertEquals(
+    expect(
       tags.title === undefined || tags.title.length === 0 ||
         tags.title.every((s) => s === ""),
-      true,
-    );
+    ).toStrictEqual(true);
   });
 });
 
@@ -73,45 +80,45 @@ describe("readProperties", () => {
 
     for (const file of paths) {
       const props = await readProperties(file);
-      assertExists(props);
-      assertEquals(typeof props.duration, "number");
-      assertEquals(typeof props.bitrate, "number");
-      assertEquals(typeof props.sampleRate, "number");
-      assertEquals(typeof props.channels, "number");
+      expectDefined(props);
+      expect(typeof props.duration).toStrictEqual("number");
+      expect(typeof props.bitrate).toStrictEqual("number");
+      expect(typeof props.sampleRate).toStrictEqual("number");
+      expect(typeof props.channels).toStrictEqual("number");
     }
   });
 });
 
 describe("readPictures", () => {
   it("should return array of pictures from file with cover art", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const pictures = await readPictures(new Uint8Array(mp3));
-    assertEquals(Array.isArray(pictures), true);
+    expect(Array.isArray(pictures)).toStrictEqual(true);
   });
 });
 
 describe("clearPictures", () => {
   it("should return buffer with pictures removed", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const cleared = await clearPictures(new Uint8Array(original));
-    assertEquals(cleared instanceof Uint8Array, true);
-    assertEquals(cleared.length > 0, true);
+    expect(cleared instanceof Uint8Array).toStrictEqual(true);
+    expect(cleared.length > 0).toStrictEqual(true);
 
     const pictures = await readPictures(cleared);
-    assertEquals(pictures.length, 0);
+    expect(pictures.length).toStrictEqual(0);
   });
 });
 
 describe("readPictureMetadata", () => {
   it("should return metadata without data payload", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const metadata = await readPictureMetadata(new Uint8Array(mp3));
-    assertEquals(Array.isArray(metadata), true);
+    expect(Array.isArray(metadata)).toStrictEqual(true);
 
     for (const m of metadata) {
-      assertEquals(typeof m.type, "string");
-      assertEquals(typeof m.mimeType, "string");
-      assertEquals(typeof m.size, "number");
+      expect(typeof m.type).toStrictEqual("string");
+      expect(typeof m.mimeType).toStrictEqual("string");
+      expect(typeof m.size).toStrictEqual("number");
     }
   });
 });
@@ -132,8 +139,8 @@ describe("findPictureByType", () => {
     ];
 
     const front = findPictureByType(pictures, "FrontCover");
-    assertExists(front);
-    assertEquals(front!.type, "FrontCover");
+    expectDefined(front);
+    expect(front!.type).toStrictEqual("FrontCover");
   });
 
   it("should find picture by PictureType value", () => {
@@ -151,8 +158,8 @@ describe("findPictureByType", () => {
     ];
 
     const back = findPictureByType(pictures, "BackCover");
-    assertExists(back);
-    assertEquals(back!.type, "BackCover");
+    expectDefined(back);
+    expect(back!.type).toStrictEqual("BackCover");
   });
 
   it("should return null when type not found", () => {
@@ -164,11 +171,11 @@ describe("findPictureByType", () => {
       },
     ];
 
-    assertEquals(findPictureByType(pictures, "BackCover"), undefined);
+    expect(findPictureByType(pictures, "BackCover")).toStrictEqual(undefined);
   });
 
   it("should return undefined for empty array", () => {
-    assertEquals(findPictureByType([], "FrontCover"), undefined);
+    expect(findPictureByType([], "FrontCover")).toStrictEqual(undefined);
   });
 });
 
@@ -181,9 +188,11 @@ describe("readTagsBatch", () => {
     ];
 
     const result = await readTagsBatch(files);
-    assertEquals(result.items.length, 3);
-    assertEquals(result.items.every((item) => item.status === "ok"), true);
-    assertEquals(typeof result.duration, "number");
+    expect(result.items.length).toStrictEqual(3);
+    expect(result.items.every((item) => item.status === "ok")).toStrictEqual(
+      true,
+    );
+    expect(typeof result.duration).toStrictEqual("number");
   });
 
   it("should handle errors with continueOnError", async () => {
@@ -193,11 +202,11 @@ describe("readTagsBatch", () => {
     ];
 
     const result = await readTagsBatch(files, { continueOnError: true });
-    assertEquals(result.items.length, 2);
-    assertEquals(result.items[0].status, "ok");
-    assertEquals(result.items[0].path, FIXTURE_PATH.mp3);
-    assertEquals(result.items[1].status, "error");
-    assertEquals(result.items[1].path, "/nonexistent/file.mp3");
+    expect(result.items.length).toStrictEqual(2);
+    expect(result.items[0].status).toStrictEqual("ok");
+    expect(result.items[0].path).toStrictEqual(FIXTURE_PATH.mp3);
+    expect(result.items[1].status).toStrictEqual("error");
+    expect(result.items[1].path).toStrictEqual("/nonexistent/file.mp3");
   });
 
   it("should call onProgress callback", async () => {
@@ -210,8 +219,8 @@ describe("readTagsBatch", () => {
       },
     });
 
-    assertEquals(progressCalls.length, 1);
-    assertEquals(progressCalls[0], { processed: 1, total: 1 });
+    expect(progressCalls.length).toStrictEqual(1);
+    expect(progressCalls[0]).toStrictEqual({ processed: 1, total: 1 });
   });
 
   it("should respect concurrency option", async () => {
@@ -223,8 +232,10 @@ describe("readTagsBatch", () => {
     ];
 
     const result = await readTagsBatch(files, { concurrency: 2 });
-    assertEquals(result.items.length, 4);
-    assertEquals(result.items.every((item) => item.status === "ok"), true);
+    expect(result.items.length).toStrictEqual(4);
+    expect(result.items.every((item) => item.status === "ok")).toStrictEqual(
+      true,
+    );
   });
 });
 
@@ -236,13 +247,15 @@ describe("readPropertiesBatch", () => {
     ];
 
     const result = await readPropertiesBatch(files);
-    assertEquals(result.items.length, 2);
-    assertEquals(result.items.every((item) => item.status === "ok"), true);
+    expect(result.items.length).toStrictEqual(2);
+    expect(result.items.every((item) => item.status === "ok")).toStrictEqual(
+      true,
+    );
 
     for (const item of result.items) {
       if (item.status === "ok") {
-        assertExists(item.data);
-        assertEquals(typeof item.data!.duration, "number");
+        expectDefined(item.data);
+        expect(typeof item.data!.duration).toStrictEqual("number");
       }
     }
   });
@@ -256,14 +269,14 @@ describe("readMetadataBatch", () => {
     ];
 
     const result = await readMetadataBatch(files);
-    assertEquals(result.items.length, 2);
+    expect(result.items.length).toStrictEqual(2);
 
     for (const item of result.items) {
-      assertEquals(item.status, "ok");
+      expect(item.status).toStrictEqual("ok");
       if (item.status === "ok") {
-        assertExists(item.data.tags);
-        assertExists(item.data.properties);
-        assertEquals(typeof item.data.hasCoverArt, "boolean");
+        expectDefined(item.data.tags);
+        expectDefined(item.data.properties);
+        expect(typeof item.data.hasCoverArt).toStrictEqual("boolean");
       }
     }
   });
@@ -271,8 +284,8 @@ describe("readMetadataBatch", () => {
   it("should handle errors gracefully", async () => {
     const files = ["/nonexistent/file.mp3"];
     const result = await readMetadataBatch(files, { continueOnError: true });
-    assertEquals(result.items.length, 1);
-    assertEquals(result.items[0].status, "error");
+    expect(result.items.length).toStrictEqual(1);
+    expect(result.items[0].status).toStrictEqual("error");
   });
 
   it("should call onProgress callback", async () => {
@@ -289,15 +302,15 @@ describe("readMetadataBatch", () => {
       },
     });
 
-    assertEquals(progressCalls.length, 2);
-    assertEquals(progressCalls[0].total, 2);
-    assertEquals(progressCalls[1].total, 2);
+    expect(progressCalls.length).toStrictEqual(2);
+    expect(progressCalls[0].total).toStrictEqual(2);
+    expect(progressCalls[1].total).toStrictEqual(2);
   });
 
   it("should return empty result for empty input", async () => {
     const result = await readMetadataBatch([]);
-    assertEquals(result.items.length, 0);
-    assertEquals(result.duration, 0);
+    expect(result.items.length).toStrictEqual(0);
+    expect(result.duration).toStrictEqual(0);
   });
 });
 
@@ -311,9 +324,9 @@ describe("readTagsBatch AbortSignal", () => {
       await readTagsBatch([FIXTURE_PATH.mp3], { signal: controller.signal });
     } catch (error) {
       threw = true;
-      assertEquals(error instanceof DOMException, true);
+      expect(error instanceof DOMException).toStrictEqual(true);
     }
-    assertEquals(threw, true);
+    expect(threw).toStrictEqual(true);
   });
 });
 
@@ -321,28 +334,27 @@ describe("readMetadata", () => {
   it("should return tags, properties, hasCoverArt, and dynamics for a single file", async () => {
     const metadata = await readMetadata(FIXTURE_PATH.mp3);
 
-    assertExists(metadata.tags);
-    assertExists(metadata.properties);
-    assertEquals(typeof metadata.hasCoverArt, "boolean");
-    assertEquals(typeof metadata.properties!.duration, "number");
-    assertEquals(typeof metadata.properties!.bitrate, "number");
+    expectDefined(metadata.tags);
+    expectDefined(metadata.properties);
+    expect(typeof metadata.hasCoverArt).toStrictEqual("boolean");
+    expect(typeof metadata.properties!.duration).toStrictEqual("number");
+    expect(typeof metadata.properties!.bitrate).toStrictEqual("number");
     // dynamics may be undefined if no ReplayGain/Sound Check tags exist
-    assertEquals(
+    expect(
       metadata.dynamics === undefined || typeof metadata.dynamics === "object",
-      true,
-    );
+    ).toStrictEqual(true);
   });
 
   it("should return same shape as readMetadataBatch for single file", async () => {
     const single = await readMetadata(FIXTURE_PATH.flac);
     const batch = await readMetadataBatch([FIXTURE_PATH.flac]);
 
-    assertEquals(batch.items.length, 1);
-    assertEquals(batch.items[0].status, "ok");
+    expect(batch.items.length).toStrictEqual(1);
+    expect(batch.items[0].status).toStrictEqual("ok");
     if (batch.items[0].status === "ok") {
-      assertEquals(single.tags, batch.items[0].data.tags);
-      assertEquals(single.properties, batch.items[0].data.properties);
-      assertEquals(single.hasCoverArt, batch.items[0].data.hasCoverArt);
+      expect(single.tags).toStrictEqual(batch.items[0].data.tags);
+      expect(single.properties).toStrictEqual(batch.items[0].data.properties);
+      expect(single.hasCoverArt).toStrictEqual(batch.items[0].data.hasCoverArt);
     }
   });
 
@@ -352,9 +364,9 @@ describe("readMetadata", () => {
       await readMetadata(new Uint8Array([0, 0, 0, 0]));
     } catch (error) {
       threw = true;
-      assertEquals(error instanceof Error, true);
+      expect(error instanceof Error).toStrictEqual(true);
     }
-    assertEquals(threw, true);
+    expect(threw).toStrictEqual(true);
   });
 });
 
@@ -385,15 +397,12 @@ describe("readTags structured fields (taglib-0co)", () => {
     };
     reopened.dispose();
 
-    assertEquals(
-      {
-        pictures: tag.pictures,
-        ratings: tag.ratings,
-        lyrics: tag.lyrics,
-        chapters: tag.chapters,
-      },
-      viaMethods,
-    );
+    expect({
+      pictures: tag.pictures,
+      ratings: tag.ratings,
+      lyrics: tag.lyrics,
+      chapters: tag.chapters,
+    }).toStrictEqual(viaMethods);
   });
 
   it("populates bext and iXML identically to the getX() methods on WAV", async () => {
@@ -415,56 +424,51 @@ describe("readTags structured fields (taglib-0co)", () => {
     };
     reopened.dispose();
 
-    assertEquals(
-      { bext: tag.bext, bextData: tag.bextData, ixml: tag.ixml },
-      viaMethods,
-    );
+    expect({ bext: tag.bext, bextData: tag.bextData, ixml: tag.ixml })
+      .toStrictEqual(viaMethods);
   });
 
   it("omits structured fields that are absent", async () => {
     const stripped = await clearTags(await readFileData(FIXTURE_PATH.mp3));
     const tag = await readTags(stripped);
-    assertEquals(
-      {
-        pictures: tag.pictures,
-        ratings: tag.ratings,
-        lyrics: tag.lyrics,
-        chapters: tag.chapters,
-      },
-      {
-        pictures: undefined,
-        ratings: undefined,
-        lyrics: undefined,
-        chapters: undefined,
-      },
-    );
+    expect({
+      pictures: tag.pictures,
+      ratings: tag.ratings,
+      lyrics: tag.lyrics,
+      chapters: tag.chapters,
+    }).toStrictEqual({
+      pictures: undefined,
+      ratings: undefined,
+      lyrics: undefined,
+      chapters: undefined,
+    });
   });
 });
 
 describe("readFormat", () => {
   it("should detect MP3 format", async () => {
     const format = await readFormat(FIXTURE_PATH.mp3);
-    assertEquals(format, "MP3");
+    expect(format).toStrictEqual("MP3");
   });
 
   it("should detect FLAC format", async () => {
     const format = await readFormat(FIXTURE_PATH.flac);
-    assertEquals(format, "FLAC");
+    expect(format).toStrictEqual("FLAC");
   });
 
   it("should detect OGG format", async () => {
     const format = await readFormat(FIXTURE_PATH.ogg);
-    assertEquals(format, "OGG");
+    expect(format).toStrictEqual("OGG");
   });
 
   it("should detect M4A format", async () => {
     const format = await readFormat(FIXTURE_PATH.m4a);
-    assertEquals(format, "MP4");
+    expect(format).toStrictEqual("MP4");
   });
 
   it("should detect WAV format", async () => {
     const format = await readFormat(FIXTURE_PATH.wav);
-    assertEquals(format, "WAV");
+    expect(format).toStrictEqual("WAV");
   });
 
   it("should throw for invalid data", async () => {
@@ -474,7 +478,7 @@ describe("readFormat", () => {
     } catch {
       threw = true;
     }
-    assertEquals(threw, true);
+    expect(threw).toStrictEqual(true);
   });
 });
 
@@ -485,32 +489,32 @@ describe("readProperties error handling", () => {
       await readProperties(new Uint8Array([0, 0, 0, 0]));
     } catch (error) {
       threw = true;
-      assertEquals(error instanceof Error, true);
+      expect(error instanceof Error).toStrictEqual(true);
     }
-    assertEquals(threw, true);
+    expect(threw).toStrictEqual(true);
   });
 });
 
 describe("readCoverArt", () => {
   it("should return cover art data from file with pictures", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const coverArt = await readCoverArt(new Uint8Array(mp3));
     // May or may not have pictures, but should not throw
     if (coverArt) {
-      assertEquals(coverArt instanceof Uint8Array, true);
-      assertEquals(coverArt.length > 0, true);
+      expect(coverArt instanceof Uint8Array).toStrictEqual(true);
+      expect(coverArt.length > 0).toStrictEqual(true);
     }
   });
 
   it("should return undefined for file with no pictures", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const cleared = await clearPictures(new Uint8Array(mp3));
     const coverArt = await readCoverArt(cleared);
-    assertEquals(coverArt, undefined);
+    expect(coverArt).toStrictEqual(undefined);
   });
 
   it("should fall back to first picture when no FrontCover exists", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     // Set only a BackCover (no FrontCover)
     const backCoverOnly: Picture[] = [
       {
@@ -524,32 +528,32 @@ describe("readCoverArt", () => {
       backCoverOnly,
     );
     const coverArt = await readCoverArt(withBackCover);
-    assertExists(coverArt);
-    assertEquals(coverArt!.length, 4);
+    expectDefined(coverArt);
+    expect(coverArt!.length).toStrictEqual(4);
   });
 });
 
 describe("applyCoverArt", () => {
   it("should embed a front cover image and return modified buffer", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const fakeImage = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
     const result = await applyCoverArt(
       new Uint8Array(mp3),
       fakeImage,
       "image/jpeg",
     );
-    assertEquals(result instanceof Uint8Array, true);
-    assertEquals(result.length > 0, true);
+    expect(result instanceof Uint8Array).toStrictEqual(true);
+    expect(result.length > 0).toStrictEqual(true);
 
     const pictures = await readPictures(result);
-    assertEquals(pictures.length, 1);
-    assertEquals(pictures[0].type, "FrontCover");
+    expect(pictures.length).toStrictEqual(1);
+    expect(pictures[0].type).toStrictEqual("FrontCover");
   });
 });
 
 describe("applyPictures", () => {
   it("should replace all pictures with provided set", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const newPictures: Picture[] = [
       {
         mimeType: "image/png",
@@ -559,14 +563,14 @@ describe("applyPictures", () => {
     ];
     const result = await applyPictures(new Uint8Array(mp3), newPictures);
     const pictures = await readPictures(result);
-    assertEquals(pictures.length, 1);
-    assertEquals(pictures[0].type, "BackCover");
+    expect(pictures.length).toStrictEqual(1);
+    expect(pictures[0].type).toStrictEqual("BackCover");
   });
 });
 
 describe("addPicture", () => {
   it("should append a picture to existing pictures", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const cleared = await clearPictures(new Uint8Array(mp3));
     const picture: Picture = {
       mimeType: "image/jpeg",
@@ -575,13 +579,13 @@ describe("addPicture", () => {
     };
     const result = await addPicture(cleared, picture);
     const pictures = await readPictures(result);
-    assertEquals(pictures.length >= 1, true);
+    expect(pictures.length >= 1).toStrictEqual(true);
   });
 });
 
 describe("replacePictureByType", () => {
   it("should replace picture of matching type", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     // First add a front cover
     const withCover = await applyCoverArt(
       new Uint8Array(mp3),
@@ -597,41 +601,41 @@ describe("replacePictureByType", () => {
     const result = await replacePictureByType(withCover, newPicture);
     const pictures = await readPictures(result);
     const frontCovers = pictures.filter((p) => p.type === "FrontCover");
-    assertEquals(frontCovers.length, 1);
-    assertEquals(frontCovers[0].mimeType, "image/png");
+    expect(frontCovers.length).toStrictEqual(1);
+    expect(frontCovers[0].mimeType).toStrictEqual("image/png");
   });
 });
 
 describe("applyTags", () => {
   it("should apply tag changes and return modified buffer", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const result = await applyTags(new Uint8Array(mp3), {
       title: "New Title",
       artist: "New Artist",
     });
-    assertEquals(result instanceof Uint8Array, true);
+    expect(result instanceof Uint8Array).toStrictEqual(true);
 
     const tags = await readTags(result);
-    assertEquals(tags.title?.[0], "New Title");
-    assertEquals(tags.artist?.[0], "New Artist");
+    expect(tags.title?.[0]).toStrictEqual("New Title");
+    expect(tags.artist?.[0]).toStrictEqual("New Artist");
   });
 });
 
 describe("applyTagsToFile", () => {
   it("should write tags to a file on disk", async () => {
-    const tempFile = await Deno.makeTempFile({ suffix: ".mp3" });
+    const tempFile = await createTempFile(".mp3");
     try {
-      await Deno.copyFile(FIXTURE_PATH.mp3, tempFile);
+      await copyFile(FIXTURE_PATH.mp3, tempFile);
       await applyTagsToFile(tempFile, {
         title: "Written Title",
         artist: "Written Artist",
       });
 
       const tags = await readTags(tempFile);
-      assertEquals(tags.title?.[0], "Written Title");
-      assertEquals(tags.artist?.[0], "Written Artist");
+      expect(tags.title?.[0]).toStrictEqual("Written Title");
+      expect(tags.artist?.[0]).toStrictEqual("Written Artist");
     } finally {
-      await Deno.remove(tempFile);
+      await rm(tempFile);
     }
   });
 });
@@ -640,7 +644,7 @@ describe("readMetadata with dynamics", () => {
   it("should extract ReplayGain dynamics when present", async () => {
     // Write ReplayGain properties to a temp file, then read them back
     const taglib = await getTagLib();
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const audioFile = await taglib.open(new Uint8Array(mp3));
     try {
       audioFile.setProperty("replayGainTrackGain", "-6.5 dB");
@@ -649,15 +653,9 @@ describe("readMetadata with dynamics", () => {
       const buffer = audioFile.getFileBuffer();
 
       const metadata = await readMetadata(buffer);
-      assertExists(metadata.dynamics);
-      assertEquals(
-        metadata.dynamics!.replayGainTrackGain,
-        "-6.5 dB",
-      );
-      assertEquals(
-        metadata.dynamics!.replayGainTrackPeak,
-        "0.98765",
-      );
+      expectDefined(metadata.dynamics);
+      expect(metadata.dynamics!.replayGainTrackGain).toStrictEqual("-6.5 dB");
+      expect(metadata.dynamics!.replayGainTrackPeak).toStrictEqual("0.98765");
     } finally {
       audioFile.dispose();
     }
@@ -665,7 +663,7 @@ describe("readMetadata with dynamics", () => {
 
   it("should extract all ReplayGain fields", async () => {
     const taglib = await getTagLib();
-    const flac = await Deno.readFile(FIXTURE_PATH.flac);
+    const flac = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const audioFile = await taglib.open(new Uint8Array(flac));
     try {
       audioFile.setProperty("replayGainTrackGain", "-3.2 dB");
@@ -676,15 +674,9 @@ describe("readMetadata with dynamics", () => {
       const buffer = audioFile.getFileBuffer();
 
       const metadata = await readMetadata(buffer);
-      assertExists(metadata.dynamics);
-      assertEquals(
-        metadata.dynamics!.replayGainAlbumGain,
-        "-2.1 dB",
-      );
-      assertEquals(
-        metadata.dynamics!.replayGainAlbumPeak,
-        "0.99",
-      );
+      expectDefined(metadata.dynamics);
+      expect(metadata.dynamics!.replayGainAlbumGain).toStrictEqual("-2.1 dB");
+      expect(metadata.dynamics!.replayGainAlbumPeak).toStrictEqual("0.99");
     } finally {
       audioFile.dispose();
     }
@@ -693,26 +685,26 @@ describe("readMetadata with dynamics", () => {
 
 describe("readFileData", () => {
   it("should handle ArrayBuffer input", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const arrayBuffer = mp3.buffer.slice(
       mp3.byteOffset,
       mp3.byteOffset + mp3.byteLength,
     );
     const result = await readFileData(arrayBuffer);
-    assertEquals(result instanceof Uint8Array, true);
-    assertEquals(result.length, mp3.length);
+    expect(result instanceof Uint8Array).toStrictEqual(true);
+    expect(result.length).toStrictEqual(mp3.length);
   });
 
   it("should handle Uint8Array input directly", async () => {
     const data = new Uint8Array([1, 2, 3]);
     const result = await readFileData(data);
-    assertEquals(result, data);
+    expect(result).toStrictEqual(data);
   });
 
   it("should handle string path input", async () => {
     const result = await readFileData(FIXTURE_PATH.mp3);
-    assertEquals(result instanceof Uint8Array, true);
-    assertEquals(result.length > 0, true);
+    expect(result instanceof Uint8Array).toStrictEqual(true);
+    expect(result.length > 0).toStrictEqual(true);
   });
 });
 
@@ -723,15 +715,15 @@ describe("readPropertiesBatch error handling", () => {
       "/nonexistent/file.mp3",
     ];
     const result = await readPropertiesBatch(files, { continueOnError: true });
-    assertEquals(result.items.length, 2);
-    assertEquals(result.items[0].status, "ok");
-    assertEquals(result.items[1].status, "error");
+    expect(result.items.length).toStrictEqual(2);
+    expect(result.items[0].status).toStrictEqual("ok");
+    expect(result.items[1].status).toStrictEqual("error");
   });
 });
 
 describe("applyTagsToFile error handling", () => {
   it("should throw FileOperationError for non-string input", async () => {
-    await assertRejects(
+    await expectRejects(
       () =>
         applyTagsToFile(new Uint8Array([1]) as unknown as string, {
           title: "test",
@@ -744,62 +736,59 @@ describe("applyTagsToFile error handling", () => {
 
 describe("readTagsBatch with buffer input", () => {
   it("should handle buffer inputs in batch", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const result = await readTagsBatch([new Uint8Array(mp3)]);
-    assertEquals(result.items.length, 1);
-    assertEquals(result.items[0].status, "ok");
+    expect(result.items.length).toStrictEqual(1);
+    expect(result.items[0].status).toStrictEqual("ok");
     // Buffer input should use generated file name
-    assertEquals(result.items[0].path, "buffer-0");
+    expect(result.items[0].path).toStrictEqual("buffer-0");
   });
 });
 
 describe("readTagsBatch with NamedAudioInput", () => {
   it("should use name from NamedAudioInput for path", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const result = await readTagsBatch([
       { name: "my-song.mp3", data: new Uint8Array(mp3) },
     ]);
-    assertEquals(result.items.length, 1);
-    assertEquals(result.items[0].status, "ok");
-    assertEquals(result.items[0].path, "my-song.mp3");
+    expect(result.items.length).toStrictEqual(1);
+    expect(result.items[0].status).toStrictEqual("ok");
+    expect(result.items[0].path).toStrictEqual("my-song.mp3");
   });
 
   it("should use File.name for File input path", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const file = new File([mp3], "from-file-api.mp3", { type: "audio/mpeg" });
     const result = await readTagsBatch([file]);
-    assertEquals(result.items.length, 1);
-    assertEquals(result.items[0].status, "ok");
-    assertEquals(result.items[0].path, "from-file-api.mp3");
+    expect(result.items.length).toStrictEqual(1);
+    expect(result.items[0].status).toStrictEqual("ok");
+    expect(result.items[0].path).toStrictEqual("from-file-api.mp3");
   });
 
   it("should use buffer-N fallback for unnamed buffers", async () => {
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const result = await readTagsBatch([
       new Uint8Array(mp3),
       new Uint8Array(mp3),
     ]);
-    assertEquals(result.items[0].path, "buffer-0");
-    assertEquals(result.items[1].path, "buffer-1");
+    expect(result.items[0].path).toStrictEqual("buffer-0");
+    expect(result.items[1].path).toStrictEqual("buffer-1");
   });
 });
 
 describe("readTagsBatch without continueOnError", () => {
   it("should throw on error when continueOnError is false", async () => {
-    await assertRejects(
-      () =>
-        readTagsBatch(["/nonexistent/file.mp3"], {
-          continueOnError: false,
-        }),
-      Error,
-    );
+    await expectRejects(() =>
+      readTagsBatch(["/nonexistent/file.mp3"], {
+        continueOnError: false,
+      }), Error);
   });
 });
 
 describe("readMetadata with Sound Check", () => {
   it("should extract Apple Sound Check dynamics when ITUNNORM is set", async () => {
     const taglib = await getTagLib();
-    const mp3 = await Deno.readFile(FIXTURE_PATH.mp3);
+    const mp3 = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const audioFile = await taglib.open(new Uint8Array(mp3));
     try {
       audioFile.setProperty(
@@ -810,8 +799,8 @@ describe("readMetadata with Sound Check", () => {
       const buffer = audioFile.getFileBuffer();
 
       const metadata = await readMetadata(buffer);
-      assertExists(metadata.dynamics);
-      assertExists(metadata.dynamics!.appleSoundCheck);
+      expectDefined(metadata.dynamics);
+      expectDefined(metadata.dynamics!.appleSoundCheck);
     } finally {
       audioFile.dispose();
     }

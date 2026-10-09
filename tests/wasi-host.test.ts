@@ -5,14 +5,11 @@
  * (real filesystem syscalls) instead of loading entire files into buffers.
  */
 
-import {
-  assertEquals,
-  assertExists,
-  assertGreater,
-  assertRejects,
-} from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
-import { resolve } from "@std/path";
+import { describe, expect, it } from "vite-plus/test";
+import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { expectDefined, expectRejects } from "./_assert-helpers.ts";
+import { join, resolve } from "node:path";
 import { loadWasiHost } from "../src/runtime/wasi-host-loader.ts";
 import { WasmArena, type WasmExports } from "../src/runtime/wasi-memory.ts";
 import { decodeTagData } from "../src/msgpack/decoder.ts";
@@ -29,14 +26,14 @@ import {
 } from "./wasi-test-helpers.ts";
 import { readTagsFromWasm } from "../src/runtime/wasi-adapter/wasm-io.ts";
 
-const PROJECT_ROOT = resolve(Deno.cwd());
+const PROJECT_ROOT = resolve(process.cwd());
 const TEST_FILES_DIR = resolve(PROJECT_ROOT, "tests/test-files");
 const WASM_PATH = resolve(PROJECT_ROOT, "dist/wasi/taglib-wasi.wasm");
 
 const HAS_WASM = fileExists(WASM_PATH);
 
-describe(
-  { name: "WASI Host - In-Process Filesystem", ignore: !HAS_WASM },
+describe.skipIf(!HAS_WASM)(
+  "WASI Host - In-Process Filesystem",
   () => {
     it("should load wasi module with preopens", async () => {
       using wasi = await loadWasiHost({
@@ -44,9 +41,9 @@ describe(
         preopens: { "/test": TEST_FILES_DIR },
       });
 
-      assertExists(wasi);
-      assertEquals(typeof wasi.tl_version(), "string");
-      assertGreater(wasi.tl_version().length, 0);
+      expectDefined(wasi);
+      expect(typeof wasi.tl_version()).toStrictEqual("string");
+      expect(wasi.tl_version().length).toBeGreaterThan(0);
     });
 
     for (const [format, paths] of Object.entries(FORMAT_FILES)) {
@@ -57,8 +54,8 @@ describe(
         });
 
         const tags = readTagsViaPath(wasi, paths.virtual) as unknown as RawTag;
-        assertExists(tags.title, `${format}: title should exist`);
-        assertEquals(tags.title, "Kiss");
+        expectDefined(tags.title, `${format}: title should exist`);
+        expect(tags.title).toStrictEqual("Kiss");
       });
 
       it(`should read tags from buffer (${format})`, async () => {
@@ -67,11 +64,13 @@ describe(
           preopens: { "/test": TEST_FILES_DIR },
         });
 
-        const fileData = await Deno.readFile(
-          resolve(TEST_FILES_DIR, paths.real),
+        const fileData = new Uint8Array(
+          await readFile(
+            resolve(TEST_FILES_DIR, paths.real),
+          ),
         );
         const tags = readTagsViaBuffer(wasi, fileData) as unknown as RawTag;
-        assertEquals(tags.title, "Kiss");
+        expect(tags.title).toStrictEqual("Kiss");
       });
 
       it(`should produce same tags from path and buffer (${format})`, async () => {
@@ -80,13 +79,15 @@ describe(
           preopens: { "/test": TEST_FILES_DIR },
         });
 
-        const fileData = await Deno.readFile(
-          resolve(TEST_FILES_DIR, paths.real),
+        const fileData = new Uint8Array(
+          await readFile(
+            resolve(TEST_FILES_DIR, paths.real),
+          ),
         );
         const pathTags = readTagsViaPath(wasi, paths.virtual);
         const bufTags = readTagsViaBuffer(wasi, fileData);
 
-        assertEquals(pathTags, bufTags);
+        expect(pathTags).toStrictEqual(bufTags);
       });
     }
 
@@ -107,7 +108,7 @@ describe(
         outSizePtr.ptr,
       );
 
-      assertEquals(resultPtr, 0, "Should return NULL for missing file");
+      expect(resultPtr, "Should return NULL for missing file").toStrictEqual(0);
     });
 
     it("should reject paths outside preopens", async () => {
@@ -127,14 +128,16 @@ describe(
         outSizePtr.ptr,
       );
 
-      assertEquals(resultPtr, 0, "Should reject paths outside preopens");
+      expect(resultPtr, "Should reject paths outside preopens").toStrictEqual(
+        0,
+      );
     });
 
     it("should write tags via path and read them back", async () => {
-      const tempDir = await Deno.makeTempDir();
+      const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
       const srcPath = resolve(TEST_FILES_DIR, "flac/kiss-snippet.flac");
       const destPath = resolve(tempDir, "test-write.flac");
-      await Deno.copyFile(srcPath, destPath);
+      await copyFile(srcPath, destPath);
 
       try {
         using wasi = await loadWasiHost({
@@ -160,7 +163,7 @@ describe(
             0,
             outSizePtr.ptr,
           );
-          assertEquals(result, 0, "Write should succeed (return 0)");
+          expect(result, "Write should succeed (return 0)").toStrictEqual(0);
         }
 
         // Re-instantiate to read back (fresh file handles)
@@ -181,25 +184,26 @@ describe(
             0,
             outSizePtr.ptr,
           );
-          assertGreater(resultPtr, 0, "Read-back should return valid pointer");
+          expect(resultPtr, "Read-back should return valid pointer")
+            .toBeGreaterThan(0);
 
           const outSize = outSizePtr.readUint32();
           const u8 = new Uint8Array(wasi2.memory.buffer);
           const readTags = decodeTagData(
             new Uint8Array(u8.slice(resultPtr, resultPtr + outSize)),
           ) as unknown as RawTag;
-          assertEquals(readTags.title, "New Title");
+          expect(readTags.title).toStrictEqual("New Title");
         }
       } finally {
-        await Deno.remove(tempDir, { recursive: true });
+        await rm(tempDir, { recursive: true });
       }
     });
 
     it("should roundtrip extended fields via Simple API", async () => {
-      const tempDir = await Deno.makeTempDir();
+      const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
       const srcPath = resolve(TEST_FILES_DIR, "flac/kiss-snippet.flac");
       const destPath = resolve(tempDir, "extended-roundtrip.flac");
-      await Deno.copyFile(srcPath, destPath);
+      await copyFile(srcPath, destPath);
 
       try {
         using wasi = await loadWasiHost({
@@ -231,21 +235,21 @@ describe(
           wasi2,
           "/tmp/extended-roundtrip.flac",
         ) as unknown as RawTag;
-        assertEquals(readBack.title, "Roundtrip Test");
-        assertEquals(readBack.albumArtist, "Various Artists");
-        assertEquals(readBack.composer, "Test Composer");
+        expect(readBack.title).toStrictEqual("Roundtrip Test");
+        expect(readBack.albumArtist).toStrictEqual("Various Artists");
+        expect(readBack.composer).toStrictEqual("Test Composer");
         // Raw wire values are strings since taglib-qpl — the msgpack boundary
         // carries the property text verbatim so "03"/"3/12" survive, and the
         // numeric narrowing happens above it in mapPropertiesToExtendedTag.
-        assertEquals(readBack.discNumber, "2");
-        assertEquals(readBack.bpm, "128");
-        assertEquals(readBack.acoustidFingerprint, "AQADtNQYhYkYRcg");
-        assertEquals(readBack.musicbrainzTrackId, "abc-123-def");
-        assertEquals(readBack.replayGainTrackGain, "-6.54 dB");
-        assertEquals(readBack.titleSort, "Roundtrip Test, The");
-        assertEquals(readBack.artistSort, "Artist, The");
+        expect(readBack.discNumber).toStrictEqual("2");
+        expect(readBack.bpm).toStrictEqual("128");
+        expect(readBack.acoustidFingerprint).toStrictEqual("AQADtNQYhYkYRcg");
+        expect(readBack.musicbrainzTrackId).toStrictEqual("abc-123-def");
+        expect(readBack.replayGainTrackGain).toStrictEqual("-6.54 dB");
+        expect(readBack.titleSort).toStrictEqual("Roundtrip Test, The");
+        expect(readBack.artistSort).toStrictEqual("Artist, The");
       } finally {
-        await Deno.remove(tempDir, { recursive: true });
+        await rm(tempDir, { recursive: true });
       }
     });
 
@@ -255,12 +259,14 @@ describe(
         preopens: { "/test": TEST_FILES_DIR },
       });
 
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       const tags = readTagsViaBuffer(wasi, fileData);
       // kiss-snippet files don't have albumArtist set — absent from output
-      assertEquals(tags.albumArtist, undefined);
+      expect(tags.albumArtist).toStrictEqual(undefined);
     });
 
     it("should decode composer from WASI buffer path", async () => {
@@ -269,11 +275,13 @@ describe(
         preopens: { "/test": TEST_FILES_DIR },
       });
 
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       const tags = readTagsViaBuffer(wasi, fileData);
-      assertEquals(tags.composer, undefined);
+      expect(tags.composer).toStrictEqual(undefined);
     });
 
     it("should decode disc number from WASI buffer path", async () => {
@@ -282,12 +290,14 @@ describe(
         preopens: { "/test": TEST_FILES_DIR },
       });
 
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       const tags = readTagsViaBuffer(wasi, fileData);
       // disc absent from kiss-snippet files
-      assertEquals((tags as Record<string, unknown>).disc, undefined);
+      expect((tags as Record<string, unknown>).disc).toStrictEqual(undefined);
     });
 
     it("should decode BPM from WASI buffer path", async () => {
@@ -296,11 +306,13 @@ describe(
         preopens: { "/test": TEST_FILES_DIR },
       });
 
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       const tags = readTagsViaBuffer(wasi, fileData);
-      assertEquals(tags.bpm, undefined);
+      expect(tags.bpm).toStrictEqual(undefined);
     });
 
     it("should map UPPERCASE property keys to camelCase for WASI", async () => {
@@ -313,26 +325,25 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(_wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       // ALBUMARTIST should map to albumArtist key in decoded data
       const result = handle.getProperty("albumArtist");
-      assertEquals(typeof result, "string");
+      expect(typeof result).toStrictEqual("string");
       handle.destroy();
     });
 
     it("should throw for invalid wasm path", async () => {
-      await assertRejects(
-        () =>
-          loadWasiHost({
-            wasmPath: "/nonexistent/taglib.wasm",
-            preopens: {},
-          }),
-        Error,
-      );
+      await expectRejects(() =>
+        loadWasiHost({
+          wasmPath: "/nonexistent/taglib.wasm",
+          preopens: {},
+        }), Error);
     });
 
     it("readTagsFromWasm should read tags via production code path", async () => {
@@ -342,12 +353,12 @@ describe(
       });
 
       const mp3Path = resolve(TEST_FILES_DIR, FORMAT_FILES.MP3.real);
-      const audioData = await Deno.readFile(mp3Path);
+      const audioData = new Uint8Array(await readFile(mp3Path));
       const msgpackData = readTagsFromWasm(wasi, audioData);
       const tags = decodeTagData(msgpackData) as unknown as RawTag;
 
-      assertEquals(tags.title, "Kiss");
-      assertExists(tags.artist);
+      expect(tags.title).toStrictEqual("Kiss");
+      expectDefined(tags.artist);
     });
 
     for (const [format, paths] of Object.entries(FORMAT_FILES)) {
@@ -355,13 +366,13 @@ describe(
         const { TagLib } = await import("../src/taglib/taglib-class.ts");
         const taglib = await TagLib.initialize({ forceWasmType: "wasi" });
         const filePath = resolve(TEST_FILES_DIR, paths.real);
-        const audioData = await Deno.readFile(filePath);
+        const audioData = new Uint8Array(await readFile(filePath));
 
         const audioFile = await taglib.open(audioData);
         try {
-          assertEquals(audioFile.isValid(), true);
+          expect(audioFile.isValid()).toStrictEqual(true);
           const tag = audioFile.tag();
-          assertEquals(tag.title, "Kiss");
+          expect(tag.title).toStrictEqual("Kiss");
         } finally {
           audioFile.dispose();
         }
@@ -379,28 +390,21 @@ describe(
           "../src/runtime/wasi-adapter/file-handle.ts"
         );
         const handle = new WasiFileHandle(wasi);
-        const fileData = await Deno.readFile(
-          resolve(TEST_FILES_DIR, paths.real),
+        const fileData = new Uint8Array(
+          await readFile(
+            resolve(TEST_FILES_DIR, paths.real),
+          ),
         );
         handle.loadFromBuffer(fileData);
 
         const props = handle.getAudioProperties();
-        assertExists(props, `${format}: audioProperties should not be null`);
-        assertGreater(
-          props!.sampleRate,
-          0,
-          `${format}: sampleRate should be > 0`,
-        );
-        assertGreater(
-          props!.channels,
-          0,
-          `${format}: channels should be > 0`,
-        );
-        assertGreater(
-          props!.durationMs ?? 0,
-          0,
-          `${format}: durationMs should be > 0`,
-        );
+        expectDefined(props, `${format}: audioProperties should not be null`);
+        expect(props!.sampleRate, `${format}: sampleRate should be > 0`)
+          .toBeGreaterThan(0);
+        expect(props!.channels, `${format}: channels should be > 0`)
+          .toBeGreaterThan(0);
+        expect(props!.durationMs ?? 0, `${format}: durationMs should be > 0`)
+          .toBeGreaterThan(0);
 
         handle.destroy();
       });
@@ -411,22 +415,16 @@ describe(
         const { TagLib } = await import("../src/taglib/taglib-class.ts");
         const taglib = await TagLib.initialize({ forceWasmType: "wasi" });
         const filePath = resolve(TEST_FILES_DIR, paths.real);
-        const audioData = await Deno.readFile(filePath);
+        const audioData = new Uint8Array(await readFile(filePath));
 
         const audioFile = await taglib.open(audioData);
         try {
           const props = audioFile.audioProperties();
-          assertExists(props, `${format}: audioProperties should not be null`);
-          assertGreater(
-            props!.sampleRate,
-            0,
-            `${format}: sampleRate should be > 0`,
-          );
-          assertGreater(
-            props!.channels,
-            0,
-            `${format}: channels should be > 0`,
-          );
+          expectDefined(props, `${format}: audioProperties should not be null`);
+          expect(props!.sampleRate, `${format}: sampleRate should be > 0`)
+            .toBeGreaterThan(0);
+          expect(props!.channels, `${format}: channels should be > 0`)
+            .toBeGreaterThan(0);
         } finally {
           audioFile.dispose();
         }
@@ -443,19 +441,23 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       handle.setTagData({ title: "Buffer Write Test" });
       const saved = handle.save();
-      assertEquals(saved, true, "save() should return true for buffer write");
+      expect(saved, "save() should return true for buffer write").toStrictEqual(
+        true,
+      );
 
       // Re-read the modified buffer
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
-      assertEquals(handle2.getTagData().title, "Buffer Write Test");
+      expect(handle2.getTagData().title).toStrictEqual("Buffer Write Test");
 
       handle2.destroy();
       handle.destroy();
@@ -471,18 +473,22 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       handle.setProperty("albumArtist", "Test Album Artist");
       const saved = handle.save();
-      assertEquals(saved, true, "save() should succeed");
+      expect(saved, "save() should succeed").toStrictEqual(true);
 
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
-      assertEquals(handle2.getProperty("albumArtist"), "Test Album Artist");
+      expect(handle2.getProperty("albumArtist")).toStrictEqual(
+        "Test Album Artist",
+      );
 
       handle2.destroy();
       handle.destroy();
@@ -498,19 +504,20 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       handle.setProperty("acoustidFingerprint", "AQADtNQYhYkYRcg");
       const saved = handle.save();
-      assertEquals(saved, true, "save() should succeed");
+      expect(saved, "save() should succeed").toStrictEqual(true);
 
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
-      assertEquals(
-        handle2.getProperty("acoustidFingerprint"),
+      expect(handle2.getProperty("acoustidFingerprint")).toStrictEqual(
         "AQADtNQYhYkYRcg",
       );
 
@@ -528,18 +535,20 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       const props = handle.getProperties();
       // WasiFileHandle returns ALL_CAPS keys (translation to camelCase happens in BaseAudioFileImpl)
-      assertExists(props["TITLE"]);
-      assertEquals(props["TITLE"], ["Kiss"]);
+      expectDefined(props["TITLE"]);
+      expect(props["TITLE"]).toStrictEqual(["Kiss"]);
       // camelCase keys should not exist at this layer
-      assertEquals("title" in props, false);
-      assertEquals("artist" in props, false);
+      expect("title" in props).toStrictEqual(false);
+      expect("artist" in props).toStrictEqual(false);
 
       handle.destroy();
     });
@@ -554,17 +563,19 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       const props = handle.getProperties();
-      assertEquals("bitrate" in props, false);
-      assertEquals("sampleRate" in props, false);
-      assertEquals("channels" in props, false);
-      assertEquals("length" in props, false);
-      assertEquals("lengthMs" in props, false);
+      expect("bitrate" in props).toStrictEqual(false);
+      expect("sampleRate" in props).toStrictEqual(false);
+      expect("channels" in props).toStrictEqual(false);
+      expect("length" in props).toStrictEqual(false);
+      expect("lengthMs" in props).toStrictEqual(false);
 
       handle.destroy();
     });
@@ -579,8 +590,10 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
@@ -590,7 +603,7 @@ describe(
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
       const props = handle2.getProperties();
-      assertEquals(props["ALBUMARTIST"], ["Various Artists"]);
+      expect(props["ALBUMARTIST"]).toStrictEqual(["Various Artists"]);
 
       handle2.destroy();
       handle.destroy();
@@ -606,23 +619,24 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       handle.setTagData({ title: "Completely New Title For Byte Diff" });
       const saved = handle.save();
-      assertEquals(saved, true, "save() should succeed");
+      expect(saved, "save() should succeed").toStrictEqual(true);
 
       const outputBuffer = handle.getBuffer();
       const inputAndOutputDiffer = fileData.length !== outputBuffer.length ||
         fileData.some((byte, i) => byte !== outputBuffer[i]);
-      assertEquals(
+      expect(
         inputAndOutputDiffer,
-        true,
         "Output buffer should differ from input after tag modification",
-      );
+      ).toStrictEqual(true);
 
       handle.destroy();
     });
@@ -637,8 +651,10 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
@@ -648,16 +664,16 @@ describe(
         ALBUMARTIST: ["VA"],
       });
       const saved = handle.save();
-      assertEquals(saved, true, "save() should succeed");
+      expect(saved, "save() should succeed").toStrictEqual(true);
 
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
-      assertEquals(handle2.getTagData().title, "Properties Title");
-      assertEquals(handle2.getTagData().artist, "Properties Artist");
-      assertEquals(handle2.getProperty("ALBUMARTIST"), "VA");
+      expect(handle2.getTagData().title).toStrictEqual("Properties Title");
+      expect(handle2.getTagData().artist).toStrictEqual("Properties Artist");
+      expect(handle2.getProperty("ALBUMARTIST")).toStrictEqual("VA");
       const props = handle2.getProperties();
-      assertEquals(props["TITLE"], ["Properties Title"]);
-      assertEquals(props["ALBUMARTIST"], ["VA"]);
+      expect(props["TITLE"]).toStrictEqual(["Properties Title"]);
+      expect(props["ALBUMARTIST"]).toStrictEqual(["VA"]);
 
       handle2.destroy();
       handle.destroy();
@@ -674,8 +690,10 @@ describe(
           "../src/runtime/wasi-adapter/file-handle.ts"
         );
         const handle = new WasiFileHandle(wasi);
-        const fileData = await Deno.readFile(
-          resolve(TEST_FILES_DIR, paths.real),
+        const fileData = new Uint8Array(
+          await readFile(
+            resolve(TEST_FILES_DIR, paths.real),
+          ),
         );
         handle.loadFromBuffer(fileData);
 
@@ -695,11 +713,10 @@ describe(
           MKV: "MATROSKA",
           WEBM: "MATROSKA",
         };
-        assertEquals(
+        expect(
           handle.getFormat(),
-          expected[format],
           `${format}: getFormat() should return ${expected[format]}`,
-        );
+        ).toStrictEqual(expected[format]);
 
         handle.destroy();
       });
@@ -716,13 +733,15 @@ describe(
           "../src/runtime/wasi-adapter/file-handle.ts"
         );
         const handle = new WasiFileHandle(wasi);
-        const fileData = await Deno.readFile(
-          resolve(TEST_FILES_DIR, paths.real),
+        const fileData = new Uint8Array(
+          await readFile(
+            resolve(TEST_FILES_DIR, paths.real),
+          ),
         );
         handle.loadFromBuffer(fileData);
 
         const props = handle.getAudioProperties();
-        assertExists(props, `${format}: audioProperties should not be null`);
+        expectDefined(props, `${format}: audioProperties should not be null`);
 
         const expected: Record<string, {
           codec: string;
@@ -817,27 +836,16 @@ describe(
         };
 
         const exp = expected[format];
-        assertEquals(
-          props!.codec,
+        expect(props!.codec, `${format}: codec mismatch`).toStrictEqual(
           exp.codec,
-          `${format}: codec mismatch`,
         );
-        assertEquals(
-          props!.containerFormat,
-          exp.containerFormat,
-          `${format}: containerFormat mismatch`,
-        );
-        assertEquals(
-          props!.isLossless,
-          exp.isLossless,
-          `${format}: isLossless mismatch`,
-        );
+        expect(props!.containerFormat, `${format}: containerFormat mismatch`)
+          .toStrictEqual(exp.containerFormat);
+        expect(props!.isLossless, `${format}: isLossless mismatch`)
+          .toStrictEqual(exp.isLossless);
         if (exp.hasBitsPerSample) {
-          assertGreater(
-            props!.bitsPerSample,
-            0,
-            `${format}: bitsPerSample should be > 0`,
-          );
+          expect(props!.bitsPerSample, `${format}: bitsPerSample should be > 0`)
+            .toBeGreaterThan(0);
         }
 
         handle.destroy();
@@ -854,8 +862,10 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
@@ -891,17 +901,17 @@ describe(
         description: "Front Cover",
       }]);
       const saved = handle.save();
-      assertEquals(saved, true, "save() should succeed");
+      expect(saved, "save() should succeed").toStrictEqual(true);
 
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
       const pics = handle2.getPictures();
 
-      assertEquals(pics.length, 1, "Should have 1 picture");
-      assertEquals(pics[0].mimeType, "image/jpeg");
-      assertEquals(pics[0].type, 3);
-      assertEquals(pics[0].description, "Front Cover");
-      assertEquals(pics[0].data.length, smallJpeg.length);
+      expect(pics.length, "Should have 1 picture").toStrictEqual(1);
+      expect(pics[0].mimeType).toStrictEqual("image/jpeg");
+      expect(pics[0].type).toStrictEqual(3);
+      expect(pics[0].description).toStrictEqual("Front Cover");
+      expect(pics[0].data.length).toStrictEqual(smallJpeg.length);
 
       handle2.destroy();
       handle.destroy();
@@ -919,8 +929,10 @@ describe(
 
       // First write a picture
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
@@ -939,11 +951,8 @@ describe(
 
       const handle3 = new WasiFileHandle(wasi);
       handle3.loadFromBuffer(handle2.getBuffer());
-      assertEquals(
-        handle3.getPictures().length,
-        0,
-        "Pictures should be cleared",
-      );
+      expect(handle3.getPictures().length, "Pictures should be cleared")
+        .toStrictEqual(0);
 
       handle3.destroy();
       handle2.destroy();
@@ -960,17 +969,19 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       const props = handle.getProperties();
-      assertEquals("bitsPerSample" in props, false);
-      assertEquals("codec" in props, false);
-      assertEquals("containerFormat" in props, false);
-      assertEquals("isLossless" in props, false);
-      assertEquals("pictures" in props, false);
+      expect("bitsPerSample" in props).toStrictEqual(false);
+      expect("codec" in props).toStrictEqual(false);
+      expect("containerFormat" in props).toStrictEqual(false);
+      expect("isLossless" in props).toStrictEqual(false);
+      expect("pictures" in props).toStrictEqual(false);
 
       handle.destroy();
     });
@@ -985,26 +996,27 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       handle.setRatings([{ rating: 0.8, email: "", counter: 0 }]);
       const saved = handle.save();
-      assertEquals(saved, true, "save() should succeed");
+      expect(saved, "save() should succeed").toStrictEqual(true);
 
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
       const ratings = handle2.getRatings();
 
-      assertEquals(ratings.length, 1, "Should have 1 rating");
+      expect(ratings.length, "Should have 1 rating").toStrictEqual(1);
       // XiphComment stores as string "0.8", parses back to 0.8
-      assertEquals(
+      expect(
         Math.abs(ratings[0].rating - 0.8) < 0.01,
-        true,
         `FLAC rating roundtrip: expected ~0.8, got ${ratings[0].rating}`,
-      );
+      ).toStrictEqual(true);
 
       handle2.destroy();
       handle.destroy();
@@ -1020,8 +1032,10 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.MP3.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.MP3.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
@@ -1031,21 +1045,20 @@ describe(
         counter: 42,
       }]);
       const saved = handle.save();
-      assertEquals(saved, true, "save() should succeed");
+      expect(saved, "save() should succeed").toStrictEqual(true);
 
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
       const ratings = handle2.getRatings();
 
-      assertEquals(ratings.length, 1, "Should have 1 rating");
+      expect(ratings.length, "Should have 1 rating").toStrictEqual(1);
       // POPM: 0.8 * 255 + 0.5 = 204, then 204/255 = 0.8 exactly
-      assertEquals(
+      expect(
         Math.abs(ratings[0].rating - 0.8) < 0.01,
-        true,
         `MP3 rating roundtrip: expected ~0.8, got ${ratings[0].rating}`,
-      );
-      assertEquals(ratings[0].email, "test@example.com");
-      assertEquals(ratings[0].counter, 42);
+      ).toStrictEqual(true);
+      expect(ratings[0].email).toStrictEqual("test@example.com");
+      expect(ratings[0].counter).toStrictEqual(42);
 
       handle2.destroy();
       handle.destroy();
@@ -1061,23 +1074,24 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.OGG.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.OGG.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       handle.setRatings([{ rating: 0.6 }]);
-      assertEquals(handle.save(), true);
+      expect(handle.save()).toStrictEqual(true);
 
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
       const ratings = handle2.getRatings();
-      assertEquals(ratings.length, 1);
-      assertEquals(
+      expect(ratings.length).toStrictEqual(1);
+      expect(
         Math.abs(ratings[0].rating - 0.6) < 0.01,
-        true,
         `OGG rating roundtrip: expected ~0.6, got ${ratings[0].rating}`,
-      );
+      ).toStrictEqual(true);
 
       handle2.destroy();
       handle.destroy();
@@ -1093,23 +1107,24 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.M4A.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.M4A.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       handle.setRatings([{ rating: 0.9 }]);
-      assertEquals(handle.save(), true);
+      expect(handle.save()).toStrictEqual(true);
 
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
       const ratings = handle2.getRatings();
-      assertEquals(ratings.length, 1);
-      assertEquals(
+      expect(ratings.length).toStrictEqual(1);
+      expect(
         Math.abs(ratings[0].rating - 0.9) < 0.01,
-        true,
         `M4A rating roundtrip: expected ~0.9, got ${ratings[0].rating}`,
-      );
+      ).toStrictEqual(true);
 
       handle2.destroy();
       handle.destroy();
@@ -1125,13 +1140,15 @@ describe(
         "../src/runtime/wasi-adapter/file-handle.ts"
       );
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
 
       const ratings = handle.getRatings();
-      assertEquals(ratings.length, 0, "Should have no ratings");
+      expect(ratings.length, "Should have no ratings").toStrictEqual(0);
 
       handle.destroy();
     });
@@ -1148,8 +1165,10 @@ describe(
 
       // Write a rating first
       const handle = new WasiFileHandle(wasi);
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       handle.loadFromBuffer(fileData);
       handle.setRatings([{ rating: 0.5 }]);
@@ -1159,7 +1178,7 @@ describe(
       const handle2 = new WasiFileHandle(wasi);
       handle2.loadFromBuffer(handle.getBuffer());
       const props = handle2.getProperties();
-      assertEquals("ratings" in props, false);
+      expect("ratings" in props).toStrictEqual(false);
 
       handle2.destroy();
       handle.destroy();
@@ -1169,15 +1188,13 @@ describe(
 
     for (const [format, paths] of Object.entries(FORMAT_FILES)) {
       const ext = paths.real.split(".").pop()!;
-      it({
-        name:
-          `should roundtrip multi-value artist via WASI path write (${format})`,
-        ignore: SKIP_MULTI_VALUE.has(format),
-        fn: async () => {
-          const tempDir = await Deno.makeTempDir();
+      it.skipIf(SKIP_MULTI_VALUE.has(format))(
+        `should roundtrip multi-value artist via WASI path write (${format})`,
+        async () => {
+          const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
           const srcPath = resolve(TEST_FILES_DIR, paths.real);
           const destPath = resolve(tempDir, `multi-value.${ext}`);
-          await Deno.copyFile(srcPath, destPath);
+          await copyFile(srcPath, destPath);
 
           try {
             using wasi = await loadWasiHost({
@@ -1201,40 +1218,42 @@ describe(
               wasi2,
               `/tmp/multi-value.${ext}`,
             ) as unknown as RawTag;
-            assertEquals(readBack.title, "Multi-Value Test");
-            assertEquals(readBack.artist, ["Artist One", "Artist Two"]);
+            expect(readBack.title).toStrictEqual("Multi-Value Test");
+            expect(readBack.artist).toStrictEqual(["Artist One", "Artist Two"]);
           } finally {
-            await Deno.remove(tempDir, { recursive: true });
+            await rm(tempDir, { recursive: true });
           }
         },
-      });
+      );
     }
 
     it("should saveToFile() via WASI buffer write path", async () => {
       const { TagLib } = await import("../src/taglib/taglib-class.ts");
       const taglib = await TagLib.initialize({ forceWasmType: "wasi" });
 
-      const fileData = await Deno.readFile(
-        resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+      const fileData = new Uint8Array(
+        await readFile(
+          resolve(TEST_FILES_DIR, FORMAT_FILES.FLAC.real),
+        ),
       );
       const audioFile = await taglib.open(fileData);
 
-      const tempDir = await Deno.makeTempDir();
+      const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
       const tempPath = resolve(tempDir, "save-test.flac");
       try {
         audioFile.tag().setTitle("SaveToFile Test");
         await audioFile.saveToFile(tempPath);
 
-        const saved = await Deno.readFile(tempPath);
+        const saved = new Uint8Array(await readFile(tempPath));
         const audioFile2 = await taglib.open(saved);
         try {
-          assertEquals(audioFile2.tag().title, "SaveToFile Test");
+          expect(audioFile2.tag().title).toStrictEqual("SaveToFile Test");
         } finally {
           audioFile2.dispose();
         }
       } finally {
         audioFile.dispose();
-        await Deno.remove(tempDir, { recursive: true });
+        await rm(tempDir, { recursive: true });
       }
     });
   },

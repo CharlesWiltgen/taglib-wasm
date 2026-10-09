@@ -11,8 +11,8 @@
  * and the camelCase key silently read undefined.
  */
 
-import { assert, assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import { applyTags, readTags } from "../src/simple/index.ts";
 import {
@@ -30,27 +30,26 @@ const OTHER: Record<string, "wasi" | "emscripten"> = {
 describe("RELEASECOUNTRY typed mapping (taglib-m0c2)", () => {
   it("read: raw RELEASECOUNTRY surfaces as releaseCountry string[]", () => {
     const tag = mapPropertiesToExtendedTag({ RELEASECOUNTRY: ["US"] });
-    assertEquals(tag.releaseCountry, ["US"]);
+    expect(tag.releaseCountry).toStrictEqual(["US"]);
   });
 
   it("read: camelCase property-map key also resolves", () => {
     const tag = mapPropertiesToExtendedTag({ releaseCountry: ["US"] });
-    assertEquals(tag.releaseCountry, ["US"]);
+    expect(tag.releaseCountry).toStrictEqual(["US"]);
   });
 
   it("write: string and string[] forms both normalize", () => {
-    assertEquals(normalizeTagInput({ releaseCountry: "US" }).releaseCountry, [
-      "US",
-    ]);
-    assertEquals(
-      normalizeTagInput({ releaseCountry: ["US", "XW"] }).releaseCountry,
-      ["US", "XW"],
-    );
+    expect(normalizeTagInput({ releaseCountry: "US" }).releaseCountry)
+      .toStrictEqual([
+        "US",
+      ]);
+    expect(normalizeTagInput({ releaseCountry: ["US", "XW"] }).releaseCountry)
+      .toStrictEqual(["US", "XW"]);
   });
 
   it("absent when not present", () => {
     const tag = mapPropertiesToExtendedTag({ TITLE: ["Kiss"] });
-    assertEquals(tag.releaseCountry, undefined);
+    expect(tag.releaseCountry).toStrictEqual(undefined);
   });
 });
 
@@ -69,8 +68,10 @@ async function roundTrip(
   writeBackend: "wasi" | "emscripten",
   format: keyof typeof FIXTURE_PATH & string,
 ): Promise<{ readBack: Record<string, string[]>; buffer: Uint8Array }> {
-  const src = await Deno.readFile(
-    FIXTURE_PATH[format as keyof typeof FIXTURE_PATH],
+  const src = new Uint8Array(
+    await readFile(
+      FIXTURE_PATH[format as keyof typeof FIXTURE_PATH],
+    ),
   );
   const tl = await TagLib.initialize({ forceWasmType: writeBackend });
   const file = await tl.open(new Uint8Array(src));
@@ -92,13 +93,13 @@ describe("RELEASECOUNTRY cross-backend round-trip (taglib-m0c2)", () => {
     for (const format of FORMATS) {
       it(`[${backend}] ${format}: US survives save and reads back on the other backend`, async () => {
         const { readBack, buffer } = await roundTrip(backend, format);
-        assertEquals(readBack.releaseCountry, ["US"]);
+        expect(readBack.releaseCountry).toStrictEqual(["US"]);
         const wire = WIRE_BYTES[format];
         if (wire) {
-          assert(
+          expect(
             new TextDecoder().decode(buffer).includes(wire),
             `${format} bytes should carry ${wire}`,
-          );
+          ).toBeTruthy();
         }
       });
     }
@@ -107,16 +108,16 @@ describe("RELEASECOUNTRY cross-backend round-trip (taglib-m0c2)", () => {
 
 describe("RELEASECOUNTRY typed simple-API round-trip (taglib-m0c2)", () => {
   it("applyTags(string) -> readTags returns [string]", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.flac);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const modified = await applyTags(src, { releaseCountry: "US" });
     const tags = await readTags(modified);
-    assertEquals(tags.releaseCountry, ["US"]);
+    expect(tags.releaseCountry).toStrictEqual(["US"]);
   });
 
   it("applyTags(string[]) -> readTags returns the array verbatim", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.mp3);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const modified = await applyTags(src, { releaseCountry: ["US"] });
     const tags = await readTags(modified);
-    assertEquals(tags.releaseCountry, ["US"]);
+    expect(tags.releaseCountry).toStrictEqual(["US"]);
   });
 });

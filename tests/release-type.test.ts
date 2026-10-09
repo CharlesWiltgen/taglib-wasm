@@ -9,8 +9,8 @@
  * (album + EP), so the typed field is string[].
  */
 
-import { assert, assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import { applyTags, readTags } from "../src/simple/index.ts";
 import {
@@ -28,22 +28,21 @@ const OTHER: Record<string, "wasi" | "emscripten"> = {
 describe("RELEASETYPE typed mapping (taglib-ecy4)", () => {
   it("read: raw RELEASETYPE surfaces as releaseType string[]", () => {
     const tag = mapPropertiesToExtendedTag({ RELEASETYPE: ["album", "EP"] });
-    assertEquals(tag.releaseType, ["album", "EP"]);
+    expect(tag.releaseType).toStrictEqual(["album", "EP"]);
   });
 
   it("write: string and string[] forms both normalize", () => {
-    assertEquals(normalizeTagInput({ releaseType: "single" }).releaseType, [
-      "single",
-    ]);
-    assertEquals(
-      normalizeTagInput({ releaseType: ["album", "EP"] }).releaseType,
-      ["album", "EP"],
-    );
+    expect(normalizeTagInput({ releaseType: "single" }).releaseType)
+      .toStrictEqual([
+        "single",
+      ]);
+    expect(normalizeTagInput({ releaseType: ["album", "EP"] }).releaseType)
+      .toStrictEqual(["album", "EP"]);
   });
 
   it("absent when not present", () => {
     const tag = mapPropertiesToExtendedTag({ TITLE: ["Kiss"] });
-    assertEquals(tag.releaseType, undefined);
+    expect(tag.releaseType).toStrictEqual(undefined);
   });
 });
 
@@ -62,8 +61,10 @@ async function roundTrip(
   writeBackend: "wasi" | "emscripten",
   format: keyof typeof FIXTURE_PATH & string,
 ): Promise<{ readBack: Record<string, string[]>; buffer: Uint8Array }> {
-  const src = await Deno.readFile(
-    FIXTURE_PATH[format as keyof typeof FIXTURE_PATH],
+  const src = new Uint8Array(
+    await readFile(
+      FIXTURE_PATH[format as keyof typeof FIXTURE_PATH],
+    ),
   );
   const tl = await TagLib.initialize({ forceWasmType: writeBackend });
   const file = await tl.open(new Uint8Array(src));
@@ -85,13 +86,13 @@ describe("RELEASETYPE multi-value round-trip (taglib-ecy4)", () => {
     for (const format of FORMATS) {
       it(`[${backend}] ${format}: album + EP survive save and read back on the other backend`, async () => {
         const { readBack, buffer } = await roundTrip(backend, format);
-        assertEquals(readBack.releaseType, ["album", "EP"]);
+        expect(readBack.releaseType).toStrictEqual(["album", "EP"]);
         const wire = WIRE_BYTES[format];
         if (wire) {
-          assert(
+          expect(
             new TextDecoder().decode(buffer).includes(wire),
             `${format} bytes should carry ${wire}`,
-          );
+          ).toBeTruthy();
         }
       });
     }
@@ -100,31 +101,31 @@ describe("RELEASETYPE multi-value round-trip (taglib-ecy4)", () => {
   for (const backend of BACKENDS) {
     it(`[${backend}] cross-backend parity on opus (write ${backend} -> read ${OTHER[backend]})`, async () => {
       const { readBack } = await roundTrip(backend, "opus");
-      assertEquals(readBack.releaseType, ["album", "EP"]);
+      expect(readBack.releaseType).toStrictEqual(["album", "EP"]);
     });
   }
 });
 
 describe("RELEASETYPE typed simple-API round-trip (taglib-ecy4)", () => {
   it("applyTags(string) -> readTags returns [string]", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.opus);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.opus));
     const modified = await applyTags(src, { releaseType: "single" });
     const tags = await readTags(modified);
-    assertEquals(tags.releaseType, ["single"]);
+    expect(tags.releaseType).toStrictEqual(["single"]);
   });
 
   it("applyTags(string[]) -> readTags returns the array verbatim", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.flac);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const modified = await applyTags(src, { releaseType: ["album", "EP"] });
     const tags = await readTags(modified);
-    assertEquals(tags.releaseType, ["album", "EP"]);
+    expect(tags.releaseType).toStrictEqual(["album", "EP"]);
   });
 
   it("readTags -> applyTags round-trips multi-value losslessly", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.opus);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.opus));
     const withType = await applyTags(src, { releaseType: ["album", "EP"] });
     const tags = await readTags(withType);
     const back = await applyTags(withType, tags);
-    assertEquals((await readTags(back)).releaseType, ["album", "EP"]);
+    expect((await readTags(back)).releaseType).toStrictEqual(["album", "EP"]);
   });
 });

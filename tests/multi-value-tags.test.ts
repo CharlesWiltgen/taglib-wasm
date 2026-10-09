@@ -4,8 +4,9 @@
  * Write functions accept both string and string[] via TagInput.
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
+import { expectDefined } from "./_assert-helpers.ts";
 import {
   applyTags,
   clearTags,
@@ -23,35 +24,35 @@ describe("readTags multi-value", () => {
   it("should return string[] for title, artist, album, comment, genre", async () => {
     const tags = await readTags(FIXTURE_PATH.mp3);
 
-    assertExists(tags.title);
-    assertEquals(Array.isArray(tags.title), true);
+    expectDefined(tags.title);
+    expect(Array.isArray(tags.title)).toStrictEqual(true);
 
-    assertExists(tags.artist);
-    assertEquals(Array.isArray(tags.artist), true);
+    expectDefined(tags.artist);
+    expect(Array.isArray(tags.artist)).toStrictEqual(true);
 
-    assertExists(tags.album);
-    assertEquals(Array.isArray(tags.album), true);
+    expectDefined(tags.album);
+    expect(Array.isArray(tags.album)).toStrictEqual(true);
   });
 
   it("should return number for year and track (unchanged)", async () => {
     const tags = await readTags(FIXTURE_PATH.mp3);
 
     if (tags.year !== undefined) {
-      assertEquals(typeof tags.year, "number");
+      expect(typeof tags.year).toStrictEqual("number");
     }
     if (tags.track !== undefined) {
-      assertEquals(typeof tags.track, "number");
+      expect(typeof tags.track).toStrictEqual("number");
     }
   });
 
   it("should wrap single-value files in arrays", async () => {
     const tags = await readTags(FIXTURE_PATH.mp3);
 
-    assertExists(tags.title);
-    assertEquals(tags.title, ["Kiss"]);
+    expectDefined(tags.title);
+    expect(tags.title).toStrictEqual(["Kiss"]);
 
-    assertExists(tags.artist);
-    assertEquals(tags.artist, ["Prince"]);
+    expectDefined(tags.artist);
+    expect(tags.artist).toStrictEqual(["Prince"]);
   });
 
   it("should return arrays across all formats", async () => {
@@ -59,43 +60,40 @@ describe("readTags multi-value", () => {
       const format of ["mp3", "flac", "ogg", "m4a", "wav"] as const
     ) {
       const tags = await readTags(FIXTURE_PATH[format]);
-      assertExists(tags.title, `${format}: title missing`);
-      assertEquals(
-        Array.isArray(tags.title),
-        true,
-        `${format}: title should be an array`,
-      );
+      expectDefined(tags.title, `${format}: title missing`);
+      expect(Array.isArray(tags.title), `${format}: title should be an array`)
+        .toStrictEqual(true);
     }
   });
 });
 
 describe("applyTags with TagInput", () => {
   it("should accept single strings", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const input: Partial<TagInput> = { title: "New Title" };
 
     const modified = await applyTags(new Uint8Array(original), input);
-    assertExists(modified);
+    expectDefined(modified);
 
     const tags = await readTags(modified);
-    assertEquals(tags.title, ["New Title"]);
+    expect(tags.title).toStrictEqual(["New Title"]);
   });
 
   it("should accept string arrays", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const input: Partial<TagInput> = {
       artist: ["Artist One", "Artist Two"],
     };
 
     const modified = await applyTags(new Uint8Array(original), input);
-    assertExists(modified);
+    expectDefined(modified);
 
     const tags = await readTags(modified);
-    assertEquals(tags.artist, ["Artist One", "Artist Two"]);
+    expect(tags.artist).toStrictEqual(["Artist One", "Artist Two"]);
   });
 
   it("should clear field when writing empty array", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const modified = await applyTags(new Uint8Array(original), {
       artist: [],
     });
@@ -103,21 +101,21 @@ describe("applyTags with TagInput", () => {
 
     const isEmpty = (val: string[] | undefined) =>
       val === undefined || val.length === 0 || val.every((s) => s === "");
-    assertEquals(isEmpty(tags.artist), true);
+    expect(isEmpty(tags.artist)).toStrictEqual(true);
   });
 
   it("should roundtrip many values in a single field", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const artists = Array.from({ length: 20 }, (_, i) => `Artist ${i + 1}`);
     const modified = await applyTags(new Uint8Array(original), {
       artist: artists,
     });
     const tags = await readTags(modified);
-    assertEquals(tags.artist, artists);
+    expect(tags.artist).toStrictEqual(artists);
   });
 
   it("should handle mixed string and array fields", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const input: Partial<TagInput> = {
       title: "Single Title",
       genre: ["Rock", "Pop"],
@@ -127,15 +125,15 @@ describe("applyTags with TagInput", () => {
     const modified = await applyTags(new Uint8Array(original), input);
     const tags = await readTags(modified);
 
-    assertEquals(tags.title, ["Single Title"]);
-    assertEquals(tags.genre, ["Rock", "Pop"]);
-    assertEquals(tags.year, 2025);
+    expect(tags.title).toStrictEqual(["Single Title"]);
+    expect(tags.genre).toStrictEqual(["Rock", "Pop"]);
+    expect(tags.year).toStrictEqual(2025);
   });
 });
 
 describe("clearTags", () => {
   it("should clear all string fields", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const cleared = await clearTags(new Uint8Array(original));
     const tags = await readTags(cleared);
 
@@ -143,15 +141,15 @@ describe("clearTags", () => {
       val === undefined || val.length === 0 ||
       val.every((s) => s === "");
 
-    assertEquals(isEmpty(tags.title), true);
-    assertEquals(isEmpty(tags.artist), true);
-    assertEquals(isEmpty(tags.album), true);
+    expect(isEmpty(tags.title)).toStrictEqual(true);
+    expect(isEmpty(tags.artist)).toStrictEqual(true);
+    expect(isEmpty(tags.album)).toStrictEqual(true);
   });
 });
 
 describe("applyTags with extended fields", () => {
   it("should roundtrip extended string fields via simple API", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const modified = await applyTags(new Uint8Array(original), {
       albumArtist: "Various Artists",
       composer: ["Bach", "Handel"],
@@ -161,13 +159,13 @@ describe("applyTags with extended fields", () => {
     const taglib = await getTagLib();
     using audioFile = await taglib.open(modified);
     const props = audioFile.properties();
-    assertEquals(props.albumArtist, ["Various Artists"]);
-    assertEquals(props.composer, ["Bach", "Handel"]);
-    assertEquals(props.conductor, ["Karajan"]);
+    expect(props.albumArtist).toStrictEqual(["Various Artists"]);
+    expect(props.composer).toStrictEqual(["Bach", "Handel"]);
+    expect(props.conductor).toStrictEqual(["Karajan"]);
   });
 
   it("should roundtrip extended numeric and boolean fields via simple API", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const modified = await applyTags(new Uint8Array(original), {
       bpm: 128,
       discNumber: 2,
@@ -179,15 +177,15 @@ describe("applyTags with extended fields", () => {
     const taglib = await getTagLib();
     using audioFile = await taglib.open(modified);
     const props = audioFile.properties();
-    assertEquals(props.bpm, ["128"]);
-    assertEquals(props.discNumber, ["2"]);
-    assertEquals(props.totalTracks, ["12"]);
-    assertEquals(props.totalDiscs, ["3"]);
-    assertEquals(props.compilation, ["1"]);
+    expect(props.bpm).toStrictEqual(["128"]);
+    expect(props.discNumber).toStrictEqual(["2"]);
+    expect(props.totalTracks).toStrictEqual(["12"]);
+    expect(props.totalDiscs).toStrictEqual(["3"]);
+    expect(props.compilation).toStrictEqual(["1"]);
   });
 
   it("should roundtrip compilation false via simple API", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const modified = await applyTags(new Uint8Array(original), {
       compilation: false,
     });
@@ -195,11 +193,11 @@ describe("applyTags with extended fields", () => {
     const taglib = await getTagLib();
     using audioFile = await taglib.open(modified);
     const props = audioFile.properties();
-    assertEquals(props.compilation, ["0"]);
+    expect(props.compilation).toStrictEqual(["0"]);
   });
 
   it("should roundtrip MusicBrainz and ReplayGain fields via simple API", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const modified = await applyTags(new Uint8Array(original), {
       musicbrainzTrackId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
       replayGainTrackGain: "-6.54 dB",
@@ -208,14 +206,14 @@ describe("applyTags with extended fields", () => {
     const taglib = await getTagLib();
     using audioFile = await taglib.open(modified);
     const props = audioFile.properties();
-    assertEquals(props.musicbrainzTrackId, [
+    expect(props.musicbrainzTrackId).toStrictEqual([
       "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
     ]);
-    assertEquals(props.replayGainTrackGain, ["-6.54 dB"]);
+    expect(props.replayGainTrackGain).toStrictEqual(["-6.54 dB"]);
   });
 
   it("should not drop extended fields when mixed with basic fields", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const modified = await applyTags(new Uint8Array(original), {
       title: "Test Title",
       artist: "Test Artist",
@@ -225,15 +223,15 @@ describe("applyTags with extended fields", () => {
     });
 
     const tags = await readTags(modified);
-    assertEquals(tags.title, ["Test Title"]);
-    assertEquals(tags.artist, ["Test Artist"]);
-    assertEquals(tags.year, 2025);
+    expect(tags.title).toStrictEqual(["Test Title"]);
+    expect(tags.artist).toStrictEqual(["Test Artist"]);
+    expect(tags.year).toStrictEqual(2025);
 
     const taglib = await getTagLib();
     using audioFile = await taglib.open(modified);
     const props = audioFile.properties();
-    assertEquals(props.albumArtist, ["Album Artist"]);
-    assertEquals(props.bpm, ["140"]);
+    expect(props.albumArtist).toStrictEqual(["Album Artist"]);
+    expect(props.bpm).toStrictEqual(["140"]);
   });
 });
 
@@ -264,7 +262,7 @@ describe("multi-genre round-trip per format (parity)", () => {
     for (const format of ORDER_PRESERVING_FORMATS) {
       it(`[${backend}] ${format}: genre ["Pop","Rock"] round-trips in order`, async () => {
         const tl = await TagLib.initialize({ forceWasmType: backend });
-        const src = await Deno.readFile(FIXTURE_PATH[format]);
+        const src = new Uint8Array(await readFile(FIXTURE_PATH[format]));
         const file = await tl.open(new Uint8Array(src));
         file.setProperties({ genre: ["Pop", "Rock"] });
         file.save();
@@ -279,7 +277,7 @@ describe("multi-genre round-trip per format (parity)", () => {
         const reopened = await tlR.open(buf);
         const props = reopened.properties() as Record<string, string[]>;
         reopened.dispose();
-        assertEquals(props.genre, ["Pop", "Rock"]);
+        expect(props.genre).toStrictEqual(["Pop", "Rock"]);
       });
     }
   }
@@ -289,7 +287,7 @@ describe("ASF multi-value rotation compensation (taglib-ilrg)", () => {
   for (const backend of BACKENDS) {
     it(`[${backend}] wma 3-value genre round-trips in exact order`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const src = await Deno.readFile(FIXTURE_PATH.wma);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ genre: ["Pop", "Rock", "Jazz"] });
       file.save();
@@ -305,12 +303,12 @@ describe("ASF multi-value rotation compensation (taglib-ilrg)", () => {
       // TagLib's ASF render+parse left-rotates multi-value attributes by one
       // ([A,B,C] -> [B,C,A]); the write-side compensation must restore the
       // exact order. A naive reversal would give [A,C,B] here.
-      assertEquals(props.genre, ["Pop", "Rock", "Jazz"]);
+      expect(props.genre).toStrictEqual(["Pop", "Rock", "Jazz"]);
     });
 
     it(`[${backend}] wma no-op save keeps multi-value order stable`, async () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const src = await Deno.readFile(FIXTURE_PATH.wma);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.wma));
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ genre: ["Pop", "Rock"] });
       file.save();
@@ -331,7 +329,7 @@ describe("ASF multi-value rotation compensation (taglib-ilrg)", () => {
       const third = await tl3.open(twice);
       const props = third.properties() as Record<string, string[]>;
       third.dispose();
-      assertEquals(props.genre, ["Pop", "Rock"]);
+      expect(props.genre).toStrictEqual(["Pop", "Rock"]);
     });
   }
 });
@@ -341,7 +339,7 @@ describe("embedded-null single-string multi-value (taglib-ktfn)", () => {
     const written: Uint8Array[] = [];
     for (const backend of BACKENDS) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const src = await Deno.readFile(FIXTURE_PATH.mp3);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
       const file = await tl.open(new Uint8Array(src));
       file.setProperty("genre", "Pop\u0000Rock");
       file.save();
@@ -352,11 +350,10 @@ describe("embedded-null single-string multi-value (taglib-ktfn)", () => {
         : new Uint8Array(0);
       file.dispose();
       written.push(body);
-      assertEquals(
+      expect(
         new TextDecoder().decode(body),
-        "\u0003Pop\u0000Rock",
         `${backend} truncated the value after the embedded null`,
-      );
+      ).toStrictEqual("\u0003Pop\u0000Rock");
       // The saved file must read back BOTH values (cross-backend read).
       const tlR = await TagLib.initialize({
         forceWasmType: backend === "wasi" ? "emscripten" : "wasi",
@@ -364,12 +361,11 @@ describe("embedded-null single-string multi-value (taglib-ktfn)", () => {
       const reopened = await tlR.open(buf);
       const props = reopened.properties() as Record<string, string[]>;
       reopened.dispose();
-      assertEquals(props.genre, ["Pop", "Rock"]);
+      expect(props.genre).toStrictEqual(["Pop", "Rock"]);
     }
-    assertEquals(
+    expect(
       written[0],
-      written[1],
       "backends produced different TCON bytes for the same input",
-    );
+    ).toStrictEqual(written[1]);
   });
 });

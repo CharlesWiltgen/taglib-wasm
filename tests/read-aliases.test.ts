@@ -18,8 +18,8 @@
  * safe and exact.
  */
 
-import { assert, assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import { remapKeysFromTagLib } from "../src/constants/properties.ts";
 import { applyTags, readTags } from "../src/simple/index.ts";
@@ -113,7 +113,7 @@ let legacyFixture: Uint8Array | undefined;
 function legacyFlac(): Promise<Uint8Array> {
   return (async () => {
     legacyFixture ??= patchFlacComments(
-      await Deno.readFile(FIXTURE_PATH.flac),
+      new Uint8Array(await readFile(FIXTURE_PATH.flac)),
       [
         ["ALBUM ARTIST", "VA"],
         ["ORGANIZATION", "Reprise"],
@@ -131,7 +131,7 @@ let yearOnlyFixture: Uint8Array | undefined;
 function yearOnlyFlac(): Promise<Uint8Array> {
   return (async () => {
     yearOnlyFixture ??= patchFlacComments(
-      await Deno.readFile(FIXTURE_PATH.flac),
+      new Uint8Array(await readFile(FIXTURE_PATH.flac)),
       [["YEAR", "1986"]],
       ["DATE"],
     );
@@ -155,17 +155,18 @@ describe("alias resolution units (taglib-7ru2)", () => {
       "MusicBrainz Album Type": ["EP"],
       CONTENTADVISORY: ["1"],
     });
-    assertEquals(mapped.albumArtist, ["VA"]);
-    assertEquals(mapped.label, ["Reprise"]);
-    assertEquals(mapped.barcode, ["093624577429"]);
-    assertEquals(mapped.totalTracks, ["12"]);
-    assertEquals(mapped.totalDiscs, ["2"]);
-    assertEquals(mapped.releaseType, ["EP"]);
-    assertEquals(mapped.itunesAdvisory, ["1"]);
+    expect(mapped.albumArtist).toStrictEqual(["VA"]);
+    expect(mapped.label).toStrictEqual(["Reprise"]);
+    expect(mapped.barcode).toStrictEqual(["093624577429"]);
+    expect(mapped.totalTracks).toStrictEqual(["12"]);
+    expect(mapped.totalDiscs).toStrictEqual(["2"]);
+    expect(mapped.releaseType).toStrictEqual(["EP"]);
+    expect(mapped.itunesAdvisory).toStrictEqual(["1"]);
     // EXPLICIT resolves to the same group.
-    assertEquals(remapKeysFromTagLib({ EXPLICIT: ["0"] }).itunesAdvisory, [
-      "0",
-    ]);
+    expect(remapKeysFromTagLib({ EXPLICIT: ["0"] }).itunesAdvisory)
+      .toStrictEqual([
+        "0",
+      ]);
   });
 
   it("canonical spelling wins when both are present", () => {
@@ -173,7 +174,7 @@ describe("alias resolution units (taglib-7ru2)", () => {
       ALBUMARTIST: ["Canonical"],
       "ALBUM ARTIST": ["Legacy"],
     });
-    assertEquals(mapped.albumArtist, ["Canonical"]);
+    expect(mapped.albumArtist).toStrictEqual(["Canonical"]);
   });
 
   it("typed map resolves aliases and consumes YEAR", () => {
@@ -183,12 +184,12 @@ describe("alias resolution units (taglib-7ru2)", () => {
       CONTENTADVISORY: ["1"],
       YEAR: ["1986"],
     } as never);
-    assertEquals(tag.albumArtist, ["VA"]);
-    assertEquals(tag.totalTracks, 12);
-    assertEquals(tag.itunesAdvisory, ["1"]);
-    assertEquals(tag.year, 1986);
-    assertEquals(tag.date, "1986");
-    assertEquals((tag as Record<string, unknown>)["YEAR"], undefined);
+    expect(tag.albumArtist).toStrictEqual(["VA"]);
+    expect(tag.totalTracks).toStrictEqual(12);
+    expect(tag.itunesAdvisory).toStrictEqual(["1"]);
+    expect(tag.year).toStrictEqual(1986);
+    expect(tag.date).toStrictEqual("1986");
+    expect((tag as Record<string, unknown>)["YEAR"]).toStrictEqual(undefined);
   });
 
   it("DATE wins over YEAR when both present", () => {
@@ -198,8 +199,8 @@ describe("alias resolution units (taglib-7ru2)", () => {
       date: ["2020-05-05"],
       YEAR: ["1986"],
     } as never);
-    assertEquals(tag.year, 2020);
-    assertEquals(tag.date, "2020-05-05");
+    expect(tag.year).toStrictEqual(2020);
+    expect(tag.date).toStrictEqual("2020-05-05");
   });
 });
 
@@ -209,12 +210,12 @@ describe("legacy-name FLAC read on both backends (taglib-7ru2)", () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(await legacyFlac());
       const tag = mapPropertiesToExtendedTag(file.properties());
-      assertEquals(tag.albumArtist, ["VA"]);
-      assertEquals(tag.label, ["Reprise"]);
-      assertEquals(tag.totalTracks, 12);
-      assertEquals(tag.itunesAdvisory, ["1"]);
-      assertEquals(tag.releaseType, ["EP"]);
-      assertEquals(tag.year, 1986); // from DATE=1986-03-25
+      expect(tag.albumArtist).toStrictEqual(["VA"]);
+      expect(tag.label).toStrictEqual(["Reprise"]);
+      expect(tag.totalTracks).toStrictEqual(12);
+      expect(tag.itunesAdvisory).toStrictEqual(["1"]);
+      expect(tag.releaseType).toStrictEqual(["EP"]);
+      expect(tag.year).toStrictEqual(1986); // from DATE=1986-03-25
       file.dispose();
     });
 
@@ -222,12 +223,12 @@ describe("legacy-name FLAC read on both backends (taglib-7ru2)", () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(await legacyFlac());
       const props = file.properties() as Record<string, string[]>;
-      assertEquals(props.albumArtist, ["VA"]);
-      assertEquals(props.label, ["Reprise"]);
-      assertEquals(props.totalTracks, ["12"]);
-      assertEquals(props.itunesAdvisory, ["1"]);
-      assertEquals(props.releaseType, ["EP"]);
-      assertEquals(props["ALBUM ARTIST"], undefined);
+      expect(props.albumArtist).toStrictEqual(["VA"]);
+      expect(props.label).toStrictEqual(["Reprise"]);
+      expect(props.totalTracks).toStrictEqual(["12"]);
+      expect(props.itunesAdvisory).toStrictEqual(["1"]);
+      expect(props.releaseType).toStrictEqual(["EP"]);
+      expect(props["ALBUM ARTIST"]).toStrictEqual(undefined);
       file.dispose();
     });
 
@@ -235,12 +236,12 @@ describe("legacy-name FLAC read on both backends (taglib-7ru2)", () => {
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(await yearOnlyFlac());
       const tag = mapPropertiesToExtendedTag(file.properties());
-      assertEquals(tag.year, 1986);
-      assertEquals(tag.date, "1986");
+      expect(tag.year).toStrictEqual(1986);
+      expect(tag.date).toStrictEqual("1986");
       // The property surface keeps the raw YEAR key (byte-stable).
       const props = file.properties() as Record<string, string[]>;
-      assertEquals(props.YEAR, ["1986"]);
-      assertEquals(props.date, undefined);
+      expect(props.YEAR).toStrictEqual(["1986"]);
+      expect(props.date).toStrictEqual(undefined);
       file.dispose();
     });
   }
@@ -249,7 +250,7 @@ describe("legacy-name FLAC read on both backends (taglib-7ru2)", () => {
 describe("write normalization (taglib-7ru2)", () => {
   for (const backend of BACKENDS) {
     it(`[${backend}] setProperties with an alias name writes the canonical key`, async () => {
-      const src = await Deno.readFile(FIXTURE_PATH.flac);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.flac));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ "ALBUM ARTIST": ["VA"] });
@@ -258,23 +259,23 @@ describe("write normalization (taglib-7ru2)", () => {
       file.dispose();
 
       const text = new TextDecoder().decode(buf);
-      assert(text.includes("ALBUMARTIST=VA"));
-      assert(!text.includes("ALBUM ARTIST=VA"));
+      expect(text.includes("ALBUMARTIST=VA")).toBeTruthy();
+      expect(!text.includes("ALBUM ARTIST=VA")).toBeTruthy();
 
       const tlR = await TagLib.initialize({ forceWasmType: OTHER[backend] });
       const reopened = await tlR.open(buf);
       const props = reopened.properties() as Record<string, string[]>;
-      assertEquals(props.albumArtist, ["VA"]);
+      expect(props.albumArtist).toStrictEqual(["VA"]);
       reopened.dispose();
     });
 
     it(`[${backend}] getProperty resolves an alias name`, async () => {
-      const src = await Deno.readFile(FIXTURE_PATH.flac);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.flac));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       file.setProperty("TOTALTRACKS", "12");
-      assertEquals(file.getProperty("TOTALTRACKS")?.[0], "12");
-      assertEquals(file.getProperty("totalTracks")?.[0], "12");
+      expect(file.getProperty("TOTALTRACKS")?.[0]).toStrictEqual("12");
+      expect(file.getProperty("totalTracks")?.[0]).toStrictEqual("12");
       file.dispose();
     });
   }
@@ -284,15 +285,15 @@ describe("typed round-trip with legacy names (taglib-7ru2)", () => {
   it("readTags -> applyTags preserves resolved values and canonicalizes YEAR", async () => {
     const src = await yearOnlyFlac();
     const tags = await readTags(src);
-    assertEquals(tags.year, 1986);
-    assertEquals(tags.date, "1986");
+    expect(tags.year).toStrictEqual(1986);
+    expect(tags.date).toStrictEqual("1986");
 
     const back = await applyTags(src, tags);
     const text = new TextDecoder().decode(back);
     // The typed surface canonicalizes the fallback: YEAR becomes DATE.
-    assert(text.includes("DATE=1986"));
-    assert(!text.includes("YEAR=1986"));
+    expect(text.includes("DATE=1986")).toBeTruthy();
+    expect(!text.includes("YEAR=1986")).toBeTruthy();
     const reread = await readTags(back);
-    assertEquals(reread.year, 1986);
+    expect(reread.year).toStrictEqual(1986);
   });
 });

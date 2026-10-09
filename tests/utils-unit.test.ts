@@ -1,5 +1,8 @@
-import { assertEquals, assertRejects } from "@std/assert";
-import { afterAll, describe, it } from "@std/testing/bdd";
+import { afterAll, describe, expect, it } from "vite-plus/test";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { expectRejects } from "./_assert-helpers.ts";
 import {
   getFileSize,
   readFileData,
@@ -8,35 +11,35 @@ import {
 import { writeFileData } from "../src/utils/write.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
 
-const TEMP_DIR = await Deno.makeTempDir();
+const TEMP_DIR = await mkdtemp(join(tmpdir(), "taglib-"));
 const MP3_PATH = FIXTURE_PATH.mp3;
 
 afterAll(async () => {
-  await Deno.remove(TEMP_DIR, { recursive: true });
+  await rm(TEMP_DIR, { recursive: true });
 });
 
 describe("readFileData", () => {
   it("should read from file path", async () => {
     const data = await readFileData(MP3_PATH);
-    assertEquals(data instanceof Uint8Array, true);
-    assertEquals(data.length > 0, true);
+    expect(data instanceof Uint8Array).toStrictEqual(true);
+    expect(data.length > 0).toStrictEqual(true);
   });
 
   it("should return Uint8Array input unchanged", async () => {
     const input = new Uint8Array([1, 2, 3, 4]);
     const result = await readFileData(input);
-    assertEquals(result, input);
+    expect(result).toStrictEqual(input);
   });
 
   it("should convert ArrayBuffer to Uint8Array", async () => {
     const buffer = new ArrayBuffer(4);
     new Uint8Array(buffer).set([10, 20, 30, 40]);
     const result = await readFileData(buffer);
-    assertEquals(result, new Uint8Array([10, 20, 30, 40]));
+    expect(result).toStrictEqual(new Uint8Array([10, 20, 30, 40]));
   });
 
   it("should throw FileOperationError for non-existent path", async () => {
-    await assertRejects(
+    await expectRejects(
       () => readFileData("/nonexistent/path/file.mp3"),
       Error,
     );
@@ -46,21 +49,18 @@ describe("readFileData", () => {
 describe("getFileSize", () => {
   it("should return correct file size", async () => {
     const size = await getFileSize(MP3_PATH);
-    assertEquals(typeof size, "number");
-    assertEquals(size > 0, true);
+    expect(typeof size).toStrictEqual("number");
+    expect(size > 0).toStrictEqual(true);
   });
 
   it("should match actual file data length", async () => {
     const size = await getFileSize(MP3_PATH);
     const data = await readFileData(MP3_PATH);
-    assertEquals(size, data.length);
+    expect(size).toStrictEqual(data.length);
   });
 
   it("should throw for non-existent file", async () => {
-    await assertRejects(
-      () => getFileSize("/nonexistent/file.mp3"),
-      Error,
-    );
+    await expectRejects(() => getFileSize("/nonexistent/file.mp3"), Error);
   });
 });
 
@@ -73,9 +73,8 @@ describe("readPartialFileData", () => {
     const partial = await readPartialFileData(MP3_PATH, headerSize, footerSize);
 
     if (fullData.length > headerSize + footerSize) {
-      assertEquals(partial.length, headerSize + footerSize);
-      assertEquals(
-        partial.slice(0, headerSize),
+      expect(partial.length).toStrictEqual(headerSize + footerSize);
+      expect(partial.slice(0, headerSize)).toStrictEqual(
         fullData.slice(0, headerSize),
       );
     }
@@ -84,14 +83,14 @@ describe("readPartialFileData", () => {
   it("should return full file for small files", async () => {
     const smallPath = `${TEMP_DIR}/small.bin`;
     const smallData = new Uint8Array([1, 2, 3, 4, 5]);
-    await Deno.writeFile(smallPath, smallData);
+    await writeFile(smallPath, smallData);
 
     const partial = await readPartialFileData(smallPath, 1024, 1024);
-    assertEquals(partial.length, smallData.length);
+    expect(partial.length).toStrictEqual(smallData.length);
   });
 
   it("should throw for non-existent file", async () => {
-    await assertRejects(
+    await expectRejects(
       () => readPartialFileData("/nonexistent/file.mp3", 1024, 512),
       Error,
     );
@@ -104,8 +103,8 @@ describe("writeFileData", () => {
     const data = new Uint8Array([100, 200, 150, 50]);
     await writeFileData(path, data);
 
-    const readBack = await Deno.readFile(path);
-    assertEquals(new Uint8Array(readBack), data);
+    const readBack = new Uint8Array(await readFile(path));
+    expect(new Uint8Array(readBack)).toStrictEqual(data);
   });
 
   it("should overwrite existing file", async () => {
@@ -113,16 +112,18 @@ describe("writeFileData", () => {
     await writeFileData(path, new Uint8Array([1, 2, 3]));
     await writeFileData(path, new Uint8Array([4, 5, 6, 7]));
 
-    const readBack = await Deno.readFile(path);
-    assertEquals(new Uint8Array(readBack), new Uint8Array([4, 5, 6, 7]));
+    const readBack = new Uint8Array(await readFile(path));
+    expect(new Uint8Array(readBack)).toStrictEqual(
+      new Uint8Array([4, 5, 6, 7]),
+    );
   });
 
   it("should handle empty data", async () => {
     const path = `${TEMP_DIR}/empty-test.bin`;
     await writeFileData(path, new Uint8Array(0));
 
-    const readBack = await Deno.readFile(path);
-    assertEquals(readBack.length, 0);
+    const readBack = new Uint8Array(await readFile(path));
+    expect(readBack.length).toStrictEqual(0);
   });
 
   it("should roundtrip with readFileData", async () => {
@@ -132,6 +133,6 @@ describe("writeFileData", () => {
 
     await writeFileData(path, original);
     const result = await readFileData(path);
-    assertEquals(result, original);
+    expect(result).toStrictEqual(original);
   });
 });

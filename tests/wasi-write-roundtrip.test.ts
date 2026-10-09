@@ -5,9 +5,16 @@
  * This file extends coverage to all formats with varied tag data.
  */
 
-import { assertEquals, type assertExists, assertGreater } from "@std/assert";
-import { type afterAll, type beforeAll, describe, it } from "@std/testing/bdd";
-import { resolve } from "@std/path";
+import {
+  type afterAll,
+  type beforeAll,
+  describe,
+  expect,
+  it,
+} from "vite-plus/test";
+import { copyFile, mkdtemp, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { loadWasiHost } from "../src/runtime/wasi-host-loader.ts";
 import {
   fileExists,
@@ -20,20 +27,20 @@ import type { ExtendedTag } from "../src/types.ts";
 
 type RawTag = Record<string, unknown>;
 
-const WASM_PATH = resolve(Deno.cwd(), "dist/wasi/taglib-wasi.wasm");
+const WASM_PATH = resolve(process.cwd(), "dist/wasi/taglib-wasi.wasm");
 const HAS_WASM = fileExists(WASM_PATH);
 
-describe(
-  { name: "WASI Write Roundtrip - All Formats", ignore: !HAS_WASM },
+describe.skipIf(!HAS_WASM)(
+  "WASI Write Roundtrip - All Formats",
   () => {
     for (const [format, paths] of Object.entries(FORMAT_FILES)) {
       it(`should write and read back tags (${format})`, async () => {
-        const tempDir = await Deno.makeTempDir();
+        const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
         const ext = paths.real.split(".").pop()!;
         const destFile = `roundtrip.${ext}`;
         const srcPath = resolve(TEST_FILES_DIR_PATH, paths.real);
         const destPath = resolve(tempDir, destFile);
-        await Deno.copyFile(srcPath, destPath);
+        await copyFile(srcPath, destPath);
 
         try {
           using wasi = await loadWasiHost({
@@ -56,24 +63,24 @@ describe(
             wasi2,
             `/tmp/${destFile}`,
           ) as unknown as RawTag;
-          assertEquals(tags.title, `Written ${format}`);
-          assertEquals(tags.artist, "Roundtrip Artist");
-          assertEquals(tags.album, "Roundtrip Album");
+          expect(tags.title).toStrictEqual(`Written ${format}`);
+          expect(tags.artist).toStrictEqual("Roundtrip Artist");
+          expect(tags.album).toStrictEqual("Roundtrip Album");
         } finally {
-          await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+          await rm(tempDir, { recursive: true }).catch(() => {});
         }
       });
 
       it(`should preserve audio data after write (${format})`, async () => {
-        const tempDir = await Deno.makeTempDir();
+        const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
         const ext = paths.real.split(".").pop()!;
         const destFile = `preserve.${ext}`;
         const srcPath = resolve(TEST_FILES_DIR_PATH, paths.real);
         const destPath = resolve(tempDir, destFile);
-        await Deno.copyFile(srcPath, destPath);
+        await copyFile(srcPath, destPath);
 
         try {
-          const sizeBefore = (await Deno.stat(destPath)).size;
+          const sizeBefore = (await stat(destPath)).size;
 
           using wasi = await loadWasiHost({
             wasmPath: WASM_PATH,
@@ -84,30 +91,26 @@ describe(
             title: "Size Check",
           } as unknown as ExtendedTag);
 
-          const sizeAfter = (await Deno.stat(destPath)).size;
-          assertGreater(
-            sizeAfter,
-            0,
-            `${format}: file should not be empty after write`,
-          );
+          const sizeAfter = (await stat(destPath)).size;
+          expect(sizeAfter, `${format}: file should not be empty after write`)
+            .toBeGreaterThan(0);
           // Size should be in reasonable range (tag overhead varies)
           const ratio = sizeAfter / sizeBefore;
-          assertEquals(
+          expect(
             ratio > 0.5 && ratio < 3.0,
-            true,
             `${format}: size ratio ${ratio.toFixed(2)} unreasonable`,
-          );
+          ).toStrictEqual(true);
         } finally {
-          await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+          await rm(tempDir, { recursive: true }).catch(() => {});
         }
       });
     }
 
     it("should write unicode tags via path", async () => {
-      const tempDir = await Deno.makeTempDir();
+      const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
       const srcPath = resolve(TEST_FILES_DIR_PATH, "flac/kiss-snippet.flac");
       const destPath = resolve(tempDir, "unicode.flac");
-      await Deno.copyFile(srcPath, destPath);
+      await copyFile(srcPath, destPath);
 
       try {
         using wasi = await loadWasiHost({
@@ -131,20 +134,20 @@ describe(
           wasi2,
           "/tmp/unicode.flac",
         ) as unknown as RawTag;
-        assertEquals(tags.title, "日本語タイトル");
-        assertEquals(tags.artist, "Артист");
-        assertEquals(tags.album, "专辑");
-        assertEquals(tags.comment, "🎵🎸");
+        expect(tags.title).toStrictEqual("日本語タイトル");
+        expect(tags.artist).toStrictEqual("Артист");
+        expect(tags.album).toStrictEqual("专辑");
+        expect(tags.comment).toStrictEqual("🎵🎸");
       } finally {
-        await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+        await rm(tempDir, { recursive: true }).catch(() => {});
       }
     });
 
     it("should overwrite tags on second write", async () => {
-      const tempDir = await Deno.makeTempDir();
+      const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
       const srcPath = resolve(TEST_FILES_DIR_PATH, "mp3/kiss-snippet.mp3");
       const destPath = resolve(tempDir, "overwrite.mp3");
-      await Deno.copyFile(srcPath, destPath);
+      await copyFile(srcPath, destPath);
 
       try {
         // First write
@@ -174,21 +177,21 @@ describe(
           wasi3,
           "/tmp/overwrite.mp3",
         ) as unknown as RawTag;
-        assertEquals(tags.title, "Second Write");
+        expect(tags.title).toStrictEqual("Second Write");
       } finally {
-        await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+        await rm(tempDir, { recursive: true }).catch(() => {});
       }
     });
   },
 );
 
-describe(
-  { name: "WASI COMPILATION boolean contract (taglib-c9b)", ignore: !HAS_WASM },
+describe.skipIf(!HAS_WASM)(
+  "WASI COMPILATION boolean contract (taglib-c9b)",
   () => {
     it("round-trips the COMPILATION boolean as '1'/'0' (not bool/'true')", async () => {
-      const tempDir = await Deno.makeTempDir();
+      const tempDir = await mkdtemp(join(tmpdir(), "taglib-"));
       const destPath = resolve(tempDir, "compilation.flac");
-      await Deno.copyFile(
+      await copyFile(
         resolve(TEST_FILES_DIR_PATH, "flac/kiss-snippet.flac"),
         destPath,
       );
@@ -214,7 +217,7 @@ describe(
           wasi2,
           "/tmp/compilation.flac",
         ) as unknown as RawTag;
-        assertEquals(tagsTrue.compilation, "1");
+        expect(tagsTrue.compilation).toStrictEqual("1");
 
         // Write false, read back "0".
         writeTagsWasi(wasi2, "/tmp/compilation.flac", {
@@ -224,9 +227,9 @@ describe(
           wasi2,
           "/tmp/compilation.flac",
         ) as unknown as RawTag;
-        assertEquals(tagsFalse.compilation, "0");
+        expect(tagsFalse.compilation).toStrictEqual("0");
       } finally {
-        await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+        await rm(tempDir, { recursive: true }).catch(() => {});
       }
     });
   },

@@ -11,8 +11,7 @@
  * - 10 runs: Large data tests (performance considerations)
  */
 
-import { assert, assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
 import fc from "fast-check";
 import {
   decodeAudioProperties,
@@ -57,9 +56,10 @@ describe("MessagePack", () => {
           for (const [key, value] of Object.entries(tagData)) {
             if (value === undefined || value === null || value === "") {
               // Undefined/null/empty values should be omitted
-              assert(!(key in decoded) || decoded[key] === undefined);
+              expect(!(key in decoded) || decoded[key] === undefined)
+                .toBeTruthy();
             } else {
-              assertEquals(decoded[key], value);
+              expect(decoded[key]).toStrictEqual(value);
             }
           }
 
@@ -82,11 +82,11 @@ describe("MessagePack", () => {
           const encoded = encodeTagData(tagData as unknown as ExtendedTag);
 
           // Must produce non-empty Uint8Array
-          assert(encoded instanceof Uint8Array);
-          assert(encoded.length > 0);
+          expect(encoded instanceof Uint8Array).toBeTruthy();
+          expect(encoded.length > 0).toBeTruthy();
 
           // Must be valid MessagePack
-          assert(isValidMessagePack(encoded));
+          expect(isValidMessagePack(encoded)).toBeTruthy();
 
           return true;
         },
@@ -108,9 +108,9 @@ describe("MessagePack", () => {
           const encoded2 = encodeTagData(tagData as unknown as ExtendedTag);
 
           // Same input should produce identical output
-          assertEquals(encoded1.length, encoded2.length);
+          expect(encoded1.length).toStrictEqual(encoded2.length);
           for (let i = 0; i < encoded1.length; i++) {
-            assertEquals(encoded1[i], encoded2[i]);
+            expect(encoded1[i]).toStrictEqual(encoded2[i]);
           }
 
           return true;
@@ -141,12 +141,13 @@ describe("MessagePack", () => {
 
           // Numeric properties should be preserved exactly or very close
           if (props.duration !== undefined) {
-            assert(Math.abs(decoded.duration - props.duration) < 0.001);
+            expect(Math.abs(decoded.duration - props.duration) < 0.001)
+              .toBeTruthy();
           }
-          assertEquals(decoded.bitrate, props.bitrate);
-          assertEquals(decoded.sampleRate, props.sampleRate);
-          assertEquals(decoded.channels, props.channels);
-          assertEquals(decoded.isLossless, props.isLossless);
+          expect(decoded.bitrate).toStrictEqual(props.bitrate);
+          expect(decoded.sampleRate).toStrictEqual(props.sampleRate);
+          expect(decoded.channels).toStrictEqual(props.channels);
+          expect(decoded.isLossless).toStrictEqual(props.isLossless);
 
           return true;
         },
@@ -176,14 +177,14 @@ describe("MessagePack", () => {
           const decoded = decodePicture(encoded);
 
           // All properties should be preserved
-          assertEquals(decoded.mimeType, picture.mimeType);
-          assertEquals(decoded.type, picture.type);
-          assertEquals(decoded.description, picture.description);
+          expect(decoded.mimeType).toStrictEqual(picture.mimeType);
+          expect(decoded.type).toStrictEqual(picture.type);
+          expect(decoded.description).toStrictEqual(picture.description);
 
           // Binary data should match exactly
-          assertEquals(decoded.data.length, picture.data.length);
+          expect(decoded.data.length).toStrictEqual(picture.data.length);
           for (let i = 0; i < picture.data.length; i++) {
-            assertEquals(decoded.data[i], picture.data[i]);
+            expect(decoded.data[i]).toStrictEqual(picture.data[i]);
           }
 
           return true;
@@ -212,14 +213,14 @@ describe("MessagePack", () => {
           const decoded = decodePicture(encoded);
 
           // Large data should round-trip correctly
-          assertEquals(decoded.description, picture.description);
-          assertEquals(decoded.data.length, picture.data.length);
+          expect(decoded.description).toStrictEqual(picture.description);
+          expect(decoded.data.length).toStrictEqual(picture.data.length);
 
           // Verify data integrity with checksum
           const checksum = (arr: Uint8Array) =>
             arr.reduce((sum, byte) => (sum + byte) % 65536, 0);
 
-          assertEquals(checksum(decoded.data), checksum(picture.data));
+          expect(checksum(decoded.data)).toStrictEqual(checksum(picture.data));
 
           return true;
         },
@@ -248,7 +249,7 @@ describe("MessagePack", () => {
 
           // MessagePack should typically be smaller or similar size
           // Allow up to 20% larger for edge cases
-          assert(msgpackSize <= jsonSize * 1.2);
+          expect(msgpackSize <= jsonSize * 1.2).toBeTruthy();
 
           return true;
         },
@@ -272,20 +273,22 @@ describe("MessagePack", () => {
           // Empty strings and undefined should be omitted
           // Null values are preserved
           if (tagData.title === "" || tagData.title === undefined) {
-            assert(!("title" in decoded) || decoded.title === undefined);
+            expect(!("title" in decoded) || decoded.title === undefined)
+              .toBeTruthy();
           } else if (tagData.title === null) {
-            assertEquals(decoded.title, null);
+            expect(decoded.title).toStrictEqual(null);
           }
 
           if (tagData.artist === "" || tagData.artist === undefined) {
-            assert(!("artist" in decoded) || decoded.artist === undefined);
+            expect(!("artist" in decoded) || decoded.artist === undefined)
+              .toBeTruthy();
           } else if (tagData.artist === null) {
-            assertEquals(decoded.artist, null);
+            expect(decoded.artist).toStrictEqual(null);
           }
 
           // Zero values should be preserved
           if (tagData.date === 0) {
-            assertEquals(decoded.date, 0);
+            expect(decoded.date).toStrictEqual(0);
           }
 
           return true;
@@ -308,9 +311,9 @@ describe("MessagePack", () => {
           const decoded = decodeTagData(encoded) as Record<string, unknown>;
 
           // Unicode should be preserved exactly (non-empty strings)
-          assertEquals(decoded.title, tagData.title);
-          assertEquals(decoded.artist, tagData.artist);
-          assertEquals(decoded.comment, tagData.comment);
+          expect(decoded.title).toStrictEqual(tagData.title);
+          expect(decoded.artist).toStrictEqual(tagData.artist);
+          expect(decoded.comment).toStrictEqual(tagData.comment);
 
           return true;
         },
@@ -349,12 +352,12 @@ describe("MessagePack", () => {
           >;
 
           // All should produce equivalent results
-          assertEquals(decoded1.title, decoded2.title);
-          assertEquals(decoded2.title, decoded3.title);
-          assertEquals(decoded1.artist, decoded2.artist);
-          assertEquals(decoded2.artist, decoded3.artist);
-          assertEquals(decoded1.year, decoded2.year);
-          assertEquals(decoded2.year, decoded3.year);
+          expect(decoded1.title).toStrictEqual(decoded2.title);
+          expect(decoded2.title).toStrictEqual(decoded3.title);
+          expect(decoded1.artist).toStrictEqual(decoded2.artist);
+          expect(decoded2.artist).toStrictEqual(decoded3.artist);
+          expect(decoded1.year).toStrictEqual(decoded2.year);
+          expect(decoded2.year).toStrictEqual(decoded3.year);
 
           return true;
         },

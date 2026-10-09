@@ -1,6 +1,6 @@
-import { assert, assertEquals, assertRejects } from "@std/assert";
-import { assertInstanceOf } from "@std/assert/instance-of";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
+import { expectRejects } from "./_assert-helpers.ts";
 import {
   applyTags,
   applyTagsToFile,
@@ -25,43 +25,39 @@ function makeCorruptedBuffer(size = 5000): Uint8Array {
 
 describe("readTags error paths", () => {
   it("should throw InvalidFormatError for corrupted buffer", async () => {
-    await assertRejects(
+    await expectRejects(
       () => readTags(makeCorruptedBuffer()),
       InvalidFormatError,
     );
   });
 
   it("should throw InvalidFormatError for tiny buffer", async () => {
-    await assertRejects(
-      () => readTags(new Uint8Array(10)),
-      InvalidFormatError,
-    );
+    await expectRejects(() => readTags(new Uint8Array(10)), InvalidFormatError);
   });
 });
 
 describe("applyTags", () => {
   it("should throw InvalidFormatError for corrupted buffer", async () => {
-    await assertRejects(
+    await expectRejects(
       () => applyTags(makeCorruptedBuffer(), { title: "Test" }),
       InvalidFormatError,
     );
   });
 
   it("should return a valid buffer when applying tags to valid file", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     const result = await applyTags(new Uint8Array(original), {
       title: "Modified Title",
     });
-    assertInstanceOf(result, Uint8Array);
-    assert(result.length > 0);
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.length > 0).toBeTruthy();
   });
 });
 
 describe("applyTagsToFile error paths", () => {
   it("should throw FileOperationError when given a buffer instead of path", async () => {
     const buffer = new Uint8Array(100);
-    await assertRejects(
-      // deno-lint-ignore no-explicit-any
+    await expectRejects( // deno-lint-ignore no-explicit-any
       () => applyTagsToFile(buffer as any, { title: "Test" }),
       FileOperationError,
       "requires a file path string",
@@ -70,8 +66,7 @@ describe("applyTagsToFile error paths", () => {
 
   it("should throw FileOperationError when given an ArrayBuffer instead of path", async () => {
     const buffer = new ArrayBuffer(100);
-    await assertRejects(
-      // deno-lint-ignore no-explicit-any
+    await expectRejects( // deno-lint-ignore no-explicit-any
       () => applyTagsToFile(buffer as any, { title: "Test" }),
       FileOperationError,
       "requires a file path string",
@@ -82,7 +77,7 @@ describe("applyTagsToFile error paths", () => {
 describe("clearTags", () => {
   for (const format of ["flac", "mp3", "ogg"] as const) {
     it(`should clear extended fields and pictures for ${format.toUpperCase()}`, async () => {
-      const original = await Deno.readFile(FIXTURE_PATH[format]);
+      const original = new Uint8Array(await readFile(FIXTURE_PATH[format]));
 
       const withExtended = await applyTags(new Uint8Array(original), {
         title: "Test Title",
@@ -106,19 +101,20 @@ describe("clearTags", () => {
 
       const verifyFile = await taglib.open(cleared);
       try {
-        assertEquals(verifyFile.tag().title, "");
-        assertEquals(verifyFile.tag().artist, "");
-        assertEquals(verifyFile.getProperty("albumArtist")?.[0], undefined);
-        assertEquals(verifyFile.getProperty("composer")?.[0], undefined);
-        assertEquals(
-          verifyFile.getProperty("musicbrainzTrackId")?.[0],
+        expect(verifyFile.tag().title).toStrictEqual("");
+        expect(verifyFile.tag().artist).toStrictEqual("");
+        expect(verifyFile.getProperty("albumArtist")?.[0]).toStrictEqual(
           undefined,
         );
-        assertEquals(
-          verifyFile.getProperty("replayGainTrackGain")?.[0],
+        expect(verifyFile.getProperty("composer")?.[0]).toStrictEqual(
           undefined,
         );
-        assertEquals(verifyFile.getPictures().length, 0);
+        expect(verifyFile.getProperty("musicbrainzTrackId")?.[0]).toStrictEqual(
+          undefined,
+        );
+        expect(verifyFile.getProperty("replayGainTrackGain")?.[0])
+          .toStrictEqual(undefined);
+        expect(verifyFile.getPictures().length).toStrictEqual(0);
       } finally {
         verifyFile.dispose();
       }
@@ -128,7 +124,7 @@ describe("clearTags", () => {
 
 describe("readTags extended fields", () => {
   it("should return extended fields from readTags", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
     const withExtended = await applyTags(new Uint8Array(original), {
       title: "Test Title",
       albumArtist: "Various Artists",
@@ -142,21 +138,21 @@ describe("readTags extended fields", () => {
     });
 
     const tags = await readTags(withExtended);
-    assertEquals(tags.title, ["Test Title"]);
-    assertEquals(tags.albumArtist, ["Various Artists"]);
-    assertEquals(tags.composer, ["Test Composer"]);
-    assertEquals(tags.discNumber, 2);
-    assertEquals(tags.totalTracks, 12);
-    assertEquals(tags.bpm, 128);
-    assertEquals(tags.compilation, true);
-    assertEquals(tags.musicbrainzTrackId, ["abc-123"]);
-    assertEquals(tags.replayGainTrackGain, ["-6.54 dB"]);
+    expect(tags.title).toStrictEqual(["Test Title"]);
+    expect(tags.albumArtist).toStrictEqual(["Various Artists"]);
+    expect(tags.composer).toStrictEqual(["Test Composer"]);
+    expect(tags.discNumber).toStrictEqual(2);
+    expect(tags.totalTracks).toStrictEqual(12);
+    expect(tags.bpm).toStrictEqual(128);
+    expect(tags.compilation).toStrictEqual(true);
+    expect(tags.musicbrainzTrackId).toStrictEqual(["abc-123"]);
+    expect(tags.replayGainTrackGain).toStrictEqual(["-6.54 dB"]);
   });
 });
 
 describe("readFormat edge cases", () => {
   it("should throw InvalidFormatError for corrupted buffer", async () => {
-    await assertRejects(
+    await expectRejects(
       () => readFormat(makeCorruptedBuffer()),
       InvalidFormatError,
     );
@@ -164,6 +160,6 @@ describe("readFormat edge cases", () => {
 
   it("should detect MP3 format for known MP3 file", async () => {
     const format = await readFormat(FIXTURE_PATH.mp3);
-    assertEquals(format, "MP3");
+    expect(format).toStrictEqual("MP3");
   });
 });

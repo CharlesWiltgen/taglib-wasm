@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 /**
  * @fileoverview Consolidated test suite for TagLib-Wasm
  * Combines format testing, API testing, and edge cases with proper Deno test assertions
@@ -8,13 +6,10 @@
  * Or: npm test
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  type assertThrows,
-} from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { afterAll, describe, expect, it } from "vite-plus/test";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import { expectDefined } from "./_assert-helpers.ts";
+import { cleanupTempFiles, createTempFile } from "./test-utils.ts";
 import { TagLib } from "../src/taglib.ts";
 import type { AudioFile } from "../src/taglib.ts";
 import {
@@ -30,38 +25,41 @@ import { EXPECTED_FORMATS, TEST_FILES } from "./test-utils.ts";
 // Force Emscripten backend for Simple API calls
 setBufferMode(true);
 
+afterAll(cleanupTempFiles);
+
 describe("Initialization", () => {
   it("TagLib: Initialization", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    assertExists(taglib, "TagLib instance should exist after init");
+    expectDefined(taglib, "TagLib instance should exist after init");
   });
 });
 
 describe("Full API", () => {
   it("Basic Operations", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    assertExists(taglib, "TagLib instance should exist");
+    expectDefined(taglib, "TagLib instance should exist");
 
     const version = taglib.version();
-    assert(
+    expect(
       /^\d+\.\d+\.\d+\S* \(TagLib \d+\.\d+\.\d+\)$/.test(version),
       `Version should match format 'X.Y.Z (TagLib X.Y.Z)', got: ${version}`,
-    );
+    ).toBeTruthy();
   });
 
   it("Format Detection", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
 
     for (const [format, path] of Object.entries(TEST_FILES)) {
-      const audioData = await Deno.readFile(path);
+      const audioData = new Uint8Array(await readFile(path));
       const file = await taglib.open(audioData.buffer);
 
-      assertEquals(file.isValid(), true, `${format} file should be valid`);
-      assertEquals(
-        file.getFormat(),
-        EXPECTED_FORMATS[format as keyof typeof EXPECTED_FORMATS],
-        `Should detect ${format} format correctly`,
+      expect(file.isValid(), `${format} file should be valid`).toStrictEqual(
+        true,
       );
+      expect(file.getFormat(), `Should detect ${format} format correctly`)
+        .toStrictEqual(
+          EXPECTED_FORMATS[format as keyof typeof EXPECTED_FORMATS],
+        );
 
       file.dispose();
     }
@@ -69,40 +67,44 @@ describe("Full API", () => {
 
   it("Audio Properties", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
     const file = await taglib.open(audioData.buffer);
 
     const props = file.audioProperties();
-    assertExists(props, "Should have audio properties");
-    assert(props.duration > 0, "Duration should be positive");
-    assert(props.bitrate > 0, "Bitrate should be positive");
-    assert(props.sampleRate > 0, "Sample rate should be positive");
-    assert(props.channels > 0, "Channels should be positive");
+    expectDefined(props, "Should have audio properties");
+    expect(props.duration > 0, "Duration should be positive").toBeTruthy();
+    expect(props.bitrate > 0, "Bitrate should be positive").toBeTruthy();
+    expect(props.sampleRate > 0, "Sample rate should be positive").toBeTruthy();
+    expect(props.channels > 0, "Channels should be positive").toBeTruthy();
 
     file.dispose();
   });
 
   it("Tag Reading", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
     const file = await taglib.open(audioData.buffer);
 
     const tags = file.tag();
-    assertExists(tags, "Should have tags");
-    assertEquals(typeof tags.title, "string", "Title should be string");
-    assertEquals(typeof tags.artist, "string", "Artist should be string");
-    assertEquals(typeof tags.album, "string", "Album should be string");
-    assertEquals(typeof tags.year, "number", "Year should be number");
-    assertEquals(typeof tags.track, "number", "Track should be number");
-    assertEquals(typeof tags.genre, "string", "Genre should be string");
-    assertEquals(typeof tags.comment, "string", "Comment should be string");
+    expectDefined(tags, "Should have tags");
+    expect(typeof tags.title, "Title should be string").toStrictEqual("string");
+    expect(typeof tags.artist, "Artist should be string").toStrictEqual(
+      "string",
+    );
+    expect(typeof tags.album, "Album should be string").toStrictEqual("string");
+    expect(typeof tags.year, "Year should be number").toStrictEqual("number");
+    expect(typeof tags.track, "Track should be number").toStrictEqual("number");
+    expect(typeof tags.genre, "Genre should be string").toStrictEqual("string");
+    expect(typeof tags.comment, "Comment should be string").toStrictEqual(
+      "string",
+    );
 
     file.dispose();
   });
 
   it("Tag Writing", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
     const file = await taglib.open(audioData.buffer);
 
     const tag = file.tag();
@@ -115,20 +117,22 @@ describe("Full API", () => {
     tag.setComment("Test Comment");
 
     const updatedTags = file.tag();
-    assertEquals(updatedTags.title, "Test Title", "Title should be updated");
-    assertEquals(
-      updatedTags.artist,
-      "Test Artist",
-      "Artist should be updated",
+    expect(updatedTags.title, "Title should be updated").toStrictEqual(
+      "Test Title",
     );
-    assertEquals(updatedTags.album, "Test Album", "Album should be updated");
-    assertEquals(updatedTags.year, 2024, "Year should be updated");
-    assertEquals(updatedTags.track, 1, "Track should be updated");
-    assertEquals(updatedTags.genre, "Test Genre", "Genre should be updated");
-    assertEquals(
-      updatedTags.comment,
+    expect(updatedTags.artist, "Artist should be updated").toStrictEqual(
+      "Test Artist",
+    );
+    expect(updatedTags.album, "Album should be updated").toStrictEqual(
+      "Test Album",
+    );
+    expect(updatedTags.year, "Year should be updated").toStrictEqual(2024);
+    expect(updatedTags.track, "Track should be updated").toStrictEqual(1);
+    expect(updatedTags.genre, "Genre should be updated").toStrictEqual(
+      "Test Genre",
+    );
+    expect(updatedTags.comment, "Comment should be updated").toStrictEqual(
       "Test Comment",
-      "Comment should be updated",
     );
 
     file.dispose();
@@ -136,11 +140,11 @@ describe("Full API", () => {
 
   it("Extended Tag Support", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
     const file = await taglib.open(audioData.buffer);
 
     const tags = file.tag();
-    assertExists(tags, "Should have tags object");
+    expectDefined(tags, "Should have tags object");
 
     file.dispose();
   });
@@ -149,23 +153,24 @@ describe("Full API", () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
 
     for (let i = 0; i < 10; i++) {
-      const audioData = await Deno.readFile(TEST_FILES.mp3);
+      const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
       const file = await taglib.open(audioData.buffer);
-      assert(file.isValid(), `File ${i} should be valid`);
+      expect(file.isValid(), `File ${i} should be valid`).toBeTruthy();
       file.dispose();
     }
 
-    assert(true, "Memory management test passed");
+    expect(true, "Memory management test passed").toBeTruthy();
   });
 
   it("Symbol.dispose enables using statement", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
 
     let fileRef: AudioFile | null = null;
     {
       using file = await taglib.open(audioData.buffer);
-      assert(file.isValid(), "File should be valid inside using block");
+      expect(file.isValid(), "File should be valid inside using block")
+        .toBeTruthy();
       fileRef = file;
     }
     let threw = false;
@@ -174,23 +179,24 @@ describe("Full API", () => {
     } catch {
       threw = true;
     }
-    assert(threw, "Calling isValid() on disposed file should throw");
+    expect(threw, "Calling isValid() on disposed file should throw")
+      .toBeTruthy();
   });
 
   it("Double disposal is safe", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
 
     {
       using file = await taglib.open(audioData.buffer);
-      assert(file.isValid(), "File should be valid");
+      expect(file.isValid(), "File should be valid").toBeTruthy();
       file.dispose();
     }
   });
 
   it("Symbol.dispose cleans up on exception", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
 
     let fileRef: AudioFile | null = null;
     try {
@@ -206,7 +212,7 @@ describe("Full API", () => {
     } catch {
       threw = true;
     }
-    assert(threw, "File should be disposed after exception");
+    expect(threw, "File should be disposed after exception").toBeTruthy();
   });
 });
 
@@ -214,37 +220,37 @@ describe("Simple API", () => {
   it("File Validation", async () => {
     for (const [format, path] of Object.entries(TEST_FILES)) {
       const isValid = await isValidAudioFile(path);
-      assertEquals(isValid, true, `${format} file should be valid`);
+      expect(isValid, `${format} file should be valid`).toStrictEqual(true);
     }
 
     const isValid = await isValidAudioFile("./package.json");
-    assertEquals(isValid, false, "Non-audio file should be invalid");
+    expect(isValid, "Non-audio file should be invalid").toStrictEqual(false);
   });
 
   it("Format Detection", async () => {
     for (const [format, path] of Object.entries(TEST_FILES)) {
       const detectedFormat = await readFormat(path);
-      assertEquals(
-        detectedFormat,
-        EXPECTED_FORMATS[format as keyof typeof EXPECTED_FORMATS],
-        `Should detect ${format} format correctly`,
-      );
+      expect(detectedFormat, `Should detect ${format} format correctly`)
+        .toStrictEqual(
+          EXPECTED_FORMATS[format as keyof typeof EXPECTED_FORMATS],
+        );
     }
   });
 
   it("Tag Reading", async () => {
     const tags = await readTags(TEST_FILES.mp3);
-    assertExists(tags, "Should return tags object");
-    assert(Array.isArray(tags.title), "Title should be string[]");
-    assert(Array.isArray(tags.artist), "Artist should be string[]");
-    assert(Array.isArray(tags.album), "Album should be string[]");
-    assertEquals(typeof tags.year, "number", "Year should be number");
-    assertEquals(typeof tags.track, "number", "Track should be number");
-    assert(Array.isArray(tags.genre), "Genre should be string[]");
-    assert(
+    expectDefined(tags, "Should return tags object");
+    expect(Array.isArray(tags.title), "Title should be string[]").toBeTruthy();
+    expect(Array.isArray(tags.artist), "Artist should be string[]")
+      .toBeTruthy();
+    expect(Array.isArray(tags.album), "Album should be string[]").toBeTruthy();
+    expect(typeof tags.year, "Year should be number").toStrictEqual("number");
+    expect(typeof tags.track, "Track should be number").toStrictEqual("number");
+    expect(Array.isArray(tags.genre), "Genre should be string[]").toBeTruthy();
+    expect(
       tags.comment === undefined || Array.isArray(tags.comment),
       "Comment should be string[] or undefined",
-    );
+    ).toBeTruthy();
   });
 
   it("Tag Writing", async () => {
@@ -258,32 +264,30 @@ describe("Simple API", () => {
       comment: "Modified by Simple API",
     });
 
-    assert(modifiedBuffer.length > 0, "Modified buffer should have content");
-    assert(modifiedBuffer.length > 0, "Should return a buffer");
+    expect(modifiedBuffer.length > 0, "Modified buffer should have content")
+      .toBeTruthy();
+    expect(modifiedBuffer.length > 0, "Should return a buffer").toBeTruthy();
   });
 
   it("Audio Properties", async () => {
     const props = await readProperties(TEST_FILES.mp3);
-    assertExists(props, "Should return properties");
-    assert(props.duration > 0, "Duration should be positive");
-    assert(props.bitrate > 0, "Bitrate should be positive");
-    assert(props.sampleRate > 0, "Sample rate should be positive");
-    assert(props.channels > 0, "Channels should be positive");
+    expectDefined(props, "Should return properties");
+    expect(props.duration > 0, "Duration should be positive").toBeTruthy();
+    expect(props.bitrate > 0, "Bitrate should be positive").toBeTruthy();
+    expect(props.sampleRate > 0, "Sample rate should be positive").toBeTruthy();
+    expect(props.channels > 0, "Channels should be positive").toBeTruthy();
   });
 
   it("Buffer Input", async () => {
     const tagsFromPath = await readTags(TEST_FILES.mp3);
-    assertExists(tagsFromPath, "Should read tags from path");
+    expectDefined(tagsFromPath, "Should read tags from path");
 
-    const buffer = await Deno.readFile(TEST_FILES.mp3);
+    const buffer = new Uint8Array(await readFile(TEST_FILES.mp3));
     const tagsFromBuffer = await readTags(buffer);
-    assertExists(tagsFromBuffer, "Should read tags from buffer");
+    expectDefined(tagsFromBuffer, "Should read tags from buffer");
 
-    assertEquals(
-      tagsFromPath.genre,
-      tagsFromBuffer.genre,
-      "Genre should match between path and buffer",
-    );
+    expect(tagsFromPath.genre, "Genre should match between path and buffer")
+      .toStrictEqual(tagsFromBuffer.genre);
   });
 });
 
@@ -291,15 +295,15 @@ describe("Error Handling", () => {
   it("Non-existent File", async () => {
     try {
       await readTags("non-existent-file.mp3");
-      assert(false, "Should have thrown an error");
+      expect(false, "Should have thrown an error").toBeTruthy();
     } catch (error) {
-      assert(error instanceof Error, "Should throw Error");
-      assert(
+      if (!(error instanceof Error)) throw new Error("Should throw Error");
+      expect(
         error.message.includes("No such file") ||
           error.message.includes("ENOENT") ||
           error.message.includes("cannot find the file"),
         "Error should indicate file not found",
-      );
+      ).toBeTruthy();
     }
   });
 
@@ -309,14 +313,18 @@ describe("Error Handling", () => {
 
     try {
       const file = await taglib.open(invalidData.buffer);
-      assertEquals(file.isValid(), false, "Invalid data should not be valid");
+      expect(file.isValid(), "Invalid data should not be valid").toStrictEqual(
+        false,
+      );
       file.dispose();
     } catch (error) {
-      assert(error instanceof Error, "Should throw Error for invalid data");
-      assert(
+      if (!(error instanceof Error)) {
+        throw new Error("Should throw Error for invalid data");
+      }
+      expect(
         error.message.includes("Failed to load"),
         "Error should indicate load failure",
-      );
+      ).toBeTruthy();
     }
   });
 
@@ -326,14 +334,18 @@ describe("Error Handling", () => {
 
     try {
       const file = await taglib.open(emptyData.buffer);
-      assertEquals(file.isValid(), false, "Empty buffer should not be valid");
+      expect(file.isValid(), "Empty buffer should not be valid").toStrictEqual(
+        false,
+      );
       file.dispose();
     } catch (error) {
-      assert(error instanceof Error, "Should throw Error for empty buffer");
-      assert(
+      if (!(error instanceof Error)) {
+        throw new Error("Should throw Error for empty buffer");
+      }
+      expect(
         error.message.includes("Failed to load"),
         "Error should indicate load failure",
-      );
+      ).toBeTruthy();
     }
   });
 });
@@ -345,7 +357,7 @@ describe("Performance", () => {
 
     for (const [format, path] of Object.entries(TEST_FILES)) {
       const start = performance.now();
-      const audioData = await Deno.readFile(path);
+      const audioData = new Uint8Array(await readFile(path));
       const file = await taglib.open(audioData.buffer);
 
       file.tag();
@@ -358,14 +370,14 @@ describe("Performance", () => {
     console.log("Format processing times:", results);
 
     const totalMs = Object.values(results).reduce((a, b) => a + b, 0);
-    assert(
+    expect(
       totalMs < 5000,
       `All formats should process in under 5s. Total: ${totalMs}ms`,
-    );
+    ).toBeTruthy();
   });
 
   it("API Comparison", async () => {
-    const audioData = await Deno.readFile(TEST_FILES.mp3);
+    const audioData = new Uint8Array(await readFile(TEST_FILES.mp3));
 
     const coreStart = performance.now();
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
@@ -381,8 +393,8 @@ describe("Performance", () => {
     console.log(`Full API: ${coreTime.toFixed(2)}ms`);
     console.log(`Simple API: ${simpleTime.toFixed(2)}ms`);
 
-    assert(coreTime < 1000, "Full API should be fast");
-    assert(simpleTime < 1000, "Simple API should be fast");
+    expect(coreTime < 1000, "Full API should be fast").toBeTruthy();
+    expect(simpleTime < 1000, "Simple API should be fast").toBeTruthy();
   });
 });
 
@@ -400,25 +412,26 @@ describe("Format Tests", () => {
     };
 
     for (const [format, path] of Object.entries(TEST_FILES)) {
-      const audioData = await Deno.readFile(path);
+      const audioData = new Uint8Array(await readFile(path));
       const header = Array.from(audioData.slice(0, 4))
         .map((b: number) => b.toString(16).padStart(2, "0"))
         .join(" ");
 
       if (format === "mp3") {
-        assert(
+        expect(
           header.startsWith("ff fb") || header.startsWith("49 44 33"),
           `${format} should have valid header`,
-        );
+        ).toBeTruthy();
       } else if (format === "m4a") {
-        assert(audioData.length > 0, `${format} should have content`);
+        expect(audioData.length > 0, `${format} should have content`)
+          .toBeTruthy();
       } else {
-        assert(
+        expect(
           header.startsWith(expectedHeaders[format]),
           `${format} should have expected header: ${
             expectedHeaders[format]
           }, got ${header}`,
-        );
+        ).toBeTruthy();
       }
     }
   });
@@ -434,7 +447,7 @@ describe("Format Tests", () => {
       console.log(`\n🔍 Testing ${format.toUpperCase()} format...`);
 
       try {
-        const audioData = await Deno.readFile(path);
+        const audioData = new Uint8Array(await readFile(path));
         console.log(`📊 File size: ${audioData.length} bytes`);
 
         const file = await taglib.open(audioData.buffer);
@@ -483,23 +496,25 @@ describe("Format Tests", () => {
     }
 
     console.log(`\n🎯 Overall: ${passedTests}/${totalTests} formats working`);
-    assertEquals(passedTests, totalTests, "All formats should be working");
+    expect(passedTests, "All formats should be working").toStrictEqual(
+      totalTests,
+    );
   });
 });
 
 describe("Integration", () => {
   it("Complete Workflow", async () => {
     const isValid = await isValidAudioFile(TEST_FILES.mp3);
-    assertEquals(isValid, true, "File should be valid");
+    expect(isValid, "File should be valid").toStrictEqual(true);
 
     const format = await readFormat(TEST_FILES.mp3);
-    assertEquals(format, "MP3", "Should detect MP3 format");
+    expect(format, "Should detect MP3 format").toStrictEqual("MP3");
 
     const props = await readProperties(TEST_FILES.mp3);
-    assert(props.bitrate > 0, "Should have valid properties");
+    expect(props.bitrate > 0, "Should have valid properties").toBeTruthy();
 
     const originalTags = await readTags(TEST_FILES.mp3);
-    assertExists(originalTags, "Should read original tags");
+    expectDefined(originalTags, "Should read original tags");
 
     const newTags = {
       title: "Integration Test",
@@ -508,25 +523,26 @@ describe("Integration", () => {
     };
     const modifiedBuffer = await applyTags(TEST_FILES.mp3, newTags);
 
-    assert(modifiedBuffer.length > 0, "Should return a buffer");
+    expect(modifiedBuffer.length > 0, "Should return a buffer").toBeTruthy();
   });
 
   it("All Formats", async () => {
     for (const [format, path] of Object.entries(TEST_FILES)) {
       const isValid = await isValidAudioFile(path);
-      assertEquals(isValid, true, `${format} should be valid`);
+      expect(isValid, `${format} should be valid`).toStrictEqual(true);
 
       const tags = await readTags(path);
-      assertExists(tags, `${format} should have tags`);
+      expectDefined(tags, `${format} should have tags`);
 
       const props = await readProperties(path);
-      assert(props.duration > 0, `${format} should have duration`);
+      expect(props.duration > 0, `${format} should have duration`).toBeTruthy();
 
       try {
         const modified = await applyTags(path, {
           title: `${format} Test`,
         });
-        assert(modified.length > 0, `${format} should support writing`);
+        expect(modified.length > 0, `${format} should support writing`)
+          .toBeTruthy();
       } catch {
         console.log(`Note: ${format} might not support tag writing`);
       }
@@ -569,9 +585,9 @@ describe("Integration", () => {
 
     for (let i = 0; i < processedFiles.length; i++) {
       const tags = await readTags(processedFiles[i]);
-      assertEquals(tags.album, [albumMetadata.album]);
-      assertEquals(tags.artist, [albumMetadata.artist]);
-      assertEquals(tags.track, i + 1);
+      expect(tags.album).toStrictEqual([albumMetadata.album]);
+      expect(tags.artist).toStrictEqual([albumMetadata.artist]);
+      expect(tags.track).toStrictEqual(i + 1);
     }
   });
 
@@ -595,9 +611,9 @@ describe("Integration", () => {
 
     for (const buffer of updatedFiles) {
       const tags = await readTags(buffer);
-      assertEquals(tags.genre, [updates.genre]);
-      assertEquals(tags.year, updates.year);
-      assertEquals(tags.comment, [updates.comment]);
+      expect(tags.genre).toStrictEqual([updates.genre]);
+      expect(tags.year).toStrictEqual(updates.year);
+      expect(tags.comment).toStrictEqual([updates.comment]);
     }
   });
 
@@ -619,15 +635,14 @@ describe("Integration", () => {
     const targetWithTags = await applyTags(targetBuffer, sourceTags);
 
     const targetTags = await readTags(targetWithTags);
-    assertEquals(targetTags.title, sourceTags.title);
-    assertEquals(targetTags.artist, sourceTags.artist);
-    assertEquals(targetTags.album, sourceTags.album);
+    expect(targetTags.title).toStrictEqual(sourceTags.title);
+    expect(targetTags.artist).toStrictEqual(sourceTags.artist);
+    expect(targetTags.album).toStrictEqual(sourceTags.album);
   });
 
-  it({
-    name: "Concurrent Operations",
-    ignore: Deno.env.get("CI") === "true",
-    fn: async () => {
+  it.skipIf(process.env.CI === "true")(
+    "Concurrent Operations",
+    async () => {
       let taglib: TagLib | undefined;
       try {
         taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
@@ -653,16 +668,16 @@ describe("Integration", () => {
         });
 
         const timeLimit = 4000;
-        assert(
+        expect(
           timeMs < timeLimit,
           `Concurrent operations took ${timeMs}ms (limit: ${timeLimit}ms)`,
-        );
+        ).toBeTruthy();
       } catch (error) {
         console.error("Error in concurrent operations test:", error);
         throw error;
       }
     },
-  });
+  );
 
   it("readMetadataBatch - includes cover art and dynamics data", async () => {
     const { readMetadataBatch } = await import("../src/simple/index.ts");
@@ -677,23 +692,29 @@ describe("Integration", () => {
       concurrency: 3,
     });
 
-    assertEquals(result.items.length, testFiles.length);
-    assertEquals(result.items.every((item) => item.status === "ok"), true);
+    expect(result.items.length).toStrictEqual(testFiles.length);
+    expect(result.items.every((item) => item.status === "ok")).toStrictEqual(
+      true,
+    );
 
     for (const item of result.items) {
       if (item.status !== "ok") continue;
-      assertExists(item.data.tags);
-      assertExists(item.data.properties);
-      assertEquals(typeof item.data.hasCoverArt, "boolean");
+      expectDefined(item.data.tags);
+      expectDefined(item.data.properties);
+      expect(typeof item.data.hasCoverArt).toStrictEqual("boolean");
 
       if (item.data.dynamics) {
-        assertEquals(typeof item.data.dynamics, "object");
+        expect(typeof item.data.dynamics).toStrictEqual("object");
 
         if (item.data.dynamics.replayGainTrackGain) {
-          assertEquals(typeof item.data.dynamics.replayGainTrackGain, "string");
+          expect(typeof item.data.dynamics.replayGainTrackGain).toStrictEqual(
+            "string",
+          );
         }
         if (item.data.dynamics.appleSoundCheck) {
-          assertEquals(typeof item.data.dynamics.appleSoundCheck, "string");
+          expect(typeof item.data.dynamics.appleSoundCheck).toStrictEqual(
+            "string",
+          );
         }
       }
 
@@ -711,11 +732,13 @@ describe("Integration", () => {
     );
     const { TagLib } = await import("../src/taglib.ts");
 
-    const tempFile = await Deno.makeTempFile({ suffix: ".mp3" });
-    const testData = await Deno.readFile(
-      "./tests/test-files/mp3/kiss-snippet.mp3",
+    const tempFile = await createTempFile(".mp3");
+    const testData = new Uint8Array(
+      await readFile(
+        "./tests/test-files/mp3/kiss-snippet.mp3",
+      ),
     );
-    await Deno.writeFile(tempFile, testData);
+    await writeFile(tempFile, testData);
 
     try {
       const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
@@ -728,17 +751,17 @@ describe("Integration", () => {
 
       const result = await readMetadataBatch([tempFile]);
 
-      assertEquals(result.items.length, 1);
-      assertEquals(result.items[0].status, "ok");
+      expect(result.items.length).toStrictEqual(1);
+      expect(result.items[0].status).toStrictEqual("ok");
       if (result.items[0].status === "ok") {
         const data = result.items[0].data;
 
-        assertExists(data.dynamics);
-        assertEquals(data.dynamics.replayGainTrackGain, "-6.5 dB");
-        assertEquals(data.dynamics.replayGainTrackPeak, "0.95");
+        expectDefined(data.dynamics);
+        expect(data.dynamics.replayGainTrackGain).toStrictEqual("-6.5 dB");
+        expect(data.dynamics.replayGainTrackPeak).toStrictEqual("0.95");
       }
     } finally {
-      await Deno.remove(tempFile);
+      await rm(tempFile);
     }
   });
 });

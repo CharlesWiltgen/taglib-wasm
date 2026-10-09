@@ -1,11 +1,13 @@
-import { assert, assertEquals } from "@std/assert";
-import { assertInstanceOf } from "@std/assert/instance-of";
-import { beforeAll, describe, it } from "@std/testing/bdd";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { copyFile, readFile, rm } from "node:fs/promises";
+import { cleanupTempFiles, createTempFile } from "./test-utils.ts";
 import { TagLib } from "../src/taglib.ts";
 import type { WasmModule } from "../src/wasm.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
 
 let taglib: TagLib;
+
+afterAll(cleanupTempFiles);
 
 beforeAll(async () => {
   taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
@@ -13,7 +15,7 @@ beforeAll(async () => {
 
 describe("TagLib.edit() with buffer input", () => {
   it("should return modified Uint8Array when editing a buffer", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
 
     const result = await taglib.edit(
       new Uint8Array(original),
@@ -22,11 +24,11 @@ describe("TagLib.edit() with buffer input", () => {
       },
     );
 
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
   });
 
   it("should return modified buffer with ArrayBuffer input", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
 
     const result = await taglib.edit(
       original.buffer,
@@ -35,11 +37,11 @@ describe("TagLib.edit() with buffer input", () => {
       },
     );
 
-    assertInstanceOf(result, Uint8Array);
+    expect(result).toBeInstanceOf(Uint8Array);
   });
 
   it("should reflect tag changes in the returned buffer", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.ogg);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.ogg));
 
     const modified = await taglib.edit(
       new Uint8Array(original),
@@ -50,10 +52,8 @@ describe("TagLib.edit() with buffer input", () => {
 
     const verifyFile = await taglib.open(modified);
     try {
-      assertEquals(
-        { title: verifyFile.tag().title, year: verifyFile.tag().year },
-        { title: "Roundtrip Test", year: 2025 },
-      );
+      expect({ title: verifyFile.tag().title, year: verifyFile.tag().year })
+        .toStrictEqual({ title: "Roundtrip Test", year: 2025 });
     } finally {
       verifyFile.dispose();
     }
@@ -62,7 +62,7 @@ describe("TagLib.edit() with buffer input", () => {
 
 describe("TagLib.edit() with partial tag updates", () => {
   it("should preserve untouched fields when updating one field", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.mp3);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
 
     const modified = await taglib.edit(
       new Uint8Array(original),
@@ -84,21 +84,19 @@ describe("TagLib.edit() with partial tag updates", () => {
     const verifyFile = await taglib.open(remodified);
     try {
       const tag = verifyFile.tag();
-      assertEquals(
-        { title: tag.title, artist: tag.artist, album: tag.album },
-        {
+      expect({ title: tag.title, artist: tag.artist, album: tag.album })
+        .toStrictEqual({
           title: "Only Title Changed",
           artist: "Original Artist",
           album: "Original Album",
-        },
-      );
+        });
     } finally {
       verifyFile.dispose();
     }
   });
 
   it("should handle year and track as numeric fields", async () => {
-    const original = await Deno.readFile(FIXTURE_PATH.flac);
+    const original = new Uint8Array(await readFile(FIXTURE_PATH.flac));
 
     const modified = await taglib.edit(
       new Uint8Array(original),
@@ -109,10 +107,8 @@ describe("TagLib.edit() with partial tag updates", () => {
 
     const verifyFile = await taglib.open(modified);
     try {
-      assertEquals(
-        { year: verifyFile.tag().year, track: verifyFile.tag().track },
-        { year: 1999, track: 7 },
-      );
+      expect({ year: verifyFile.tag().year, track: verifyFile.tag().track })
+        .toStrictEqual({ year: 1999, track: 7 });
     } finally {
       verifyFile.dispose();
     }
@@ -121,9 +117,9 @@ describe("TagLib.edit() with partial tag updates", () => {
 
 describe("updateFile with extended fields", () => {
   it("should write albumArtist through updateFile", async () => {
-    const tmpFile = await Deno.makeTempFile({ suffix: ".flac" });
+    const tmpFile = await createTempFile(".flac");
     try {
-      await Deno.copyFile(FIXTURE_PATH.flac, tmpFile);
+      await copyFile(FIXTURE_PATH.flac, tmpFile);
 
       await taglib.updateFile(tmpFile, {
         title: "Test Title",
@@ -133,24 +129,25 @@ describe("updateFile with extended fields", () => {
 
       const verifyFile = await taglib.open(tmpFile);
       try {
-        assertEquals(verifyFile.tag().title, "Test Title");
-        assertEquals(
-          verifyFile.getProperty("albumArtist")?.[0],
+        expect(verifyFile.tag().title).toStrictEqual("Test Title");
+        expect(verifyFile.getProperty("albumArtist")?.[0]).toStrictEqual(
           "Various Artists",
         );
-        assertEquals(verifyFile.getProperty("composer")?.[0], "Test Composer");
+        expect(verifyFile.getProperty("composer")?.[0]).toStrictEqual(
+          "Test Composer",
+        );
       } finally {
         verifyFile.dispose();
       }
     } finally {
-      await Deno.remove(tmpFile);
+      await rm(tmpFile);
     }
   });
 
   it("should write numeric extended fields through updateFile", async () => {
-    const tmpFile = await Deno.makeTempFile({ suffix: ".flac" });
+    const tmpFile = await createTempFile(".flac");
     try {
-      await Deno.copyFile(FIXTURE_PATH.flac, tmpFile);
+      await copyFile(FIXTURE_PATH.flac, tmpFile);
 
       await taglib.updateFile(tmpFile, {
         discNumber: 2,
@@ -161,15 +158,15 @@ describe("updateFile with extended fields", () => {
 
       const verifyFile = await taglib.open(tmpFile);
       try {
-        assertEquals(verifyFile.getProperty("discNumber")?.[0], "2");
-        assertEquals(verifyFile.getProperty("TRACKTOTAL")?.[0], "12");
-        assertEquals(verifyFile.getProperty("bpm")?.[0], "128");
-        assertEquals(verifyFile.getProperty("COMPILATION")?.[0], "1");
+        expect(verifyFile.getProperty("discNumber")?.[0]).toStrictEqual("2");
+        expect(verifyFile.getProperty("TRACKTOTAL")?.[0]).toStrictEqual("12");
+        expect(verifyFile.getProperty("bpm")?.[0]).toStrictEqual("128");
+        expect(verifyFile.getProperty("COMPILATION")?.[0]).toStrictEqual("1");
       } finally {
         verifyFile.dispose();
       }
     } finally {
-      await Deno.remove(tmpFile);
+      await rm(tmpFile);
     }
   });
 });
@@ -177,29 +174,29 @@ describe("updateFile with extended fields", () => {
 describe("TagLib.version()", () => {
   it("should return package version with TagLib version from Wasm", () => {
     const version = taglib.version();
-    assert(
+    expect(
       /^\d+\.\d+\.\d+\S* \(TagLib \d+\.\d+\.\d+\)$/.test(version),
       `Version should match format 'X.Y.Z (TagLib X.Y.Z)', got: ${version}`,
-    );
+    ).toBeTruthy();
   });
 
   it("should use deno.json version as package version", async () => {
     const denoJson = JSON.parse(
-      await Deno.readTextFile(new URL("../deno.json", import.meta.url)),
+      await readFile(new URL("../deno.json", import.meta.url), "utf8"),
     );
     const version = taglib.version();
-    assert(
+    expect(
       version.startsWith(denoJson.version),
       `Version should start with deno.json version '${denoJson.version}', got: ${version}`,
-    );
+    ).toBeTruthy();
   });
 
   it("should return 'unknown' TagLib version when module has no version method", () => {
     const mockModule = {} as WasmModule;
     const instance = new TagLib(mockModule);
-    assert(
+    expect(
       instance.version().endsWith("(TagLib unknown)"),
       `Expected version to end with '(TagLib unknown)', got: ${instance.version()}`,
-    );
+    ).toBeTruthy();
   });
 });

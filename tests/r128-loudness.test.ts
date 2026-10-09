@@ -8,8 +8,8 @@
  * with the Q7.8 conversion, lossless for file-derived values.
  */
 
-import { assert, assertEquals } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { describe, expect, it } from "vite-plus/test";
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import { applyTags, readTags } from "../src/simple/index.ts";
 import {
@@ -36,29 +36,29 @@ describe("R128 Q7.8 conversion (taglib-2ii2)", () => {
       R128_TRACK_GAIN: [INT_TRACK],
       R128_ALBUM_GAIN: [INT_ALBUM],
     });
-    assertEquals(tag.r128TrackGain, DB_TRACK);
-    assertEquals(tag.r128AlbumGain, DB_ALBUM);
+    expect(tag.r128TrackGain).toStrictEqual(DB_TRACK);
+    expect(tag.r128AlbumGain).toStrictEqual(DB_ALBUM);
   });
 
   it("write: decibel number -> Q7.8 int, rounded", () => {
     const props = normalizeTagInput({ r128TrackGain: DB_TRACK });
-    assertEquals(props.r128TrackGain, [INT_TRACK]);
+    expect(props.r128TrackGain).toStrictEqual([INT_TRACK]);
   });
 
   it("write: -7.03 dB rounds to -1800", () => {
     const props = normalizeTagInput({ r128TrackGain: -7.03 });
-    assertEquals(props.r128TrackGain, ["-1800"]);
+    expect(props.r128TrackGain).toStrictEqual(["-1800"]);
   });
 
   it("write: string[] passes the raw wire integer verbatim", () => {
     const props = normalizeTagInput({ r128AlbumGain: [INT_ALBUM] });
-    assertEquals(props.r128AlbumGain, [INT_ALBUM]);
+    expect(props.r128AlbumGain).toStrictEqual([INT_ALBUM]);
   });
 
   it("absent when not present", () => {
     const tag = mapPropertiesToExtendedTag({ TITLE: ["Kiss"] });
-    assertEquals(tag.r128TrackGain, undefined);
-    assertEquals(tag.r128AlbumGain, undefined);
+    expect(tag.r128TrackGain).toStrictEqual(undefined);
+    expect(tag.r128AlbumGain).toStrictEqual(undefined);
   });
 });
 
@@ -70,7 +70,7 @@ async function rawRoundTrip(
   sameHandle: Record<string, string[]>;
   buffer: Uint8Array;
 }> {
-  const src = await Deno.readFile(FIXTURE_PATH[format]);
+  const src = new Uint8Array(await readFile(FIXTURE_PATH[format]));
   const tl = await TagLib.initialize({ forceWasmType: backend });
   const file = await tl.open(new Uint8Array(src));
   file.setProperties({
@@ -98,29 +98,29 @@ describe("R128 raw property round-trip (taglib-2ii2)", () => {
       );
       // properties() presents known keys in camelCase (like ReplayGain);
       // the Q7.8 integers survive verbatim.
-      assertEquals(readBack.r128TrackGain, [INT_TRACK]);
-      assertEquals(readBack.r128AlbumGain, [INT_ALBUM]);
-      assertEquals(sameHandle.r128TrackGain, [INT_TRACK]);
+      expect(readBack.r128TrackGain).toStrictEqual([INT_TRACK]);
+      expect(readBack.r128AlbumGain).toStrictEqual([INT_ALBUM]);
+      expect(sameHandle.r128TrackGain).toStrictEqual([INT_TRACK]);
       // Wire check at the byte level: the OpusTags comment fields are named
       // exactly R128_TRACK_GAIN / R128_ALBUM_GAIN with the raw integer values.
       const text = new TextDecoder().decode(buffer);
-      assert(text.includes("R128_TRACK_GAIN=-573"));
-      assert(text.includes("R128_ALBUM_GAIN=-331"));
+      expect(text.includes("R128_TRACK_GAIN=-573")).toBeTruthy();
+      expect(text.includes("R128_ALBUM_GAIN=-331")).toBeTruthy();
     });
 
     it(`[${backend}] typed read narrows the Q7.8 int to decibels`, async () => {
-      const src = await Deno.readFile(FIXTURE_PATH.opus);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.opus));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ R128_TRACK_GAIN: [INT_TRACK] });
       file.save();
       const tag = mapPropertiesToExtendedTag(file.properties());
-      assertEquals(tag.r128TrackGain, DB_TRACK);
+      expect(tag.r128TrackGain).toStrictEqual(DB_TRACK);
       file.dispose();
     });
 
     it(`[${backend}] clearing removes the attribute entirely`, async () => {
-      const src = await Deno.readFile(FIXTURE_PATH.opus);
+      const src = new Uint8Array(await readFile(FIXTURE_PATH.opus));
       const tl = await TagLib.initialize({ forceWasmType: backend });
       const file = await tl.open(new Uint8Array(src));
       file.setProperties({ R128_TRACK_GAIN: [INT_TRACK] });
@@ -133,7 +133,7 @@ describe("R128 raw property round-trip (taglib-2ii2)", () => {
       const tlR = await TagLib.initialize({ forceWasmType: OTHER[backend] });
       const reopened = await tlR.open(buf);
       const props = reopened.properties() as Record<string, string[]>;
-      assertEquals(props.R128_TRACK_GAIN, undefined);
+      expect(props.R128_TRACK_GAIN).toStrictEqual(undefined);
       reopened.dispose();
     });
   }
@@ -145,8 +145,8 @@ describe("R128 raw property round-trip (taglib-2ii2)", () => {
     for (const backend of BACKENDS) {
       it(`[${backend}] ${format} carries R128 and reads back on the other backend`, async () => {
         const { readBack } = await rawRoundTrip(backend, format);
-        assertEquals(readBack.r128TrackGain, [INT_TRACK]);
-        assertEquals(readBack.r128AlbumGain, [INT_ALBUM]);
+        expect(readBack.r128TrackGain).toStrictEqual([INT_TRACK]);
+        expect(readBack.r128AlbumGain).toStrictEqual([INT_ALBUM]);
       });
     }
   }
@@ -154,26 +154,26 @@ describe("R128 raw property round-trip (taglib-2ii2)", () => {
 
 describe("R128 typed simple-API round-trip (taglib-2ii2)", () => {
   it("applyTags(dB number) -> readTags returns the exact decibel value", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.opus);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.opus));
     const modified = await applyTags(src, { r128TrackGain: DB_TRACK });
     const tags = await readTags(modified);
-    assertEquals(tags.r128TrackGain, DB_TRACK);
+    expect(tags.r128TrackGain).toStrictEqual(DB_TRACK);
     // The wire value is the exact Q7.8 integer, not a rounded approximation.
     const tl = await TagLib.initialize();
     const file = await tl.open(modified);
     const raw = file.properties() as Record<string, string[]>;
-    assertEquals(raw.r128TrackGain, [INT_TRACK]);
+    expect(raw.r128TrackGain).toStrictEqual([INT_TRACK]);
     file.dispose();
   });
 
   it("readTags -> applyTags round-trips the integer losslessly", async () => {
-    const src = await Deno.readFile(FIXTURE_PATH.opus);
+    const src = new Uint8Array(await readFile(FIXTURE_PATH.opus));
     const tags = await readTags(src);
     const withGain = await applyTags(src, {
       ...tags,
       r128TrackGain: -573 / 256,
     });
     const back = await readTags(withGain);
-    assertEquals(back.r128TrackGain, -573 / 256);
+    expect(back.r128TrackGain).toStrictEqual(-573 / 256);
   });
 });
