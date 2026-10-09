@@ -117,7 +117,7 @@ TagLib-Wasm/
 ### Running Tests
 
 ```bash
-# Tests (Vitest): 94 files across tests/ and src/
+# Tests (Vitest): 95 files across tests/ and src/
 npx vp test
 
 # Watch mode

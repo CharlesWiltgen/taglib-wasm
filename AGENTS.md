@@ -606,7 +606,7 @@ devDependency installed.
 
 ```bash
 npm ci                    # Install dependencies (required before any `vp` command)
-npx vp test               # Tests (Vitest): 94 files across tests/ and src/
+npx vp test               # Tests (Vitest): 95 files across tests/ and src/
 deno task test            # The four Deno-only test files (see below)
 npx vp fmt --check        # Format gate (`npx vp fmt` rewrites in place)
 npx vp lint --type-aware  # Lint gate (oxlint with the type-checked rules)
@@ -623,7 +623,7 @@ to run the npm script.
 catches bundler-resolution breaks — e.g. a JSR import that isn't an npm
 dependency — that pass the test suite but break the published package.
 
-**Two test gates.** `npx vp test` covers the 94 migrated files. Four files test
+**Two test gates.** `npx vp test` covers the 95 migrated files. Four files test
 Deno-only APIs and still run under `deno task test`:
 `tests/deno-detect.test.ts`, `tests/deno-compat-patches.test.ts`,
 `tests/wasi-fs-provider.test.ts`, `tests/offline-support.test.ts`. Run both.

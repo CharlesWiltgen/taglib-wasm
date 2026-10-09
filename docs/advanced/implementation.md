@@ -88,7 +88,8 @@ bash build/build-wasi.sh            # Build WASI binaries
 Tests use a `forEachBackend` pattern to run against both WASI and Emscripten:
 
 ```bash
-deno task test                                    # Full suite (format, lint, tests)
-deno test --allow-read tests/wasi-host.test.ts    # WASI-specific tests
+npx vp test                                       # Full Vitest suite (tests/ + src/)
+deno task test                                    # The four Deno-only files
+npx vp test tests/wasi-host.test.ts               # WASI-specific tests
 deno task bench                                   # WASI vs Emscripten benchmarks
 ```
