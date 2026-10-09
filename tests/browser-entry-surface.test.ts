@@ -263,7 +263,7 @@ const LOADER_REDIRECT = {
 
 /** Modules a browser entry must never reach (the WASI/filesystem tree). */
 const NODE_ONLY_MODULES =
-  /^(?:src\/deno-compile\.ts|src\/file-utils\/|src\/folder-api\/(?:directory-walker|file-processors|folder-operations|scan-for-albums|scan-operations)\.ts|src\/runtime\/(?:module-loader|wasi-fs-node|wasi-host-loader)\.ts|src\/runtime\/unified-loader\/|src\/runtime\/wasi-adapter\/)/;
+  /^(?:src\/file-utils\/|src\/folder-api\/(?:directory-walker|file-processors|folder-operations|scan-for-albums|scan-operations)\.ts|src\/runtime\/(?:module-loader|wasi-fs-node|wasi-host-loader)\.ts|src\/runtime\/unified-loader\/|src\/runtime\/wasi-adapter\/)/;
 
 interface RuntimeGraph {
   modules: string[];

@@ -31,7 +31,6 @@
     // rewrites them. Listing them here keeps this gate aligned with the files
     // the Node test gate actually runs — it is not a way to hide a
     // type error in code that Node executes.
-    "tests/deno-detect.test.ts",
     "tests/deno-compat-patches.test.ts",
     "tests/wasi-fs-provider.test.ts",
     "tests/wasi-vs-emscripten.bench.ts",
