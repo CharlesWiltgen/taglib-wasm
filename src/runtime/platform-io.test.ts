@@ -1,18 +1,25 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vite-plus/test";
+import { cleanupTempFiles, createTempFile } from "../../tests/test-utils.ts";
 import {
   _resetPlatformIO,
   _setPlatformIOForTesting,
   getPlatformIO,
 } from "./platform-io.ts";
 
-/** Node equivalent of `Deno.makeTempFile()`: a unique path in a fresh temp dir. */
-async function makeTempFile(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), "platform-io-"));
-  return join(dir, "tmpfile");
-}
+// `createTempFile` shares ONE `mkdtemp` directory per test module, so the
+// cleanup belongs in `afterAll`; the previous per-call `mkdtemp` leaked a
+// directory for every file the suite touched.
+afterAll(cleanupTempFiles);
 
 describe("getPlatformIO", () => {
   afterEach(() => {
@@ -42,7 +49,7 @@ describe("getPlatformIO", () => {
 
   describe("readFile", () => {
     it("should read a file and return Uint8Array", async () => {
-      const tmpFile = await makeTempFile();
+      const tmpFile = await createTempFile();
       try {
         const data = new TextEncoder().encode("hello platform-io");
         await writeFile(tmpFile, data);
@@ -58,7 +65,7 @@ describe("getPlatformIO", () => {
 
   describe("writeFile", () => {
     it("should write data to a file", async () => {
-      const tmpFile = await makeTempFile();
+      const tmpFile = await createTempFile();
       try {
         const data = new TextEncoder().encode("written by platform-io");
         const io = getPlatformIO();
@@ -74,7 +81,7 @@ describe("getPlatformIO", () => {
 
   describe("stat", () => {
     it("should return file size", async () => {
-      const tmpFile = await makeTempFile();
+      const tmpFile = await createTempFile();
       try {
         const data = new Uint8Array(42);
         await writeFile(tmpFile, data);
@@ -123,7 +130,7 @@ describe("getPlatformIO", () => {
 
   describe("readPartial", () => {
     it("should read header and footer of a file", async () => {
-      const tmpFile = await makeTempFile();
+      const tmpFile = await createTempFile();
       try {
         const data = new Uint8Array(100);
         for (let i = 0; i < 100; i++) data[i] = i;
@@ -141,7 +148,7 @@ describe("getPlatformIO", () => {
     });
 
     it("should return full file when header and footer overlap", async () => {
-      const tmpFile = await makeTempFile();
+      const tmpFile = await createTempFile();
       try {
         const data = new Uint8Array(15);
         for (let i = 0; i < 15; i++) data[i] = i;
