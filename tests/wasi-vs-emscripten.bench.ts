@@ -5,27 +5,41 @@
  * 1. WASI host: Seek-based filesystem I/O via WASI syscalls (reads only headers/tags)
  * 2. Emscripten: Host reads entire file into memory, passes buffer to Wasm
  *
- * Emscripten benchmarks intentionally include host file I/O (Deno.readFile) to
+ * Emscripten benchmarks intentionally include host file I/O (readFile) to
  * measure end-to-end cost — the real-world workflow requires loading the full
  * file before passing it to the Wasm module.
  *
- * Run with: deno bench --allow-read --allow-write --allow-env tests/wasi-vs-emscripten.bench.ts
+ * Run with: npx tsx tests/wasi-vs-emscripten.bench.ts
  */
 
-import { resolve } from "@std/path";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFile, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { loadWasiHost } from "../src/runtime/wasi-host-loader.ts";
 import { TagLib } from "../src/taglib.ts";
 import type { WasiModule } from "../src/runtime/wasmer-sdk-loader/types.ts";
 import type { MutableTag } from "../src/taglib/mutable-tag.ts";
 import { TEST_FILES } from "./test-utils.ts";
 import {
-  fileExists,
   FORMAT_FILES,
   readTagsViaPath,
   writeTagsWasi,
 } from "./wasi-test-helpers.ts";
 
-const PROJECT_ROOT = resolve(Deno.cwd());
+/** Minimal replacement for Deno.bench: run fn, report best-of-N wall time. */
+async function bench(label: string, fn: () => unknown, iterations = 20) {
+  let best = Infinity;
+  for (let i = 0; i < iterations; i++) {
+    const t0 = performance.now();
+    const result = fn();
+    if (result instanceof Promise) await result;
+    best = Math.min(best, performance.now() - t0);
+  }
+  console.log(`${label}: ${best.toFixed(2)}ms (best of ${iterations})`);
+}
+
+const PROJECT_ROOT = process.cwd();
 const TEST_FILES_DIR = resolve(PROJECT_ROOT, "tests/test-files");
 const WASM_PATH = resolve(PROJECT_ROOT, "dist/wasi/taglib-wasi.wasm");
 
@@ -44,13 +58,15 @@ async function readTagsEmscripten(
   }
 }
 
-const HAS_WASM = fileExists(WASM_PATH);
-const HAS_DEEZER = fileExists(DEEZER_DIR);
+const HAS_WASM = existsSync(WASM_PATH);
+const HAS_DEEZER = existsSync(DEEZER_DIR);
 
 if (!HAS_WASM) {
-  console.warn(
-    `WASI binary not found at ${WASM_PATH} — all benchmarks skipped`,
+  console.error(
+    `❌ bench input missing: ${WASM_PATH}\n` +
+      `   Build it with: npm run build:wasm:wasi`,
   );
+  process.exit(1);
 }
 if (!HAS_DEEZER) {
   console.warn("Deezer volume not mounted — real-file benchmarks skipped");
@@ -73,8 +89,8 @@ let realTempDir: string | null = null;
 let realWasi: (WasiModule & Disposable) | null = null;
 
 if (HAS_WASM && HAS_DEEZER) {
-  realTempDir = await Deno.makeTempDir({ prefix: "taglib-bench-" });
-  await Deno.copyFile(REAL_FLAC_SRC, resolve(realTempDir, "real.flac"));
+  realTempDir = mkdtempSync(join(tmpdir(), "taglib-bench-"));
+  await copyFile(REAL_FLAC_SRC, resolve(realTempDir, "real.flac"));
 
   realWasi = await loadWasiHost({
     wasmPath: WASM_PATH,
@@ -87,161 +103,113 @@ let writeWasi: (WasiModule & Disposable) | null = null;
 const WRITE_FLAC_SRC = resolve(TEST_FILES_DIR, "flac/kiss-snippet.flac");
 
 if (HAS_WASM) {
-  writeTempDir = await Deno.makeTempDir({ prefix: "taglib-bench-write-" });
+  writeTempDir = mkdtempSync(join(tmpdir(), "taglib-bench-write-"));
   writeWasi = await loadWasiHost({
     wasmPath: WASM_PATH,
     preopens: { "/tmp": writeTempDir },
   });
 }
 
-globalThis.addEventListener("unload", () => {
+process.on("exit", () => {
   wasi?.[Symbol.dispose]();
   realWasi?.[Symbol.dispose]();
   writeWasi?.[Symbol.dispose]();
   for (const dir of [realTempDir, writeTempDir]) {
-    if (dir) {
-      try {
-        Deno.removeSync(dir, { recursive: true });
-      } catch {
-        /* ignore */
-      }
-    }
+    if (dir) rmSync(dir, { recursive: true, force: true });
   }
 });
 
 // --- Per-format benchmarks (data-driven) ---
 for (const [format, paths] of Object.entries(FORMAT_FILES)) {
   const group = `read-${format.toLowerCase()}`;
-  Deno.bench({
-    name: "WASI host (path I/O)",
-    group,
-    ignore: !HAS_WASM,
-    fn() {
-      readTagsViaPath(wasi!, paths.virtual);
-    },
+  await bench(`${group} :: WASI host (path I/O)`, () => {
+    readTagsViaPath(wasi!, paths.virtual);
   });
-  Deno.bench({
-    name: "Emscripten (buffer I/O)",
-    group,
-    baseline: true,
-    ignore: !HAS_WASM,
-    async fn() {
-      const key = format.toLowerCase() as keyof typeof TEST_FILES;
-      const buf = await Deno.readFile(resolve(PROJECT_ROOT, TEST_FILES[key]));
-      await readTagsEmscripten(emTagLib!, buf);
-    },
+  // Emscripten needs the host to load the file itself, so it can only run for
+  // formats that have a TEST_FILES path. FORMAT_FILES (the WASI view) is a
+  // superset — wasi-test-helpers covers wv/tta/wma/oga/opus/mp4 which
+  // test-utils.ts does not — so skip those rather than crash on undefined.
+  const key = format.toLowerCase() as keyof typeof TEST_FILES;
+  const emscriptenPath = TEST_FILES[key] as string | undefined;
+  if (!emscriptenPath) {
+    console.log(`${group} :: Emscripten (buffer I/O): skipped (no fixture)`);
+    continue;
+  }
+  await bench(`${group} :: Emscripten (buffer I/O)`, async () => {
+    const buf = await readFile(resolve(PROJECT_ROOT, emscriptenPath));
+    await readTagsEmscripten(emTagLib!, buf);
   });
 }
 
 // --- Aggregate benchmarks ---
 
-Deno.bench({
-  name: "WASI host (path I/O)",
-  group: "read-all-formats",
-  ignore: !HAS_WASM,
-  fn() {
-    for (const paths of Object.values(FORMAT_FILES)) {
-      readTagsViaPath(wasi!, paths.virtual);
-    }
-  },
+await bench("read-all-formats :: WASI host (path I/O)", () => {
+  for (const paths of Object.values(FORMAT_FILES)) {
+    readTagsViaPath(wasi!, paths.virtual);
+  }
 });
 
-Deno.bench({
-  name: "Emscripten (buffer I/O)",
-  group: "read-all-formats",
-  baseline: true,
-  ignore: !HAS_WASM,
-  async fn() {
-    for (const file of Object.values(TEST_FILES)) {
-      const buf = await Deno.readFile(resolve(PROJECT_ROOT, file));
-      await readTagsEmscripten(emTagLib!, buf);
-    }
-  },
+await bench("read-all-formats :: Emscripten (buffer I/O)", async () => {
+  for (const file of Object.values(TEST_FILES)) {
+    const buf = await readFile(resolve(PROJECT_ROOT, file));
+    await readTagsEmscripten(emTagLib!, buf);
+  }
 });
 
 // --- Write roundtrip ---
 
-Deno.bench({
-  name: "WASI host (path I/O)",
-  group: "write-roundtrip",
-  ignore: !HAS_WASM,
-  async fn() {
-    const dest = resolve(writeTempDir!, "bench-write.flac");
-    await Deno.copyFile(WRITE_FLAC_SRC, dest);
-    writeTagsWasi(writeWasi!, "/tmp/bench-write.flac", {
-      title: ["Bench Title"],
-    });
-    readTagsViaPath(writeWasi!, "/tmp/bench-write.flac");
-  },
+await bench("write-roundtrip :: WASI host (path I/O)", async () => {
+  const dest = resolve(writeTempDir!, "bench-write.flac");
+  await copyFile(WRITE_FLAC_SRC, dest);
+  writeTagsWasi(writeWasi!, "/tmp/bench-write.flac", {
+    title: ["Bench Title"],
+  });
+  readTagsViaPath(writeWasi!, "/tmp/bench-write.flac");
 });
 
-Deno.bench({
-  name: "Emscripten (buffer I/O)",
-  group: "write-roundtrip",
-  baseline: true,
-  ignore: !HAS_WASM,
-  async fn() {
-    const buf = await Deno.readFile(WRITE_FLAC_SRC);
-    const file = await emTagLib!.open(buf);
-    try {
-      const tag = file.tag();
-      tag.setTitle("Bench Title");
-      file.save();
-      const modified = file.getFileBuffer();
-      const tmpPath = resolve(writeTempDir!, "bench-write-em.flac");
-      await Deno.writeFile(tmpPath, modified);
-      const readBack = await Deno.readFile(tmpPath);
-      await readTagsEmscripten(emTagLib!, readBack);
-    } finally {
-      file.dispose();
-    }
-  },
+await bench("write-roundtrip :: Emscripten (buffer I/O)", async () => {
+  const buf = await readFile(WRITE_FLAC_SRC);
+  const file = await emTagLib!.open(buf);
+  try {
+    const tag = file.tag();
+    tag.setTitle("Bench Title");
+    file.save();
+    const modified = file.getFileBuffer();
+    const tmpPath = resolve(writeTempDir!, "bench-write-em.flac");
+    await writeFile(tmpPath, modified);
+    const readBack = await readFile(tmpPath);
+    await readTagsEmscripten(emTagLib!, readBack);
+  } finally {
+    file.dispose();
+  }
 });
 
 // --- Batch scanning ---
 
-Deno.bench({
-  name: "WASI host (path I/O)",
-  group: "batch-10",
-  ignore: !HAS_WASM,
-  fn() {
-    for (let i = 0; i < 10; i++) {
-      readTagsViaPath(wasi!, "/test/flac/kiss-snippet.flac");
-    }
-  },
+await bench("batch-10 :: WASI host (path I/O)", () => {
+  for (let i = 0; i < 10; i++) {
+    readTagsViaPath(wasi!, "/test/flac/kiss-snippet.flac");
+  }
 });
 
-Deno.bench({
-  name: "Emscripten (buffer I/O)",
-  group: "batch-10",
-  baseline: true,
-  ignore: !HAS_WASM,
-  async fn() {
-    for (let i = 0; i < 10; i++) {
-      const buf = await Deno.readFile(resolve(PROJECT_ROOT, TEST_FILES.flac));
-      await readTagsEmscripten(emTagLib!, buf);
-    }
-  },
+await bench("batch-10 :: Emscripten (buffer I/O)", async () => {
+  for (let i = 0; i < 10; i++) {
+    const buf = await readFile(resolve(PROJECT_ROOT, TEST_FILES.flac));
+    await readTagsEmscripten(emTagLib!, buf);
+  }
 });
 
 // --- Real-world FLAC (~33MB) ---
 
-Deno.bench({
-  name: "WASI host (path I/O)",
-  group: "read-real-flac",
-  ignore: !HAS_WASM || !HAS_DEEZER,
-  fn() {
+if (HAS_DEEZER) {
+  await bench("read-real-flac :: WASI host (path I/O)", () => {
     readTagsViaPath(realWasi!, "/real/real.flac");
-  },
-});
+  });
 
-Deno.bench({
-  name: "Emscripten (buffer I/O)",
-  group: "read-real-flac",
-  baseline: true,
-  ignore: !HAS_WASM || !HAS_DEEZER,
-  async fn() {
-    const buf = await Deno.readFile(resolve(realTempDir!, "real.flac"));
+  await bench("read-real-flac :: Emscripten (buffer I/O)", async () => {
+    const buf = await readFile(resolve(realTempDir!, "real.flac"));
     await readTagsEmscripten(emTagLib!, buf);
-  },
-});
+  });
+} else {
+  console.log("read-real-flac :: skipped (Deezer volume not mounted)");
+}

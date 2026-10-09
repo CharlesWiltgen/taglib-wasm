@@ -21,7 +21,6 @@ type FdEntry =
   | { type: "preopen"; realPath: string; virtualPath: string }
   | { type: "file"; file: WasiFileHandle; path: string };
 
-// deno-lint-ignore no-explicit-any
 type WasiImports = Record<string, (...args: any[]) => number | void>;
 
 export type WasiImportDisposable = WasiImports & { [Symbol.dispose](): void };

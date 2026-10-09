@@ -15,7 +15,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 ffmpeg -y -loglevel error -f lavfi -i "anullsrc=r=8000:cl=mono" -t 0.2 -c:a pcm_s16le "$tmp/base.wav"
 ffmpeg -y -loglevel error -f lavfi -i "anullsrc=r=8000:cl=mono" -t 0.2 -c:a flac "$tmp/base.flac"
 
-deno run --allow-read --allow-write --allow-env \
+npx tsx \
   "$root/tests/test-files/_gen/make-bwf-fixtures.ts" \
   "$tmp/base.wav" "$tmp/base.flac" \
   "$root/tests/test-files/wav/bext-ixml.wav" "$root/tests/test-files/flac/bext-ixml.flac"

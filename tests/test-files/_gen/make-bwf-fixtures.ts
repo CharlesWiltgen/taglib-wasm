@@ -1,9 +1,16 @@
 // Writes the BWF test fixtures using taglib-wasm's OWN write path (WASI backend)
 // for the v2 bext chunk + iXML. Invoked by make-bwf-fixtures.sh --regen.
 // Args: <wavSrc> <flacSrc> <wavOut> <flacOut>
+import { readFile, writeFile } from "node:fs/promises";
 import { TagLib } from "../../../src/taglib.ts";
 
-const [wavSrc, flacSrc, wavOut, flacOut] = Deno.args;
+const [wavSrc, flacSrc, wavOut, flacOut] = process.argv.slice(2);
+if (!wavSrc || !flacSrc || !wavOut || !flacOut) {
+  console.error(
+    "usage: npx tsx tests/test-files/_gen/make-bwf-fixtures.ts <wavSrc> <flacSrc> <wavOut> <flacOut>",
+  );
+  process.exit(1);
+}
 const taglib = await TagLib.initialize({ forceWasmType: "wasi" });
 
 const bext = {
@@ -29,11 +36,11 @@ for (const [src, dst] of [
   [wavSrc, wavOut],
   [flacSrc, flacOut],
 ] as const) {
-  const f = await taglib.open(await Deno.readFile(src));
+  const f = await taglib.open(await readFile(src));
   f.setBext(bext);
   f.setIxml(ixml);
   f.save();
-  await Deno.writeFile(dst, f.getFileBuffer());
+  await writeFile(dst, f.getFileBuffer());
   f.dispose();
 }
 console.log("Wrote", wavOut, "and", flacOut);

@@ -1,8 +1,8 @@
 /**
  * @fileoverview Consolidated test suite for TagLib-Wasm
- * Combines format testing, API testing, and edge cases with proper Deno test assertions
+ * Combines format testing, API testing, and edge cases with proper Vitest assertions
  *
- * Run with: deno test --allow-read tests/taglib.test.ts
+ * Run with: npx vp test tests/taglib.test.ts
  * Or: npm test
  */
 

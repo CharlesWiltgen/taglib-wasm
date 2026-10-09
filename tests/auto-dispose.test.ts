@@ -5,7 +5,7 @@
 // exact pattern tuneup's engine worker hit in its write path.
 //
 // GC contract: this file requires --v8-flags=--expose-gc (wired into
-// deno task test, ci.yml and sonarcloud.yml). The test fails loudly without
+// vite.config.ts/ci.yml and sonarcloud.yml). The test fails loudly without
 // the flag rather than skipping, so a config regression cannot turn this
 // guard into decoration.
 import { expect, it } from "vite-plus/test";
@@ -18,7 +18,7 @@ function forceGc(): void {
   const gc = (globalThis as { gc?: () => void }).gc;
   if (!gc) {
     throw new Error(
-      "auto-dispose test requires --v8-flags=--expose-gc on the deno test invocation",
+      "auto-dispose test requires --expose-gc on the vitest invocation (vite.config.ts test.execArgv)",
     );
   }
   gc();

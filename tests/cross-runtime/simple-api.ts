@@ -1,7 +1,7 @@
 /**
  * @fileoverview Cross-runtime Simple API smoke test.
  *
- * Runs UNCHANGED on Deno, Bun and Node (via `tsx`), so it must stay
+ * Runs UNCHANGED on Bun and Node (via `tsx`), so it must stay
  * dependency-free: `node:` builtins and relative imports only — no test
  * framework, no `jsr:`/`npm:` specifiers, no cwd assumptions. Fixtures resolve
  * from `import.meta.url`, which is what the previous harness got wrong (it
