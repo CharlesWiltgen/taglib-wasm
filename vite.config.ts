@@ -1,7 +1,28 @@
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  fmt: { printWidth: 80 },
+  fmt: {
+    printWidth: 80,
+    // Vendored trees, generated artifacts, and repo-hygiene scratch that
+    // `deno fmt` never scanned (its `fmt.exclude`), plus `lib/taglib/doc/`
+    // and `lib/taglib/bindings/README`, which hard-error oxfmt's HTML/parser
+    // pass (`SyntaxError: Unexpected closing tag "body"`, check exit 2).
+    // oxfmt reads these as gitignore-style `ignorePatterns`, not `exclude`.
+    ignorePatterns: [
+      "lib/",
+      "build/",
+      "dist/",
+      "docs/.vuepress/",
+      "docs/index.html",
+      ".ast-grep/rule-tests/__snapshots__/",
+      ".beads/",
+      ".omp/",
+      ".serena/",
+      ".worktrees/",
+      ".coverage/",
+      ".superpowers/",
+    ],
+  },
   lint: {
     options: { typeAware: true },
     // `options.typeAware` only makes the type-checked rules AVAILABLE, it does
