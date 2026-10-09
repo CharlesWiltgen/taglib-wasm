@@ -1,0 +1,9 @@
+# Revisions that are formatting-only. `git blame` skips them.
+#
+# Configure locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub honours this file automatically via the repository setting
+# "Ignore commits in the blame view".
+
+# style: reformat with Vite+ (printWidth 80)
+e8bd297c7f6e6a28cfd08278943f0e91aabc567f
