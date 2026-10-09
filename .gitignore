@@ -197,3 +197,6 @@ package.json.backup
 
 # Serena project state (MCP server tool files, machine-local)
 .serena/
+
+# vp test junit report
+junit.xml
