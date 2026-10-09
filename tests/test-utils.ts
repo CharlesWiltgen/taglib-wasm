@@ -557,6 +557,34 @@ export async function withTempFile<T>(
   }
 }
 
+// Node equivalent of `Deno.makeTempFile({ suffix })` for suites that need many
+// temp files: ONE shared `mkdtemp` directory per test module (not one per call),
+// with a uniquely named empty file per invocation. Call `cleanupTempFiles()`
+// from an `afterAll` so the directory does not leak.
+let tempFilesDir: Promise<string> | undefined;
+let tempFilesSeq = 0;
+
+export async function createTempFile(suffix = ""): Promise<string> {
+  tempFilesDir ??= mkdtemp(join(tmpdir(), "taglib-test-"));
+  const dir = await tempFilesDir;
+  const filepath = join(dir, `tmp-${++tempFilesSeq}${suffix}`);
+  await writeFile(filepath, new Uint8Array(0));
+  return filepath;
+}
+
+export async function cleanupTempFiles(): Promise<void> {
+  const dir = tempFilesDir;
+  tempFilesDir = undefined;
+  tempFilesSeq = 0;
+  if (dir) {
+    try {
+      await rm(await dir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+}
+
 // Common test tags
 export const TEST_TAGS = {
   basic: {

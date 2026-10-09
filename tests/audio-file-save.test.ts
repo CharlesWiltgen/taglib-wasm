@@ -1,7 +1,5 @@
-import { beforeAll, describe, expect, it } from "vite-plus/test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { expectRejects, expectThrows } from "./_assert-helpers.ts";
 import { TagLib } from "../src/taglib.ts";
 import { FileOperationError } from "../src/errors.ts";
@@ -10,21 +8,19 @@ import type { UnsyncedLyrics } from "../src/constants/complex-properties.ts";
 import { mergeTagUpdates } from "../src/utils/tag-mapping.ts";
 import { clearTags } from "../src/simple/tag-operations.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
-import { TEST_PICTURES } from "./test-utils.ts";
+import {
+  cleanupTempFiles,
+  createTempFile,
+  TEST_PICTURES,
+} from "./test-utils.ts";
 
 let taglib: TagLib;
-
-/** Node equivalent of `Deno.makeTempFile({ suffix })`. */
-async function makeTempFile(suffix = ""): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), "taglib-"));
-  const path = join(dir, `tmp${suffix}`);
-  await writeFile(path, new Uint8Array(0));
-  return path;
-}
 
 beforeAll(async () => {
   taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
 });
+
+afterAll(cleanupTempFiles);
 
 describe("AudioFileImpl.save()", () => {
   it("should throw FileOperationError on partially-loaded file", async () => {
@@ -92,7 +88,7 @@ describe("AudioFileImpl.getFileBuffer()", () => {
     const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const srcPath = await makeTempFile(".mp3");
+      const srcPath = await createTempFile(".mp3");
       try {
         await writeFile(srcPath, original);
         const file = await tl.open(srcPath);
@@ -127,7 +123,7 @@ describe("AudioFileImpl.getFileBuffer()", () => {
     const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
     for (const backend of ["wasi", "emscripten"] as const) {
       const tl = await TagLib.initialize({ forceWasmType: backend });
-      const srcPath = await makeTempFile(".mp3");
+      const srcPath = await createTempFile(".mp3");
       try {
         await writeFile(srcPath, original);
         const file = await tl.open(srcPath);
@@ -177,7 +173,7 @@ describe("AudioFileImpl.saveToFile()", () => {
       maxFooterSize: 1024,
     });
 
-    const tmpPath = await makeTempFile(".mp3");
+    const tmpPath = await createTempFile(".mp3");
     try {
       const tag = file.tag();
       tag.setTitle("Partial Save Test");
@@ -196,8 +192,8 @@ describe("AudioFileImpl.saveToFile()", () => {
   it("[wasi] saveToFile(target) writes to target and leaves source intact (taglib-cd0)", async () => {
     const wasi = await TagLib.initialize({ forceWasmType: "wasi" });
     const original = new Uint8Array(await readFile(FIXTURE_PATH.mp3));
-    const srcPath = await makeTempFile(".mp3");
-    const targetPath = await makeTempFile(".mp3");
+    const srcPath = await createTempFile(".mp3");
+    const targetPath = await createTempFile(".mp3");
     await writeFile(srcPath, original);
     try {
       const file = await wasi.open(srcPath); // WASI path-mode
@@ -442,8 +438,8 @@ describe("AudioFileImpl.saveToFile()", () => {
   // lyrics; the EXTRA_FIELDS registry copies them via get/setLyrics.
   it("[wasi] lyrics survive a save-as reconstruct (taglib-gq9)", async () => {
     const wasi = await TagLib.initialize({ forceWasmType: "wasi" });
-    const srcPath = await makeTempFile(".mp3");
-    const out = await makeTempFile(".mp3");
+    const srcPath = await createTempFile(".mp3");
+    const out = await createTempFile(".mp3");
     await writeFile(srcPath, new Uint8Array(await readFile(FIXTURE_PATH.mp3)));
     const expected: RawLyrics[] = [
       { text: "Reconstructed", description: "", language: "" },
@@ -469,9 +465,9 @@ describe("AudioFileImpl.saveToFile()", () => {
   // partial source where an empty field may just be unread.
   it("[wasi] save-as honors an explicit clear of chapters (complete source)", async () => {
     const wasi = await TagLib.initialize({ forceWasmType: "wasi" });
-    const srcPath = await makeTempFile(".mp3");
-    const withChapters = await makeTempFile(".mp3");
-    const out = await makeTempFile(".mp3");
+    const srcPath = await createTempFile(".mp3");
+    const withChapters = await createTempFile(".mp3");
+    const out = await createTempFile(".mp3");
     await writeFile(srcPath, new Uint8Array(await readFile(FIXTURE_PATH.mp3)));
     try {
       const seed = await wasi.open(srcPath);
@@ -503,8 +499,8 @@ describe("AudioFileImpl.saveToFile()", () => {
   // than silently downgrading nero/both to quicktime.
   it("[wasi] save-as preserves MP4 chapters and their nero style", async () => {
     const wasi = await TagLib.initialize({ forceWasmType: "wasi" });
-    const srcPath = await makeTempFile(".m4a");
-    const out = await makeTempFile(".m4a");
+    const srcPath = await createTempFile(".m4a");
+    const out = await createTempFile(".m4a");
     await writeFile(srcPath, new Uint8Array(await readFile(FIXTURE_PATH.m4a)));
     try {
       const file = await wasi.open(srcPath); // WASI path-mode
@@ -530,7 +526,7 @@ describe("AudioFileImpl.saveToFile()", () => {
   it("should save fully-loaded file to disk with roundtrip verification", async () => {
     const file = await taglib.open(FIXTURE_PATH.flac);
 
-    const tmpPath = await makeTempFile(".flac");
+    const tmpPath = await createTempFile(".flac");
     try {
       const tag = file.tag();
       tag.setArtist("Save Test Artist");
@@ -555,7 +551,7 @@ describe("AudioFileImpl.saveToFile()", () => {
 describe("AudioFileImpl.saveToFile() full-load (taglib-0iq)", () => {
   it("[emscripten] writes a full-load edit to the target path", async () => {
     const emsc = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const out = await makeTempFile(".mp3");
+    const out = await createTempFile(".mp3");
     try {
       // Plain buffer open (no { partial: true }) => full load.
       const file = await emsc.open(

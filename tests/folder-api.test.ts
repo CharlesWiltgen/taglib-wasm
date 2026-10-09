@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vite-plus/test";
+import { afterAll, describe, expect, it } from "vite-plus/test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expectDefined } from "./_assert-helpers.ts";
+import { cleanupTempFiles, createTempFile } from "./test-utils.ts";
 import {
   type AudioFileMetadata,
   exportFolderMetadata,
@@ -17,13 +18,7 @@ setBufferMode(true);
 
 const TEST_FILES_DIR = fileURLToPath(new URL("./test-files", import.meta.url));
 
-/** Node equivalent of `Deno.makeTempFile({ suffix })`. */
-async function makeTempFile(suffix = ""): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), "taglib-"));
-  const path = join(dir, `tmp${suffix}`);
-  await writeFile(path, new Uint8Array(0));
-  return path;
-}
+afterAll(cleanupTempFiles);
 
 describe("folder-api", () => {
   it("scanFolder - reads all audio files with metadata", async () => {
@@ -169,7 +164,7 @@ describe("folder-api", () => {
   });
 
   it("exportFolderMetadata - exports to JSON", async () => {
-    const tempFile = await makeTempFile(".json");
+    const tempFile = await createTempFile(".json");
 
     try {
       await exportFolderMetadata(TEST_FILES_DIR, tempFile, {
