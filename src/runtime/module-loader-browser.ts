@@ -23,10 +23,10 @@ export async function loadTagLibModule(
   // The Emscripten factory's shape is typed explicitly: build/ carries the
   // wrapper's .d.ts, but dist/ is gitignored (absent in CI), so the dist
   // import is untyped there (no-unsafe-* errors in the lint gate).
-  // The Emscripten factory's shape is typed loosely: deno check infers
-  // `Promise<{}>` from the wrapper's JS, eslint's projectService sees the
-  // committed .d.ts (`Promise<any>`); `unknown` is assignable from both, and
-  // the final cast narrows to TagLibModule.
+  // The Emscripten factory's shape is typed loosely: `deno check` infers
+  // `Promise<{}>` from the wrapper's JS, while tsc resolves the committed
+  // .d.ts (`Promise<any>`); `unknown` is assignable from both, and the final
+  // cast narrows to TagLibModule.
   type CreateTagLibModule = (
     config?: object,
   ) => Promise<unknown>;

@@ -63,9 +63,6 @@ jobs:
       - name: Run linter
         run: npx vp lint --type-aware
 
-      - name: Run ESLint (typescript-eslint)
-        run: npm run lint:ts
-
       - name: Type check
         # tsconfig.check.json is tests-inclusive: tsconfig.json excludes tests
         # (it is the npm build config), and `deno check ./src ./tests` used to

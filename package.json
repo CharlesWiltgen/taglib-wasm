@@ -119,8 +119,6 @@
     "release:quick": "./scripts/release-safe.sh --skip-watch",
     "publish:npm": "echo 'Use GitHub Actions workflow for publishing'",
     "publish:github": "echo 'Use GitHub Actions workflow for publishing'",
-    "lint:ts": "eslint .",
-    "lint:ts:time": "time eslint .",
     "fmt:vp": "vp fmt",
     "lint:vp": "vp lint --type-aware",
     "test:vp": "vp test",
@@ -170,12 +168,10 @@
     "@types/node": "^24.13.5",
     "@vitest/coverage-v8": "5.0.3",
     "esbuild": "^0.28.2",
-    "eslint": "^10.10.0",
     "fast-check": "^4.10.1",
     "knip": "^6.36.0",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.70.0",
     "vite-plus": "1.1.0"
   },
   "peerDependencies": {
