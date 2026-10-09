@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Removed (BREAKING)
+
+- Deno runtime support. The `initializeForDenoCompile`, `isDenoCompiled` and
+  `prepareWasmForEmbedding` exports are gone; Deno is no longer a supported
+  runtime (Node, Bun, browsers, Cloudflare Workers and Electron remain).
+  Version 3.0.0 removes Deno support entirely.
+
 ### Fixed
 
 - **A WASI host seek that fails no longer corrupts the next read on Node and

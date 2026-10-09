@@ -1,7 +1,7 @@
 # TagLib-Wasm — AI Agent Reference
 
 WebAssembly build of TagLib for reading/writing audio metadata in JS/TS.
-Works in Deno, Node.js, Bun, browsers, and Cloudflare Workers.
+Works in Node.js, Bun, browsers, and Cloudflare Workers.
 
 ## Install
 
@@ -315,7 +315,7 @@ import { exportFolderMetadata, findDuplicates, scanFolder } from "taglib-wasm";
 ```
 
 ```typescript
-// Scan (Deno/Node.js/Bun only)
+// Scan (Node.js/Bun only)
 const result = await scanFolder("/music", {
   recursive: true,
   extensions: [".mp3", ".flac"],
@@ -430,17 +430,13 @@ Tree-Shaking".
 
 ## Key Behaviors
 
-**Runtime auto-detection**: WASI backend for Deno/Node.js (seek-based filesystem I/O).
+**Runtime auto-detection**: WASI backend for Node.js (seek-based filesystem I/O).
 Emscripten for browsers (loads full buffer). No configuration needed.
-
-**Deno compile**: `TagLib.initialize()` auto-detects compiled mode. For custom Wasm
-paths: `import { initializeForDenoCompile } from "taglib-wasm"`. For offline,
-embed with `deno compile --allow-read --include taglib-web.wasm myapp.ts`.
 
 **Memory**: Simple API auto-manages. Full API requires `using` (preferred) or `dispose()`; a best-effort
 FinalizationRegistry also releases a forgotten handle when its wrapper is garbage-collected, but that path
 is non-deterministic — explicit disposal is still the contract (taglib-t4sn).
-WASI path mode (Deno/Node.js with file paths) uses ~1-2MB regardless of file size.
+WASI path mode (Node.js with file paths) uses ~1-2MB regardless of file size.
 Buffer mode (browsers, or when passing Uint8Array) uses ~2x file size.
 
 **Supported formats**: MP3 (ID3v1/v2), ADTS/raw AAC, MP4/M4A, FLAC, OGG (Vorbis,
@@ -606,8 +602,7 @@ devDependency installed.
 
 ```bash
 npm ci                    # Install dependencies (required before any `vp` command)
-npx vp test               # Tests (Vitest): 95 files across tests/ and src/
-deno task test            # The four Deno-only test files (see below)
+npx vp test               # Tests (Vitest): 97 files across tests/ and src/
 npx vp fmt --check        # Format gate (`npx vp fmt` rewrites in place)
 npx vp lint --type-aware  # Lint gate (oxlint with the type-checked rules)
 npx tsc --noEmit -p tsconfig.check.json   # Type gate (includes tests/)
@@ -623,19 +618,20 @@ to run the npm script.
 catches bundler-resolution breaks — e.g. a JSR import that isn't an npm
 dependency — that pass the test suite but break the published package.
 
-**Two test gates.** `npx vp test` covers the 95 migrated files. Four files test
-Deno-only APIs and still run under `deno task test`:
-`tests/deno-detect.test.ts`, `tests/deno-compat-patches.test.ts`,
-`tests/wasi-fs-provider.test.ts`, `tests/offline-support.test.ts`. Run both.
+**One test suite.** `npx vp test` covers all 97 test files under `tests/` and
+`src/`. The only exclusions are `tests/bun-integration.test.ts` (registered with
+`bun:test`, run via `npm run test:bun`) and `tests/cross-runtime/**` (run under
+three runtimes via `tests/cross-runtime/run.sh`). No Deno-gated test file
+remains.
 
 **Deno** is no longer the dev toolchain for tests, formatting, linting or type
-checking. It remains required for those four test files, the TypeScript bundle
-scripts (`scripts/build-js.mjs`, `scripts/postbuild.mjs`), and JSR publishing
-(`deno publish`) until phases 2-3 retire it.
+checking. It remains required only for the TypeScript bundle scripts
+(`scripts/build-js.mjs`, `scripts/postbuild.mjs`), the auxiliary scripts, and
+JSR publishing (`deno publish`) until phase 3 retires it.
 
 ### Architecture
 
-Two Wasm backends: **Emscripten** (browsers) and **WASI** (Deno/Node.js).
+Two Wasm backends: **Emscripten** (browsers) and **WASI** (Node.js).
 Auto-selected at runtime. Both wrap TagLib 2.3.2 C++ via a C boundary layer.
 
 Key files: `build/taglib_embind.cpp` (Emscripten), `src/capi/taglib_shim.cpp` (WASI),
@@ -714,8 +710,8 @@ written against one silently misbehaves on the other.
    lacks it. Silent no-ops are how `taglib-nc5` happened.
 2. Add a parity test that runs the **same scenario** on both backends —
    `forEachBackend()` / `BackendAdapter` (`tests/backend-adapter.ts:435`), or
-   a loop over `TagLib.initialize({ forceWasmType })`. A test with no
-   `forceWasmType` exercises WASI only on Deno, which is _not_ parity coverage.
+   a loop over `TagLib.initialize({ forceWasmType })`. Without `forceWasmType`
+   the detector selects the WASI backend, so such a test is _not_ parity coverage.
 3. Prefer one seed-then-assert scenario looped over both backends, so the test
    can actually fail on divergence.
 4. Decide explicitly whether a read reflects **staged** or **saved** state, and

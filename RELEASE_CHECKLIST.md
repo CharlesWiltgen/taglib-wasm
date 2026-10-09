@@ -13,7 +13,7 @@ This checklist ensures a smooth and safe release process.
 > tree back to Deno style and breaks the `npx vp fmt --check` gate. See
 > `CONTRIBUTING.md` § Releasing.
 
-- [ ] All tests pass (`npx vp test`, plus `deno task test` for the four Deno-only files)
+- [ ] All tests pass (`npx vp test`, plus `npm run test:bun` and `bash tests/cross-runtime/run.sh`)
 - [ ] Code is properly formatted (`npx vp fmt --check`)
 - [ ] No linting errors (`npx vp lint --type-aware`)
 - [ ] Type checking passes (`npx tsc --noEmit -p tsconfig.check.json`)
@@ -88,7 +88,6 @@ If you must release manually:
    npx vp lint --type-aware
    npx tsc --noEmit -p tsconfig.check.json
    npx vp test
-   deno task test          # the four Deno-only files
    npm run build:ts
    npm run build:wasm
    ```
@@ -153,8 +152,7 @@ If not done automatically:
   style and break `npx vp fmt --check`.
 - Fix formatting with `npx vp fmt` and verify with `npx vp fmt --check`
 - Fix any linting errors with `npx vp lint --type-aware`
-- Ensure all tests pass locally (`npx vp test`, plus `deno task test` for the
-  four Deno-only files) before releasing
+- Ensure all tests pass locally (`npx vp test`) before releasing
 
 ### Version Mismatch
 
