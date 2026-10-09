@@ -6,11 +6,19 @@ This checklist ensures a smooth and safe release process.
 
 ### 1. Code Quality
 
-- [ ] All tests pass (`deno task test`)
-- [ ] Code is properly formatted (`deno fmt --check`)
-- [ ] No linting errors (`deno lint`)
-- [ ] Type checking passes (`deno check ./src ./tests`)
-- [ ] Build succeeds (`deno task build`)
+> **The automated release path is non-functional pending phase 3.**
+> `scripts/release-safe.sh` still runs the retired `deno fmt --check` (`:83`),
+> `deno lint` (`:92`) and `deno check` (`:101`), so it exits 1 at its first gate.
+> **Do not follow its hint to run `deno task fmt`** — that reformats the whole
+> tree back to Deno style and breaks the `npx vp fmt --check` gate. See
+> `CONTRIBUTING.md` § Releasing.
+
+- [ ] All tests pass (`npx vp test`, plus `deno task test` for the four Deno-only files)
+- [ ] Code is properly formatted (`npx vp fmt --check`)
+- [ ] No linting errors (`npx vp lint --type-aware`)
+- [ ] Type checking passes (`npx tsc --noEmit -p tsconfig.check.json`)
+- [ ] Bundles build (`npm run build:ts`)
+- [ ] Wasm build succeeds (`npm run build:wasm`)
 
 ### 2. Version Synchronization
 
@@ -31,6 +39,12 @@ This checklist ensures a smooth and safe release process.
 - [ ] API documentation is current
 
 ## Release Process
+
+> **Blocked pending phase 3.** `scripts/release-safe.sh` has not been migrated to
+> the Vite+ toolchain yet: it runs the retired `deno fmt --check`, `deno lint` and
+> `deno check`, so it fails at its first gate. Every command in this section is
+> unavailable until phase 3 lands. Do **not** run `deno task fmt` to "fix" the
+> formatting failure it reports.
 
 ### Automated Release (Recommended)
 
@@ -68,11 +82,13 @@ If you must release manually:
 1. **Run all checks**:
 
    ```bash
-   deno fmt --check
-   deno lint
-   deno check ./src ./tests
-   deno task test
-   deno task build
+   npx vp fmt --check
+   npx vp lint --type-aware
+   npx tsc --noEmit -p tsconfig.check.json
+   npx vp test
+   deno task test          # the four Deno-only files
+   npm run build:ts
+   npm run build:wasm
    ```
 
 2. **Update versions**:

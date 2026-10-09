@@ -64,6 +64,7 @@ software together.
    npx tsc --noEmit -p tsconfig.check.json   # type gate (tests included)
    npx vp test                               # tests (Vitest)
    deno task test                            # the four Deno-only test files
+   npm run build:ts                          # bundle gate (bundler-resolution check)
    ```
 
    > `npm ci` must run before any `npx vp` command — `vp` loads
@@ -72,7 +73,9 @@ software together.
    > script (run that one with `vpr test`). Deno is no longer the dev toolchain
    > for tests, formatting, linting or type checking; it remains for the four
    > Deno-only test files, the TypeScript bundle scripts, and JSR publishing
-   > (`deno publish`) until phases 2-3.
+   > (`deno publish`) until phases 2-3. `npm run build:ts` builds the shippable
+   > bundles and catches bundler-resolution breaks (e.g. a JSR import that isn't
+   > an npm dependency) that pass the tests but break the published package.
 
 ## 📝 Development Guidelines
 
@@ -183,11 +186,15 @@ describe("Feature", () => {
    npx tsc --noEmit -p tsconfig.check.json   # type gate (tests included)
    npx vp test                               # tests (Vitest)
    deno task test                            # the four Deno-only test files
+   npm run build:ts                          # bundle gate (bundler-resolution check)
    ```
 
    > `npx vp test` runs the Vitest suite; `deno task test` runs only the four
    > Deno-only files. Run both. `npm ci` must precede every `npx vp` command
-   > (`vp` loads `vite.config.ts` strictly).
+   > (`vp` loads `vite.config.ts` strictly). `npm run build:ts` builds the
+   > shippable bundles and catches bundler-resolution breaks (e.g. a JSR import
+   > that isn't an npm dependency) that pass the tests but break the published
+   > package.
 
 5. **Commit your changes**
    - Follow [Conventional Commits](https://www.conventionalcommits.org/)
@@ -345,7 +352,8 @@ git commit -m "chore: update TagLib to v2.2.1"
 
 ## 🚀 Releasing
 
-Releases are cut from `main` with one command:
+Releases are cut from `main` with one command — **but the automated path is
+currently non-functional** (see the warning below):
 
 ```bash
 deno task release              # auto-increment patch version
@@ -353,8 +361,16 @@ deno task release 2.3.0        # explicit version
 deno task release:quick 2.3.0  # same gates and same flow, but do not wait for the result
 ```
 
-> The release path still runs under Deno: `scripts/release-safe.sh` publishes to
-> JSR with `deno publish` until phase 3 replaces that leg.
+> **Blocked pending phase 3.** `scripts/release-safe.sh` still runs the retired
+> gates as its first checks — `deno fmt --check` (`:83`), `deno lint` (`:92`) and
+> `deno check` (`:101`). `deno fmt --check` fails by design on the vp-formatted
+> tree, so every `deno task release` exits 1 at its first check.
+>
+> The failure output suggests **`Run 'deno task fmt' to fix formatting` — do not
+> run it.** `deno task fmt` reformats the whole tree back to Deno style and
+> breaks the `npx vp fmt --check` gate. Release automation is migrated in phase
+> 3; until then, releases are blocked. JSR publishing still uses `deno publish`
+> (`release-safe.sh`) until phase 3 replaces that leg.
 
 `scripts/release-safe.sh` runs the gates, bumps the version, pushes the bump
 commit, **waits for CI to pass on that commit**, verifies the npm publish path

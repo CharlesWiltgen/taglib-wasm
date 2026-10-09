@@ -611,12 +611,17 @@ deno task test            # The four Deno-only test files (see below)
 npx vp fmt --check        # Format gate (`npx vp fmt` rewrites in place)
 npx vp lint --type-aware  # Lint gate (oxlint with the type-checked rules)
 npx tsc --noEmit -p tsconfig.check.json   # Type gate (includes tests/)
+npm run build:ts          # Bundle gate: catches bundler-resolution breaks
 npm run build:wasm        # Rebuild both Wasm backends
 npm run build:wasm:wasi   # Rebuild WASI Wasm only (requires WASI SDK 34)
 ```
 
 `npx vp test` is a **Vite+ built-in**, not the npm `test` script; use `vpr test`
 to run the npm script.
+
+`npm run build:ts` builds the shippable bundles. Run it before pushing: it
+catches bundler-resolution breaks — e.g. a JSR import that isn't an npm
+dependency — that pass the test suite but break the published package.
 
 **Two test gates.** `npx vp test` covers the 94 migrated files. Four files test
 Deno-only APIs and still run under `deno task test`:
