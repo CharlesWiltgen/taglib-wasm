@@ -9,17 +9,12 @@
  * invisible to bundlers; guaranteed by engines node >= 22.6.0).
  */
 
-import { describe, it } from "@std/testing/bdd";
-import {
-  assertEquals,
-  assertStrictEquals,
-  assertStringIncludes,
-  assertThrows,
-} from "@std/assert";
+import { describe, expect, it } from "vite-plus/test";
 import { getNodeFsSync } from "../src/utils/node-fs.ts";
 import { getPreopens } from "../src/runtime/unified-loader/module-loading.ts";
 import { readFileSync } from "../src/taglib/audio-file-impl.ts";
 import { FileOperationError } from "../src/errors.ts";
+import { expectThrows } from "./_assert-helpers.ts";
 
 const g = globalThis as Record<string, unknown>;
 
@@ -78,13 +73,13 @@ describe("getNodeFsSync", () => {
   it("acquires node:fs via process.getBuiltinModule when require is not a global", () => {
     const fakeFs = fakeFsWithDrives([]);
     withFakeNodeRuntime(fakeWindowsProcess(fakeFs), () => {
-      assertStrictEquals(getNodeFsSync(), fakeFs);
+      expect(getNodeFsSync()).toBe(fakeFs);
     });
   });
 
   it("returns null when neither getBuiltinModule nor a global require exists", () => {
     withFakeNodeRuntime({ platform: "win32" }, () => {
-      assertStrictEquals(getNodeFsSync(), null);
+      expect(getNodeFsSync()).toBe(null);
     });
   });
 
@@ -96,7 +91,7 @@ describe("getNodeFsSync", () => {
       },
     };
     withFakeNodeRuntime(throwingProcess, () => {
-      assertStrictEquals(getNodeFsSync(), null);
+      expect(getNodeFsSync()).toBe(null);
     });
   });
 
@@ -106,7 +101,7 @@ describe("getNodeFsSync", () => {
     withGlobals(
       { Deno: undefined, process: { platform: "win32" }, require: fakeRequire },
       () => {
-        assertStrictEquals(getNodeFsSync(), fakeFs);
+        expect(getNodeFsSync()).toBe(fakeFs);
       },
     );
   });
@@ -123,7 +118,7 @@ describe("getNodeFsSync", () => {
         require: fakeRequire,
       },
       () => {
-        assertStrictEquals(getNodeFsSync(), builtinFs);
+        expect(getNodeFsSync()).toBe(builtinFs);
       },
     );
   });
@@ -139,14 +134,14 @@ describe("getNodeFsSync", () => {
         require: fakeRequire,
       },
       () => {
-        assertStrictEquals(getNodeFsSync(), realFs);
+        expect(getNodeFsSync()).toBe(realFs);
       },
     );
   });
 
   it("returns null when every strategy yields a non-fs shape", () => {
     withFakeNodeRuntime(fakeWindowsProcess({}), () => {
-      assertStrictEquals(getNodeFsSync(), null);
+      expect(getNodeFsSync()).toBe(null);
     });
   });
 });
@@ -156,7 +151,7 @@ describe("getPreopens", () => {
     const drives = ["C:\\", "D:\\", "F:\\"];
     const fakeProcess = fakeWindowsProcess(fakeFsWithDrives(drives));
     withFakeNodeRuntime(fakeProcess, () => {
-      assertEquals(getPreopens(), {
+      expect(getPreopens()).toStrictEqual({
         "/C": "C:\\",
         "/D": "D:\\",
         "/F": "F:\\",
@@ -167,13 +162,13 @@ describe("getPreopens", () => {
   it("falls back to C: only when no drive letter stats successfully", () => {
     const fakeProcess = fakeWindowsProcess(fakeFsWithDrives([]));
     withFakeNodeRuntime(fakeProcess, () => {
-      assertEquals(getPreopens(), { "/C": "C:\\" });
+      expect(getPreopens()).toStrictEqual({ "/C": "C:\\" });
     });
   });
 
   it("maps the filesystem root on non-Windows platforms", () => {
     withFakeNodeRuntime({ platform: "darwin" }, () => {
-      assertEquals(getPreopens(), { "/": "/" });
+      expect(getPreopens()).toStrictEqual({ "/": "/" });
     });
   });
 
@@ -185,13 +180,13 @@ describe("getPreopens", () => {
     };
     try {
       withFakeNodeRuntime({ platform: "win32" }, () => {
-        assertEquals(getPreopens(), { "/C": "C:\\" });
+        expect(getPreopens()).toStrictEqual({ "/C": "C:\\" });
       });
     } finally {
       console.warn = savedWarn;
     }
-    assertEquals(warnings.length, 1);
-    assertStringIncludes(warnings[0], "drive detection unavailable");
+    expect(warnings.length).toStrictEqual(1);
+    expect(warnings[0]).toContain("drive detection unavailable");
   });
 });
 
@@ -203,7 +198,7 @@ describe("readFileSync", () => {
       readFileSync: () => expectedBytes,
     };
     withFakeNodeRuntime(fakeWindowsProcess(fakeFs), () => {
-      assertEquals(readFileSync("/music/song.mp3"), expectedBytes);
+      expect(readFileSync("/music/song.mp3")).toStrictEqual(expectedBytes);
     });
   });
 
@@ -212,7 +207,7 @@ describe("readFileSync", () => {
   // vector. It must throw with the path in the message.
   it("throws FileOperationError with the path when node:fs is unavailable (taglib-0sv)", () => {
     withFakeNodeRuntime({ platform: "win32" }, () => {
-      assertThrows(
+      expectThrows(
         () => readFileSync("/music/song.mp3"),
         FileOperationError,
         "/music/song.mp3",

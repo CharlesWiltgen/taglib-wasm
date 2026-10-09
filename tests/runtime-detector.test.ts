@@ -5,8 +5,7 @@
  * optimal WASM binary selection for each environment type.
  */
 
-import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertExists } from "@std/assert";
+import { describe, expect, it } from "vite-plus/test";
 import {
   canLoadWasmType,
   checkNodeVersion,
@@ -20,46 +19,47 @@ describe("RuntimeDetector", () => {
     const result = detectRuntime();
 
     // Verify all required fields are present
-    assertExists(result.environment);
-    assertExists(result.wasmType);
-    assertEquals(typeof result.supportsFilesystem, "boolean");
-    assertEquals(typeof result.supportsStreaming, "boolean");
-    assertEquals(typeof result.performanceTier, "number");
+    expect(result.environment).not.toBeNull();
+    expect(result.environment).toBeDefined();
+    expect(result.wasmType).not.toBeNull();
+    expect(result.wasmType).toBeDefined();
+    expect(typeof result.supportsFilesystem).toStrictEqual("boolean");
+    expect(typeof result.supportsStreaming).toStrictEqual("boolean");
+    expect(typeof result.performanceTier).toStrictEqual("number");
 
     // Verify performance tier is valid
-    assertEquals([1, 2, 3].includes(result.performanceTier), true);
+    expect([1, 2, 3].includes(result.performanceTier)).toStrictEqual(true);
 
     // Verify wasmType is valid
-    assertEquals(["wasi", "emscripten"].includes(result.wasmType), true);
+    expect(["wasi", "emscripten"].includes(result.wasmType)).toStrictEqual(
+      true,
+    );
   });
 
-  it("detectRuntime - Deno environment detection", () => {
+  it("detectRuntime - Node environment detection", () => {
     const result = detectRuntime();
 
-    // In Deno environment, should detect deno-wasi
-    assertEquals(result.environment, "deno-wasi");
-    assertEquals(result.wasmType, "wasi");
-    assertEquals(result.supportsFilesystem, true);
-    assertEquals(result.supportsStreaming, true);
-    assertEquals(result.performanceTier, 1);
+    // In the Vitest/Node runtime, should detect node-wasi
+    expect(result.environment).toStrictEqual("node-wasi");
+    expect(result.wasmType).toStrictEqual("wasi");
+    expect(result.supportsFilesystem).toStrictEqual(true);
+    expect(result.supportsStreaming).toStrictEqual(true);
+    expect(result.performanceTier).toStrictEqual(1);
   });
 
   it("detectRuntime - Bun environment returns bun-wasi", () => {
     const globalAny = globalThis as Record<string, unknown>;
-    const savedDeno = globalAny.Deno;
     try {
-      // Hide Deno global so isBun() path is reached (Deno has higher priority)
-      delete globalAny.Deno;
+      // Deno runtime support removed in phase 2; this case no longer has a subject.
       globalAny.Bun = { version: "1.3.8" };
 
       const result = detectRuntime();
-      assertEquals(result.environment, "bun-wasi");
-      assertEquals(result.wasmType, "wasi");
-      assertEquals(result.supportsFilesystem, true);
-      assertEquals(result.supportsStreaming, true);
-      assertEquals(result.performanceTier, 1);
+      expect(result.environment).toStrictEqual("bun-wasi");
+      expect(result.wasmType).toStrictEqual("wasi");
+      expect(result.supportsFilesystem).toStrictEqual(true);
+      expect(result.supportsStreaming).toStrictEqual(true);
+      expect(result.performanceTier).toStrictEqual(1);
     } finally {
-      globalAny.Deno = savedDeno;
       delete globalAny.Bun;
     }
   });
@@ -77,45 +77,44 @@ describe("RuntimeDetector", () => {
 
     for (const env of environments) {
       const description = getEnvironmentDescription(env);
-      assertEquals(typeof description, "string");
-      assertEquals(description.length > 0, true);
+      expect(typeof description).toStrictEqual("string");
+      expect(description.length > 0).toStrictEqual(true);
       // Description should contain the environment name
-      assertEquals(
+      expect(
         description.toLowerCase().includes(env.split("-")[0]),
-        true,
-      );
+      ).toStrictEqual(true);
     }
   });
 
   it("canLoadWasmType - WASI availability check", () => {
-    // In Deno, WASI should be available
-    assertEquals(canLoadWasmType("wasi"), true);
+    // Under Node, WASI should be available
+    expect(canLoadWasmType("wasi")).toStrictEqual(true);
 
     // Emscripten should always be available
-    assertEquals(canLoadWasmType("emscripten"), true);
+    expect(canLoadWasmType("emscripten")).toStrictEqual(true);
   });
 
   it("checkNodeVersion - accepts valid versions", () => {
-    assertEquals(checkNodeVersion("22.6.0"), undefined);
-    assertEquals(checkNodeVersion("22.11.0"), undefined);
-    assertEquals(checkNodeVersion("23.0.0"), undefined);
-    assertEquals(checkNodeVersion("24.1.3"), undefined);
+    expect(checkNodeVersion("22.6.0")).toStrictEqual(undefined);
+    expect(checkNodeVersion("22.11.0")).toStrictEqual(undefined);
+    expect(checkNodeVersion("23.0.0")).toStrictEqual(undefined);
+    expect(checkNodeVersion("24.1.3")).toStrictEqual(undefined);
   });
 
   it("checkNodeVersion - rejects versions below 22.6.0", () => {
     const err20 = checkNodeVersion("20.18.1");
-    assertEquals(err20 !== undefined, true);
-    assertEquals(err20!.includes("22.6.0"), true);
-    assertEquals(err20!.includes("20.18.1"), true);
+    expect(err20 !== undefined).toStrictEqual(true);
+    expect(err20!.includes("22.6.0")).toStrictEqual(true);
+    expect(err20!.includes("20.18.1")).toStrictEqual(true);
 
     const err22old = checkNodeVersion("22.5.9");
-    assertEquals(err22old !== undefined, true);
+    expect(err22old !== undefined).toStrictEqual(true);
 
     const err18 = checkNodeVersion("18.20.0");
-    assertEquals(err18 !== undefined, true);
+    expect(err18 !== undefined).toStrictEqual(true);
   });
 
   it("checkNodeVersion - returns undefined for non-Node environments", () => {
-    assertEquals(checkNodeVersion(undefined), undefined);
+    expect(checkNodeVersion(undefined)).toStrictEqual(undefined);
   });
 });

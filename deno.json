@@ -97,7 +97,14 @@
     "exclude": [
       "tests/bun-integration.test.ts",
       "tests/cross-runtime/",
-      "tests/_assert-helpers.test.ts"
+      "tests/_assert-helpers.test.ts",
+      "tests/runtime-detector.test.ts",
+      "tests/runtime-detector-unit.test.ts",
+      "tests/unified-api.test.ts",
+      "tests/unified-loader-components.test.ts",
+      "tests/error-handling.test.ts",
+      "tests/node-fs-acquisition.test.ts",
+      "src/runtime/platform-io.test.ts"
     ]
   },
   "tasks": {

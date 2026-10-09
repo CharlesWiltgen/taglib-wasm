@@ -10,8 +10,8 @@
  * - Proper error handling
  */
 
-import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertExists, assertThrows } from "@std/assert";
+import { describe, expect, it } from "vite-plus/test";
+import { expectThrows } from "./_assert-helpers.ts";
 
 // Mock WASI exports for testing
 const createMockWasiExports = (
@@ -19,10 +19,7 @@ const createMockWasiExports = (
   includeFileOps = false,
 ) => ({
   ...(includeMemory && {
-    memory: {
-      buffer: new ArrayBuffer(1024),
-      grow: () => 1,
-    } as unknown as WebAssembly.Memory,
+    memory: new WebAssembly.Memory({ initial: 1 }),
   }),
   malloc: (size: number) => 1000,
   free: (ptr: number) => {},
@@ -40,12 +37,6 @@ const mockRuntime = {
   performanceTier: 2,
 };
 
-// Import the functions we want to test (using dynamic import to avoid module loading issues)
-let validateWasiCapability: any;
-let createWasiMemoryManager: any;
-let createWasiCompatibilityLayer: any;
-let createWasiFileHandleFactory: any;
-
 // Since the functions are not exported, we'll test through the public interface
 // and check behavior rather than testing internals directly
 
@@ -60,15 +51,17 @@ describe("UnifiedLoaderComponents", () => {
       // Should fallback to Emscripten, not throw
       const module = await loadUnifiedTagLibModule();
 
-      assertExists(module);
-      assertExists(module.runtime);
+      expect(module).not.toBeNull();
+      expect(module).toBeDefined();
+      expect(module.runtime).not.toBeNull();
+      expect(module.runtime).toBeDefined();
 
       // Should have detected our environment correctly
-      assertEquals(module.runtime.environment, "deno-wasi");
+      expect(module.runtime.environment).toStrictEqual("node-wasi");
 
       // Should have fallen back to Emscripten due to missing WASI binary
-      assertEquals(module.isEmscripten, true);
-      assertEquals(module.isWasi, false);
+      expect(module.isEmscripten).toStrictEqual(true);
+      expect(module.isWasi).toStrictEqual(false);
 
       console.log("✅ WASI unavailable correctly falls back to Emscripten");
     } catch (error) {
@@ -88,7 +81,7 @@ describe("UnifiedLoaderComponents", () => {
       );
     };
 
-    assertThrows(
+    expectThrows(
       shouldFailFast,
       Error,
       "WASI memory not available",
@@ -107,13 +100,17 @@ describe("UnifiedLoaderComponents", () => {
       const module = await loadUnifiedTagLibModule();
 
       // Should have valid module with createFileHandle
-      assertExists(module);
-      assertExists(module.createFileHandle);
+      expect(module).not.toBeNull();
+      expect(module).toBeDefined();
+      expect(module.createFileHandle).not.toBeNull();
+      expect(module.createFileHandle).toBeDefined();
 
       // Since it fell back to Emscripten, createFileHandle should work
       const fileHandle = module.createFileHandle();
-      assertExists(fileHandle);
-      assertExists(fileHandle.loadFromBuffer);
+      expect(fileHandle).not.toBeNull();
+      expect(fileHandle).toBeDefined();
+      expect(fileHandle.loadFromBuffer).not.toBeNull();
+      expect(fileHandle.loadFromBuffer).toBeDefined();
 
       console.log(
         "✅ File handle factory works correctly with Emscripten fallback",
@@ -162,20 +159,21 @@ describe("UnifiedLoaderComponents", () => {
     };
 
     // Test legitimate operations
-    assertEquals(
+    expect(
       mockFileHandle.loadFromBuffer(new Uint8Array([1, 2, 3])),
-      true,
+    ).toStrictEqual(true);
+    expect(mockFileHandle.loadFromBuffer(new Uint8Array(0))).toStrictEqual(
+      false,
     );
-    assertEquals(mockFileHandle.loadFromBuffer(new Uint8Array(0)), false);
 
     // Test that operations fail fast with clear messages
-    assertThrows(
+    expectThrows(
       () => mockFileHandle.isValid(),
       Error,
       "WASI validation not implemented",
     );
 
-    assertThrows(
+    expectThrows(
       () => mockFileHandle.getFormat(),
       Error,
       "WASI format detection not implemented",
@@ -235,26 +233,30 @@ describe("UnifiedLoaderComponents", () => {
     };
 
     // Test interface structure
-    assertExists(mockCompatLayer.ready);
-    assertExists(mockCompatLayer.HEAP8);
-    assertExists(mockCompatLayer._malloc);
-    assertExists(mockCompatLayer.UTF8ToString);
+    expect(mockCompatLayer.ready).not.toBeNull();
+    expect(mockCompatLayer.ready).toBeDefined();
+    expect(mockCompatLayer.HEAP8).not.toBeNull();
+    expect(mockCompatLayer.HEAP8).toBeDefined();
+    expect(mockCompatLayer._malloc).not.toBeNull();
+    expect(mockCompatLayer._malloc).toBeDefined();
+    expect(mockCompatLayer.UTF8ToString).not.toBeNull();
+    expect(mockCompatLayer.UTF8ToString).toBeDefined();
 
     // Test that unsupported functions fail with clear messages
-    assertThrows(
+    expectThrows(
       () => mockCompatLayer.addFunction(),
       Error,
       "addFunction not supported in WASI mode",
     );
 
-    assertThrows(
+    expectThrows(
       () => mockCompatLayer.removeFunction(),
       Error,
       "removeFunction not supported in WASI mode",
     );
 
     // Test that string operations fail fast
-    assertThrows(
+    expectThrows(
       () => mockCompatLayer.UTF8ToString(1000),
       Error,
       "WASI string reading not implemented",
@@ -286,7 +288,7 @@ describe("UnifiedLoaderComponents", () => {
         errorMessage.includes("file data") ||
         errorMessage.includes("binary");
 
-      assert(hasContext, `Error message lacks context: ${errorMessage}`);
+      expect(hasContext).toBeTruthy();
 
       // Should explain what's missing or what to do
       const hasAction = errorMessage.includes("not available") ||
@@ -297,10 +299,7 @@ describe("UnifiedLoaderComponents", () => {
         errorMessage.includes("missing") ||
         errorMessage.includes("destroyed");
 
-      assert(
-        hasAction,
-        `Error message lacks actionable information: ${errorMessage}`,
-      );
+      expect(hasAction).toBeTruthy();
     }
 
     console.log("✅ All error messages are descriptive and actionable");
@@ -316,16 +315,18 @@ describe("UnifiedLoaderComponents", () => {
       const module = await loadUnifiedTagLibModule();
 
       // Should have loaded something (either WASI or Emscripten fallback)
-      assertExists(module);
+      expect(module).not.toBeNull();
+      expect(module).toBeDefined();
 
       // Should have the expected interface
-      assertExists(module.runtime);
-      assertEquals(typeof module.isWasi, "boolean");
-      assertEquals(typeof module.isEmscripten, "boolean");
+      expect(module.runtime).not.toBeNull();
+      expect(module.runtime).toBeDefined();
+      expect(typeof module.isWasi).toStrictEqual("boolean");
+      expect(typeof module.isEmscripten).toStrictEqual("boolean");
 
       // Should have fallen back to Emscripten (since no WASI binary available)
-      assertEquals(module.isEmscripten, true);
-      assertEquals(module.isWasi, false);
+      expect(module.isEmscripten).toStrictEqual(true);
+      expect(module.isWasi).toStrictEqual(false);
 
       console.log(
         `✅ Module loading works: ${
@@ -372,14 +373,15 @@ describe("UnifiedLoaderComponents", () => {
     };
 
     // Should work before destruction
-    assertExists(mockHandle.getBuffer());
-    assertEquals(mockHandle.getBuffer().length, 3);
+    expect(mockHandle.getBuffer()).not.toBeNull();
+    expect(mockHandle.getBuffer()).toBeDefined();
+    expect(mockHandle.getBuffer().length).toStrictEqual(3);
 
     // Destroy the handle
     mockHandle.destroy();
 
     // Should throw after destruction
-    assertThrows(
+    expectThrows(
       () => mockHandle.getBuffer(),
       Error,
       "FileHandle has been destroyed",
@@ -399,7 +401,7 @@ describe("UnifiedLoaderComponents", () => {
         testAction: () => {
           // Should validate required exports
           const requiredExports = ["memory", "malloc", "free"];
-          const mockExports = { memory: true };
+          const mockExports: Record<string, boolean> = { memory: true };
 
           for (const exportName of requiredExports) {
             if (!(exportName in mockExports)) {
@@ -423,10 +425,10 @@ describe("UnifiedLoaderComponents", () => {
             allocatedBlocks.set(ptr, size);
             return ptr;
           };
-          assertEquals(malloc(100), 1000);
-          assertEquals(allocatedBlocks.get(1000), 100);
+          expect(malloc(100)).toStrictEqual(1000);
+          expect(allocatedBlocks.get(1000)).toStrictEqual(100);
         },
-        shouldThrow: false,
+        shouldThrow: false as const,
       },
 
       {
@@ -441,19 +443,20 @@ describe("UnifiedLoaderComponents", () => {
               throw new Error("Not implemented");
             },
           };
-          assertExists(layer.HEAP8);
-          assertEquals(layer._malloc(), 1000);
+          expect(layer.HEAP8).not.toBeNull();
+          expect(layer.HEAP8).toBeDefined();
+          expect(layer._malloc()).toStrictEqual(1000);
         },
-        shouldThrow: false,
+        shouldThrow: false as const,
       },
     ];
 
     for (const scenario of testScenarios) {
       if (scenario.shouldThrow) {
-        assertThrows(
+        expectThrows(
           scenario.testAction,
           Error,
-          scenario.shouldThrow as string,
+          scenario.shouldThrow,
         );
       } else {
         scenario.testAction(); // Should not throw

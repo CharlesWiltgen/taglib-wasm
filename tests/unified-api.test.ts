@@ -5,8 +5,8 @@
  * compatibility while adding WASI optimizations for server environments.
  */
 
-import { assert, assertEquals, assertExists, assertRejects } from "@std/assert";
-import { describe, it } from "@std/testing/bdd";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vite-plus/test";
 import { TagLibInitializationError } from "../src/errors/classes.ts";
 import { detectRuntime } from "../src/runtime/detector.ts";
 import {
@@ -16,15 +16,16 @@ import {
   ModuleLoadError,
 } from "../src/runtime/unified-loader/index.ts";
 import { loadTagLibModule, TagLib } from "../index.ts";
+import { expectRejects } from "./_assert-helpers.ts";
 
 describe("Runtime detection", () => {
-  it("detects Deno environment correctly", () => {
+  it("detects Node environment correctly", () => {
     const runtime = detectRuntime();
 
-    assertEquals(runtime.environment, "deno-wasi");
-    assertEquals(runtime.supportsFilesystem, true);
-    assertEquals(runtime.supportsStreaming, true);
-    assertEquals(runtime.performanceTier >= 1, true);
+    expect(runtime.environment).toStrictEqual("node-wasi");
+    expect(runtime.supportsFilesystem).toStrictEqual(true);
+    expect(runtime.supportsStreaming).toStrictEqual(true);
+    expect(runtime.performanceTier >= 1).toStrictEqual(true);
 
     console.log(
       `Detected runtime: ${runtime.environment}, performance tier: ${runtime.performanceTier}`,
@@ -34,7 +35,7 @@ describe("Runtime detection", () => {
   it("checks WASI availability", () => {
     const available = isWasiAvailable();
 
-    assertEquals(available, true);
+    expect(available).toStrictEqual(true);
 
     console.log(`WASI available: ${available}`);
   });
@@ -42,8 +43,9 @@ describe("Runtime detection", () => {
   it("provides recommended configuration for current environment", () => {
     const config = getRecommendedConfig();
 
-    assertExists(config);
-    assertEquals(typeof config.disableOptimizations, "boolean");
+    expect(config).not.toBeNull();
+    expect(config).toBeDefined();
+    expect(typeof config.disableOptimizations).toStrictEqual("boolean");
 
     console.log(`Recommended config:`, config);
   });
@@ -54,20 +56,22 @@ describe("Unified loader", () => {
     try {
       const module = await loadUnifiedTagLibModule();
 
-      assertExists(module);
-      assertExists(module.runtime);
-      assertEquals(typeof module.isWasi, "boolean");
-      assertEquals(typeof module.isEmscripten, "boolean");
+      expect(module).not.toBeNull();
+      expect(module).toBeDefined();
+      expect(module.runtime).not.toBeNull();
+      expect(module.runtime).toBeDefined();
+      expect(typeof module.isWasi).toStrictEqual("boolean");
+      expect(typeof module.isEmscripten).toStrictEqual("boolean");
 
-      assertEquals(module.isWasi, true);
-      assertEquals(module.isEmscripten, false);
-      assertEquals(module.runtime.environment, "deno-wasi");
+      expect(module.isWasi).toStrictEqual(true);
+      expect(module.isEmscripten).toStrictEqual(false);
+      expect(module.runtime.environment).toStrictEqual("node-wasi");
 
       if (module.getPerformanceMetrics) {
         const metrics = module.getPerformanceMetrics();
-        assertEquals(typeof metrics.initTime, "number");
-        assertEquals(metrics.wasmType, "wasi");
-        assertEquals(metrics.environment, "deno-wasi");
+        expect(typeof metrics.initTime).toStrictEqual("number");
+        expect(metrics.wasmType).toStrictEqual("wasi");
+        expect(metrics.environment).toStrictEqual("node-wasi");
       }
 
       console.log(
@@ -84,9 +88,10 @@ describe("Unified loader", () => {
         forceWasmType: "emscripten",
       });
 
-      assertExists(module);
-      assertEquals(module.isWasi, false);
-      assertEquals(module.isEmscripten, true);
+      expect(module).not.toBeNull();
+      expect(module).toBeDefined();
+      expect(module.isWasi).toStrictEqual(false);
+      expect(module.isEmscripten).toStrictEqual(true);
 
       console.log(`Forced Emscripten mode: ${module.isEmscripten}`);
     } catch (error) {
@@ -111,8 +116,8 @@ describe("Unified loader", () => {
       console.log(`WASI init time: ${wasiTime.toFixed(2)}ms`);
       console.log(`Emscripten init time: ${emscriptenTime.toFixed(2)}ms`);
 
-      assert(wasiTime < 1000);
-      assert(emscriptenTime < 1000);
+      expect(wasiTime < 1000).toBeTruthy();
+      expect(emscriptenTime < 1000).toBeTruthy();
 
       if (wasiModule.getPerformanceMetrics) {
         console.log("WASI metrics:", wasiModule.getPerformanceMetrics());
@@ -132,17 +137,18 @@ describe("Unified loader", () => {
     // The README offline pattern: bytes in, no forceWasmType. The WASI host
     // cannot consume bytes, so selection must route to Emscripten — not pick
     // WASI and silently ignore the caller's binary.
-    const wasmBinary = await Deno.readFile(
-      new URL("../build/taglib-web.wasm", import.meta.url),
+    const wasmBinary = new Uint8Array(
+      readFileSync(new URL("../build/taglib-web.wasm", import.meta.url)),
     );
     const module = await loadUnifiedTagLibModule({ wasmBinary });
-    assertEquals(module.isEmscripten, true);
-    assertEquals(module.isWasi, false);
-    assertExists(module.createFileHandle);
+    expect(module.isEmscripten).toStrictEqual(true);
+    expect(module.isWasi).toStrictEqual(false);
+    expect(module.createFileHandle).not.toBeNull();
+    expect(module.createFileHandle).toBeDefined();
   });
 
   it("rejects wasmBinary combined with forceWasmType 'wasi' (taglib-pbz)", async () => {
-    await assertRejects(
+    await expectRejects(
       () =>
         loadUnifiedTagLibModule({
           forceWasmType: "wasi",
@@ -156,7 +162,7 @@ describe("Unified loader", () => {
   it("rejects a failing load when WASI is forced (no silent Emscripten fallback)", async () => {
     // Auto mode may fall back gracefully; an explicit forceWasmType "wasi"
     // must fail loudly instead of serving the other backend (taglib-3o4).
-    await assertRejects(
+    await expectRejects(
       () =>
         loadUnifiedTagLibModule({
           forceWasmType: "wasi",
@@ -173,7 +179,7 @@ describe("Main API", () => {
     // A nonexistent wasm path makes the WASI host fail. Without the guard,
     // the loader silently returned an Emscripten module here, masking
     // WASI-only failures (this hid a data-loss bug in the taglib-b67 review).
-    await assertRejects(
+    await expectRejects(
       () =>
         loadTagLibModule({
           forceWasmType: "wasi",
@@ -185,7 +191,7 @@ describe("Main API", () => {
   });
 
   it("rejects wasmBinary + forceWasmType 'wasi' at the public API (taglib-pbz)", async () => {
-    await assertRejects(
+    await expectRejects(
       () =>
         loadTagLibModule({
           forceWasmType: "wasi",
@@ -200,13 +206,18 @@ describe("Main API", () => {
     try {
       const module = await loadTagLibModule();
 
-      assertExists(module);
-      assertExists(module.createFileHandle);
+      expect(module).not.toBeNull();
+      expect(module).toBeDefined();
+      expect(module.createFileHandle).not.toBeNull();
+      expect(module.createFileHandle).toBeDefined();
 
       const fileHandle = module.createFileHandle();
-      assertExists(fileHandle);
-      assertExists(fileHandle.loadFromBuffer);
-      assertExists(fileHandle.isValid);
+      expect(fileHandle).not.toBeNull();
+      expect(fileHandle).toBeDefined();
+      expect(fileHandle.loadFromBuffer).not.toBeNull();
+      expect(fileHandle.loadFromBuffer).toBeDefined();
+      expect(fileHandle.isValid).not.toBeNull();
+      expect(fileHandle.isValid).toBeDefined();
 
       console.log("Main API backward compatibility verified");
     } catch (error) {
@@ -218,12 +229,14 @@ describe("Main API", () => {
     try {
       const module = await loadTagLibModule({ forceWasmType: "emscripten" });
 
-      assertExists(module);
-      assertExists(module.createFileHandle);
+      expect(module).not.toBeNull();
+      expect(module).toBeDefined();
+      expect(module.createFileHandle).not.toBeNull();
+      expect(module.createFileHandle).toBeDefined();
 
-      assertEquals("runtime" in module, false);
-      assertEquals("isWasi" in module, false);
-      assertEquals("isEmscripten" in module, false);
+      expect("runtime" in module).toStrictEqual(false);
+      expect("isWasi" in module).toStrictEqual(false);
+      expect("isEmscripten" in module).toStrictEqual(false);
 
       console.log("Buffer mode compatibility verified");
     } catch (error) {
@@ -237,12 +250,12 @@ describe("TagLib.initialize", () => {
     try {
       const taglib = await TagLib.initialize();
 
-      assertExists(taglib);
-      assertEquals(typeof taglib.version, "function");
-      assert(
+      expect(taglib).not.toBeNull();
+      expect(taglib).toBeDefined();
+      expect(typeof taglib.version).toStrictEqual("function");
+      expect(
         /^\d+\.\d+\.\d+\S* \(TagLib \d+\.\d+\.\d+\)$/.test(taglib.version()),
-        `Version format mismatch: ${taglib.version()}`,
-      );
+      ).toBeTruthy();
 
       console.log(`TagLib.initialize works, version: ${taglib.version()}`);
     } catch (error) {
@@ -253,13 +266,16 @@ describe("TagLib.initialize", () => {
   it("works with options", async () => {
     try {
       const taglib1 = await TagLib.initialize({ forceWasmType: "wasi" });
-      assertExists(taglib1);
+      expect(taglib1).not.toBeNull();
+      expect(taglib1).toBeDefined();
 
       const taglib2 = await TagLib.initialize({ forceWasmType: "emscripten" });
-      assertExists(taglib2);
+      expect(taglib2).not.toBeNull();
+      expect(taglib2).toBeDefined();
 
       const taglib3 = await TagLib.initialize({ disableOptimizations: true });
-      assertExists(taglib3);
+      expect(taglib3).not.toBeNull();
+      expect(taglib3).toBeDefined();
 
       console.log("TagLib.initialize with options works");
     } catch (error) {
@@ -272,16 +288,12 @@ describe("TagLib.initialize", () => {
   it("returns dynamic version from WASI backend", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "wasi" });
     const version = taglib.version();
-    assert(
+    expect(
       /^\d+\.\d+\.\d+\S* \(TagLib \d+\.\d+\.\d+\)$/.test(version),
-      `WASI version format mismatch: ${version}`,
-    );
+    ).toBeTruthy();
     const denoJson = JSON.parse(
-      await Deno.readTextFile(new URL("../deno.json", import.meta.url)),
-    );
-    assert(
-      version.startsWith(denoJson.version),
-      `WASI version should start with deno.json version '${denoJson.version}', got: ${version}`,
-    );
+      readFileSync(new URL("../deno.json", import.meta.url), "utf8"),
+    ) as { version: string };
+    expect(version.startsWith(denoJson.version)).toBeTruthy();
   });
 });

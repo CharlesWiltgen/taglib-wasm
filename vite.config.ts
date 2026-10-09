@@ -9,8 +9,17 @@ export default defineConfig({
     rules: {},
   },
   test: {
-    // Single migrated test file for now; grows as later tasks migrate tests.
-    include: ["tests/_assert-helpers.test.ts"],
+    // Migrated files: grown as later tasks move tests off Deno onto Vitest.
+    include: [
+      "tests/_assert-helpers.test.ts",
+      "tests/runtime-detector.test.ts",
+      "tests/runtime-detector-unit.test.ts",
+      "tests/unified-api.test.ts",
+      "tests/unified-loader-components.test.ts",
+      "tests/error-handling.test.ts",
+      "tests/node-fs-acquisition.test.ts",
+      "src/runtime/platform-io.test.ts",
+    ],
     passWithNoTests: true,
     pool: "forks",
     execArgv: ["--expose-gc"],

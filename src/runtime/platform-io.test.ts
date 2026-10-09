@@ -1,10 +1,18 @@
-import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
-import { expect } from "@std/expect";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import {
   _resetPlatformIO,
   _setPlatformIOForTesting,
   getPlatformIO,
 } from "./platform-io.ts";
+
+/** Node equivalent of `Deno.makeTempFile()`: a unique path in a fresh temp dir. */
+async function makeTempFile(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "platform-io-"));
+  return join(dir, "tmpfile");
+}
 
 describe("getPlatformIO", () => {
   afterEach(() => {
@@ -34,58 +42,58 @@ describe("getPlatformIO", () => {
 
   describe("readFile", () => {
     it("should read a file and return Uint8Array", async () => {
-      const tmpFile = await Deno.makeTempFile();
+      const tmpFile = await makeTempFile();
       try {
         const data = new TextEncoder().encode("hello platform-io");
-        await Deno.writeFile(tmpFile, data);
+        await writeFile(tmpFile, data);
 
         const io = getPlatformIO();
         const result = await io.readFile(tmpFile);
         expect(result).toEqual(data);
       } finally {
-        await Deno.remove(tmpFile);
+        await rm(tmpFile, { force: true });
       }
     });
   });
 
   describe("writeFile", () => {
     it("should write data to a file", async () => {
-      const tmpFile = await Deno.makeTempFile();
+      const tmpFile = await makeTempFile();
       try {
         const data = new TextEncoder().encode("written by platform-io");
         const io = getPlatformIO();
         await io.writeFile(tmpFile, data);
 
-        const result = await Deno.readFile(tmpFile);
+        const result = new Uint8Array(await readFile(tmpFile));
         expect(result).toEqual(data);
       } finally {
-        await Deno.remove(tmpFile);
+        await rm(tmpFile, { force: true });
       }
     });
   });
 
   describe("stat", () => {
     it("should return file size", async () => {
-      const tmpFile = await Deno.makeTempFile();
+      const tmpFile = await makeTempFile();
       try {
         const data = new Uint8Array(42);
-        await Deno.writeFile(tmpFile, data);
+        await writeFile(tmpFile, data);
 
         const io = getPlatformIO();
         const s = await io.stat(tmpFile);
         expect(s.size).toBe(42);
       } finally {
-        await Deno.remove(tmpFile);
+        await rm(tmpFile, { force: true });
       }
     });
   });
 
   describe("readDir", () => {
     it("should yield directory entries", async () => {
-      const tmpDir = await Deno.makeTempDir();
+      const tmpDir = await mkdtemp(join(tmpdir(), "platform-io-"));
       try {
-        await Deno.writeTextFile(`${tmpDir}/a.txt`, "a");
-        await Deno.mkdir(`${tmpDir}/subdir`);
+        await writeFile(join(tmpDir, "a.txt"), "a");
+        await mkdir(join(tmpDir, "subdir"));
 
         const io = getPlatformIO();
         const entries: {
@@ -108,18 +116,18 @@ describe("getPlatformIO", () => {
         expect(dirEntry.isFile).toBe(false);
         expect(dirEntry.isDirectory).toBe(true);
       } finally {
-        await Deno.remove(tmpDir, { recursive: true });
+        await rm(tmpDir, { recursive: true, force: true });
       }
     });
   });
 
   describe("readPartial", () => {
     it("should read header and footer of a file", async () => {
-      const tmpFile = await Deno.makeTempFile();
+      const tmpFile = await makeTempFile();
       try {
         const data = new Uint8Array(100);
         for (let i = 0; i < 100; i++) data[i] = i;
-        await Deno.writeFile(tmpFile, data);
+        await writeFile(tmpFile, data);
 
         const io = getPlatformIO();
         expect(io.readPartial).toBeDefined();
@@ -128,23 +136,23 @@ describe("getPlatformIO", () => {
         expect(result.slice(0, 10)).toEqual(data.slice(0, 10));
         expect(result.slice(10)).toEqual(data.slice(90));
       } finally {
-        await Deno.remove(tmpFile);
+        await rm(tmpFile, { force: true });
       }
     });
 
     it("should return full file when header and footer overlap", async () => {
-      const tmpFile = await Deno.makeTempFile();
+      const tmpFile = await makeTempFile();
       try {
         const data = new Uint8Array(15);
         for (let i = 0; i < 15; i++) data[i] = i;
-        await Deno.writeFile(tmpFile, data);
+        await writeFile(tmpFile, data);
 
         const io = getPlatformIO();
         const result = await io.readPartial!(tmpFile, 10, 10);
         expect(result.length).toBe(15);
         expect(result).toEqual(data);
       } finally {
-        await Deno.remove(tmpFile);
+        await rm(tmpFile, { force: true });
       }
     });
   });
