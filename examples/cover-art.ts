@@ -9,8 +9,9 @@
  * - Setting cover art from image files
  * - Managing multiple picture types
  * - Batch processing album artwork
- * - Web browser integration
  */
+
+import { readFile, writeFile } from "node:fs/promises";
 
 import { TagLib } from "../src/taglib.ts";
 import type { PictureType } from "../src/types.ts";
@@ -37,28 +38,12 @@ import {
 
 // Helper to load an image file
 async function loadImage(path: string): Promise<Uint8Array> {
-  if (typeof Deno !== "undefined") {
-    return await Deno.readFile(path);
-  } else {
-    const response = await fetch(path);
-    return new Uint8Array(await response.arrayBuffer());
-  }
+  return await readFile(path);
 }
 
 // Helper to save an image file
 async function saveImage(path: string, data: Uint8Array): Promise<void> {
-  if (typeof Deno !== "undefined") {
-    await Deno.writeFile(path, data);
-  } else {
-    // In browser, trigger download
-    const blob = new Blob([data]);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = path;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  await writeFile(path, data);
 }
 
 // Example 1: Extract cover art from an audio file
@@ -110,9 +95,7 @@ async function addCoverArt() {
   const modifiedBuffer = await addPicture("song.mp3", cover);
 
   // Save the modified file
-  if (typeof Deno !== "undefined") {
-    await Deno.writeFile("song-with-cover.mp3", modifiedBuffer);
-  }
+  await writeFile("song-with-cover.mp3", modifiedBuffer);
 
   console.log("✅ Cover art added successfully");
 }
@@ -214,9 +197,7 @@ async function copyPictures(sourceFile: string, targetFile: string) {
     const modifiedTarget = await applyPictures(targetFile, pictures);
 
     // Save result
-    if (typeof Deno !== "undefined") {
-      await Deno.writeFile(`${targetFile}.with-pictures`, modifiedTarget);
-    }
+    await writeFile(`${targetFile}.with-pictures`, modifiedTarget);
 
     console.log(`✅ Copied ${pictures.length} pictures to target`);
   }

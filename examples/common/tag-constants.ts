@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read
+#!/usr/bin/env -S npx tsx
 
 /**
  * Enhanced Property Constants Usage Example
@@ -15,7 +15,6 @@ import {
   PROPERTIES,
   PropertyKey,
   TagLib,
-  Tags,
 } from "../../index.ts";
 
 async function demonstrateEnhancedProperties() {
@@ -153,14 +152,12 @@ async function demonstrateEnhancedProperties() {
       console.log(`  ${prop}: ${meta.description} (${meta.type})`);
     }
 
-    console.log("\n🔄 Backward Compatibility:");
+    console.log("\n🔑 Property Keys:");
     console.log("=".repeat(50));
 
-    // Show that legacy Tags constants still work
-    console.log("Legacy Tags constants still supported:");
-    console.log(`Tags.Title = "${Tags.Title}"`);
-    console.log(`Tags.AlbumArtist = "${Tags.AlbumArtist}"`);
-    console.log("But PROPERTIES provide much richer functionality!");
+    // Property keys are the camelCase names used to index PROPERTIES
+    console.log('  title → "title"');
+    console.log('  albumArtist → "albumArtist"');
 
     // Clean up
     file.dispose();

@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write
+#!/usr/bin/env -S npx tsx
 
 /**
  * Smart Partial Loading Example
@@ -8,7 +8,9 @@
  * dramatically reducing memory usage and improving speed.
  */
 
-import { TagLib } from "npm:taglib-wasm";
+import { stat } from "node:fs/promises";
+
+import { TagLib } from "../index.ts";
 
 // Initialize TagLib
 const taglib = await TagLib.initialize();
@@ -83,8 +85,8 @@ console.log("\n=== Example 4: Adaptive Loading ===");
 
 async function openAdaptive(path: string) {
   // Check file size first
-  const stat = await Deno.stat(path);
-  const sizeMB = stat.size / (1024 * 1024);
+  const fileStat = await stat(path);
+  const sizeMB = fileStat.size / (1024 * 1024);
 
   console.log(`File: ${path}`);
   console.log(`Size: ${sizeMB.toFixed(2)} MB`);
@@ -96,8 +98,8 @@ async function openAdaptive(path: string) {
       ? {
           partial: true,
           // Scale buffer sizes based on file size
-          maxHeaderSize: Math.min(stat.size * 0.01, 5 * 1024 * 1024), // 1% or 5MB max
-          maxFooterSize: Math.min(stat.size * 0.001, 512 * 1024), // 0.1% or 512KB max
+          maxHeaderSize: Math.min(fileStat.size * 0.01, 5 * 1024 * 1024), // 1% or 5MB max
+          maxFooterSize: Math.min(fileStat.size * 0.001, 512 * 1024), // 0.1% or 512KB max
         }
       : undefined;
 

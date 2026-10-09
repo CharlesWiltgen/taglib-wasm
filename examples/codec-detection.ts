@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read
+#!/usr/bin/env -S npx tsx
 
 /**
  * @fileoverview Example demonstrating container format and codec detection
@@ -17,8 +17,10 @@
  * - MP4 containers (including .m4a files) can contain AAC (lossy) or ALAC (lossless)
  * - OGG containers can contain Vorbis, Opus, FLAC, or Speex codecs
  *
- * Run with: deno run --allow-read examples/codec-detection.ts <audio-file>
+ * Run with: npx tsx examples/codec-detection.ts <audio-file>
  */
+
+import { readFile } from "node:fs/promises";
 
 import { TagLib } from "../src/taglib.ts";
 
@@ -28,7 +30,7 @@ async function analyzeAudioFile(filePath: string) {
 
   try {
     // Read the file
-    const fileData = await Deno.readFile(filePath);
+    const fileData = await readFile(filePath);
 
     // Initialize TagLib
     const taglib = await TagLib.initialize();
@@ -148,23 +150,15 @@ async function analyzeAudioFile(filePath: string) {
 
 // Main execution
 if (import.meta.main) {
-  const args = Deno.args;
+  const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    console.log(
-      "Usage: deno run --allow-read examples/codec-detection.ts <audio-file>",
-    );
+    console.log("Usage: npx tsx examples/codec-detection.ts <audio-file>");
     console.log("\nExample:");
-    console.log(
-      "  deno run --allow-read examples/codec-detection.ts music.mp3",
-    );
-    console.log(
-      "  deno run --allow-read examples/codec-detection.ts audio.m4a",
-    );
-    console.log(
-      "  deno run --allow-read examples/codec-detection.ts song.flac",
-    );
-    Deno.exit(1);
+    console.log("  npx tsx examples/codec-detection.ts music.mp3");
+    console.log("  npx tsx examples/codec-detection.ts audio.m4a");
+    console.log("  npx tsx examples/codec-detection.ts song.flac");
+    process.exit(1);
   }
 
   await analyzeAudioFile(args[0]);

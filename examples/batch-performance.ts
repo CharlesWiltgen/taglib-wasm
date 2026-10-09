@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-hrtime
+#!/usr/bin/env -S npx tsx
 
 /**
  * Performance-optimized batch processing example
@@ -29,7 +29,7 @@ function formatComparison(slow: number, fast: number): string {
 
 async function main() {
   // Get folder path from command line or use default
-  const folderPath = Deno.args[0] || "./tests/test-files";
+  const folderPath = process.argv.slice(2)[0] || "./tests/test-files";
 
   console.log("🎵 TagLib-Wasm Batch Processing Performance Demo\n");
   console.log(`Scanning folder: ${folderPath}\n`);
@@ -112,7 +112,7 @@ async function main() {
     onProgress: (processed, total) => {
       // Update progress in place
       const percent = ((processed / total) * 100).toFixed(0);
-      Deno.stdout.writeSync(
+      process.stdout.write(
         new TextEncoder().encode(
           `\r   Progress: ${percent}% (${processed}/${total})`,
         ),

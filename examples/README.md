@@ -9,9 +9,6 @@ in our documentation for detailed instructions and code samples.
 ## Quick Start
 
 ```bash
-# Run with Deno
-deno run --allow-read examples/common/basic-usage.ts
-
 # Run with Node.js
 npx tsx examples/common/basic-usage.ts
 
@@ -24,7 +21,5 @@ bun examples/common/basic-usage.ts
 - `common/` - Runtime-agnostic examples
 - `browser/` - Browser-specific examples
 - `bun/` - Bun examples
-- `deno/` - Deno examples
-- `deno-compile/` - Deno compiled-binary examples
 - `*.ts` (top level) - Standalone scripts over the repo source; run with
-  `deno run`
+  `npx tsx`

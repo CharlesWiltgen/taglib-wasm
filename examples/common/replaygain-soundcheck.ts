@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read
+#!/usr/bin/env -S npx tsx
 
 /**
  * ReplayGain and Apple Sound Check Example
