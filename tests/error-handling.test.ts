@@ -5,7 +5,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import { TagLib } from "../src/taglib.ts";
-import { detectRuntime } from "../src/runtime/detector.ts";
 import {
   type applyTags,
   readProperties,
@@ -93,22 +92,31 @@ describe("Error Handling", () => {
   });
 
   it("environment errors indicate missing features", async () => {
-    // Under a Node runner only Deno/Bun can be hidden: deleting `process`
-    // is not equivalent to an unsupported environment (Node's module
-    // machinery still runs) and the detector then falls back to "browser".
-    // So this case asserts the classification that actually results from
-    // removing the other runtime globals: Node remains node-wasi.
+    // Hiding every runtime global simulates an unsupported embedder: the
+    // detector finds no Deno/Bun/Node and returns the browser-shaped tail
+    // (src/runtime/detector.ts), so readTags must reject rather than
+    // pretend the runtime is usable. Measured: with all three hidden,
+    // detectRuntime() === "browser", getPlatformIO() throws EnvironmentError,
+    // and readTags("test.mp3") throws (RuntimeError: aborted wasm load).
     const originalDeno = (globalThis as Record<string, unknown>).Deno;
+    const originalProcess = (globalThis as Record<string, unknown>).process;
     const originalBun = (globalThis as Record<string, unknown>).Bun;
 
     try {
       delete (globalThis as Record<string, unknown>).Deno;
+      delete (globalThis as Record<string, unknown>).process;
       delete (globalThis as Record<string, unknown>).Bun;
 
-      expect(detectRuntime().environment).toStrictEqual("node-wasi");
+      await expectRejects(
+        async () => await readTags("test.mp3"),
+        Error,
+      );
     } finally {
       if (originalDeno) {
         (globalThis as Record<string, unknown>).Deno = originalDeno;
+      }
+      if (originalProcess) {
+        (globalThis as Record<string, unknown>).process = originalProcess;
       }
       if (originalBun) {
         (globalThis as Record<string, unknown>).Bun = originalBun;
