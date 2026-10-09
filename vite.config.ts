@@ -9,7 +9,7 @@ export default defineConfig({
     rules: {},
   },
   test: {
-    // Grows as files migrate; see the "migrated" glob below.
+    // Single migrated test file for now; grows as later tasks migrate tests.
     include: ["tests/_assert-helpers.test.ts"],
     passWithNoTests: true,
     pool: "forks",

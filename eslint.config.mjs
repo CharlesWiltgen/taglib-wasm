@@ -49,6 +49,7 @@ export default tseslint.config(
       "**/*.test.ts",
       "eslint.config.mjs",
       "mod.ts",
+      "vite.config.ts",
     ],
   },
 );
