@@ -163,6 +163,7 @@
       "tests/msgpack.test.ts",
       "tests/msgpack-wire-compatibility.test.ts",
       "tests/multi-value-tags.test.ts",
+      "tests/offline-support.test.ts",
       "tests/partial-loading.test.ts",
       "tests/picture-api.test.ts",
       "tests/property-raw-values.test.ts",

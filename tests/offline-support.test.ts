@@ -1,24 +1,19 @@
 /**
- * @fileoverview Tests for offline support and Deno compile utilities
+ * @fileoverview Tests for offline support: the Emscripten loader's
+ * `wasmBinary` / `wasmUrl` options and the `TagLib.initialize` entry points.
  */
 
-import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertExists, assertRejects } from "@std/assert";
-import { TagLib } from "../src/taglib.ts";
+import { readFile } from "node:fs/promises";
+import { describe, expect, it } from "vite-plus/test";
 import { loadTagLibModule } from "../index.ts";
-import {
-  initializeForDenoCompile,
-  isDenoCompiled,
-  prepareWasmForEmbedding,
-  WASM_EMBED_SEARCH_PATHS,
-} from "../src/deno-compile.ts";
-import { join } from "@std/path";
+import { createTagLib, TagLib } from "../src/taglib.ts";
+import { expectDefined, expectRejects } from "./_assert-helpers.ts";
 
 // Check if Emscripten build is available and functional
 let emscriptenAvailable = false;
 try {
   const wasmPath = new URL("../build/taglib-web.wasm", import.meta.url);
-  const wasmBinary = await Deno.readFile(wasmPath);
+  const wasmBinary = await readFile(wasmPath);
   const module = await loadTagLibModule({
     wasmBinary,
     forceWasmType: "emscripten",
@@ -29,65 +24,59 @@ try {
 }
 
 describe("OfflineSupport", () => {
-  it("isDenoCompiled detects development environment", () => {
-    assertEquals(isDenoCompiled(), false);
-  });
-
-  it({
-    name: "loadTagLibModule with wasmBinary option",
-    ignore: !emscriptenAvailable,
-    fn: async () => {
+  it(
+    "loadTagLibModule with wasmBinary option",
+    { skip: !emscriptenAvailable },
+    async () => {
       const wasmPath = new URL("../build/taglib-web.wasm", import.meta.url);
-      const wasmBinary = await Deno.readFile(wasmPath);
+      const wasmBinary = await readFile(wasmPath);
       const module = await loadTagLibModule({
         wasmBinary,
         forceWasmType: "emscripten",
       });
-      assertExists(module);
-      const { createTagLib } = await import("../src/taglib.ts");
+      expectDefined(module);
       const taglib = await createTagLib(module);
-      assertExists(taglib);
-      const testFile = await Deno.readFile(
+      expectDefined(taglib);
+      const testFile = await readFile(
         new URL("./test-files/mp3/kiss-snippet.mp3", import.meta.url),
       );
       const file = await taglib.open(testFile);
-      assertExists(file);
+      expectDefined(file);
       file.dispose();
     },
-  });
+  );
 
-  it({
-    name: "loadTagLibModule with custom wasmUrl",
-    ignore: !emscriptenAvailable,
-    fn: async () => {
+  it(
+    "loadTagLibModule with custom wasmUrl",
+    { skip: !emscriptenAvailable },
+    async () => {
       const wasmUrl = new URL("../build/taglib-web.wasm", import.meta.url).href;
       const module = await loadTagLibModule({
         wasmUrl,
         forceWasmType: "emscripten",
       });
-      assertExists(module);
-      const { createTagLib } = await import("../src/taglib.ts");
+      expectDefined(module);
       const taglib = await createTagLib(module);
-      assertExists(taglib);
-      const testFile = await Deno.readFile(
+      expectDefined(taglib);
+      const testFile = await readFile(
         new URL("./test-files/mp3/kiss-snippet.mp3", import.meta.url),
       );
       const file = await taglib.open(testFile);
-      assertExists(file);
+      expectDefined(file);
       file.dispose();
     },
-  });
+  );
 
-  it({
+  it(
     // Regression guard for the Emscripten INCOMING_MODULE_JS_API allow-list.
     // Invalid Wasm magic bytes make instantiation reject ONLY if the glue honors
     // the provided wasmBinary. If a toolchain/flag regression drops wasmBinary from
     // INCOMING_MODULE_JS_API (as Emscripten 6.0.2 does by default), the loader
     // silently falls back to the on-disk .wasm and resolves successfully — flipping
     // this expected rejection into a failure. See build/build-wasm.sh.
-    name: "loadTagLibModule honors provided wasmBinary (not silently dropped)",
-    ignore: !emscriptenAvailable,
-    fn: async () => {
+    "loadTagLibModule honors provided wasmBinary (not silently dropped)",
+    { skip: !emscriptenAvailable },
+    async () => {
       // Valid Wasm MAGIC, deliberately invalid VERSION. The magic must be real
       // so this gets past loadTagLibModule's own pre-flight check and actually
       // reaches the Emscripten glue — that glue honoring wasmBinary is the only
@@ -110,144 +99,71 @@ describe("OfflineSupport", () => {
         0xff,
         0xff, // not version 1
       ]);
-      await assertRejects(() =>
-        loadTagLibModule({
-          wasmBinary: wrongVersionWasm,
-          forceWasmType: "emscripten",
-        }),
+      await expectRejects(
+        () =>
+          loadTagLibModule({
+            wasmBinary: wrongVersionWasm,
+            forceWasmType: "emscripten",
+          }),
+        Error,
       );
     },
-  });
+  );
 
-  it({
-    name: "loadTagLibModule rejects a non-Wasm buffer with a typed error",
-    fn: async () => {
-      const err = await assertRejects(() =>
+  it("loadTagLibModule rejects a non-Wasm buffer with a typed error", async () => {
+    const err = await expectRejects(
+      () =>
         loadTagLibModule({
           wasmBinary: new Uint8Array([0x00, 0x00, 0x00, 0x00]),
           forceWasmType: "emscripten",
         }),
-      );
-      // Must name the problem rather than surfacing an Emscripten abort.
-      assertEquals(
-        (err as Error).message.includes("not a WebAssembly module"),
-        true,
-        `unhelpful error for a non-Wasm buffer: ${(err as Error).message}`,
-      );
-    },
+      Error,
+    );
+    // Must name the problem rather than surfacing an Emscripten abort.
+    expect(
+      err.message.includes("not a WebAssembly module"),
+      `unhelpful error for a non-Wasm buffer: ${err.message}`,
+    ).toStrictEqual(true);
   });
 
-  it({
-    name: "TagLib.initialize with wasmBinary",
-    ignore: !emscriptenAvailable,
-    fn: async () => {
+  it(
+    "TagLib.initialize with wasmBinary",
+    { skip: !emscriptenAvailable },
+    async () => {
       const wasmPath = new URL("../build/taglib-web.wasm", import.meta.url);
-      const wasmBinary = await Deno.readFile(wasmPath);
+      const wasmBinary = await readFile(wasmPath);
       const taglib = await TagLib.initialize({
         wasmBinary,
         forceWasmType: "emscripten",
       });
-      assertExists(taglib);
-      const testFile = await Deno.readFile(
+      expectDefined(taglib);
+      const testFile = await readFile(
         new URL("./test-files/mp3/kiss-snippet.mp3", import.meta.url),
       );
       const file = await taglib.open(testFile);
-      assertEquals(file.tag().title, "Kiss");
+      expect(file.tag().title).toStrictEqual("Kiss");
       file.dispose();
     },
-  });
+  );
 
-  it({
-    name: "TagLib.initialize with custom wasmUrl",
-    ignore: !emscriptenAvailable,
-    fn: async () => {
+  it(
+    "TagLib.initialize with custom wasmUrl",
+    { skip: !emscriptenAvailable },
+    async () => {
       const wasmUrl = new URL("../build/taglib-web.wasm", import.meta.url).href;
       const taglib = await TagLib.initialize({ wasmUrl });
-      assertExists(taglib);
-      const testFile = await Deno.readFile(
+      expectDefined(taglib);
+      const testFile = await readFile(
         new URL("./test-files/mp3/kiss-snippet.mp3", import.meta.url),
       );
       const file = await taglib.open(testFile);
-      assertExists(file.tag());
+      expectDefined(file.tag());
       file.dispose();
     },
-  });
+  );
 
-  it("initializeForDenoCompile in development mode", async () => {
-    // In development, should fall back to network initialization
-    const taglib = await initializeForDenoCompile();
-    assertExists(taglib);
-
-    // Verify it works
-    const testFile = await Deno.readFile(
-      new URL("./test-files/mp3/kiss-snippet.mp3", import.meta.url),
-    );
-    const file = await taglib.open(testFile);
-    assertExists(file.tag());
-    file.dispose();
-  });
-
-  it("prepareWasmForEmbedding prefers build/ over gitignored dist/", () => {
-    // In a repo checkout both exist, but only build/ is committed — dist/ is
-    // gitignored scratch refreshed solely by the npm chain, so a months-old
-    // copy there must not shadow a freshly built binary. Published packages
-    // have no build/, so resolution falls through to dist/ unchanged.
-    const buildIndex = WASM_EMBED_SEARCH_PATHS.findIndex((p) =>
-      p.includes("build/"),
-    );
-    const distIndex = WASM_EMBED_SEARCH_PATHS.findIndex((p) =>
-      p.startsWith("../dist/"),
-    );
-    assertEquals(buildIndex >= 0 && buildIndex < distIndex, true);
-  });
-
-  it("prepareWasmForEmbedding creates WASM file", async () => {
-    const tempDir = await Deno.makeTempDir();
-    const outputPath = join(tempDir, "test-taglib.wasm");
-
-    try {
-      // Prepare the WASM file
-      await prepareWasmForEmbedding(outputPath);
-
-      // Verify the file was created
-      const stat = await Deno.stat(outputPath);
-      assertExists(stat);
-      assertEquals(stat.isFile, true);
-
-      // Verify it's a valid WASM file (starts with WASM magic number)
-      const data = await Deno.readFile(outputPath);
-      const magic = new Uint8Array([0x00, 0x61, 0x73, 0x6d]); // \0asm
-      assertEquals(data[0], magic[0]);
-      assertEquals(data[1], magic[1]);
-      assertEquals(data[2], magic[2]);
-      assertEquals(data[3], magic[3]);
-    } finally {
-      // Clean up
-      await Deno.remove(tempDir, { recursive: true });
-    }
-  });
-
-  it("prepareWasmForEmbedding with invalid path throws error", async () => {
-    // Save original import.meta.url behavior and paths
-    const originalCwd = Deno.cwd();
-
-    try {
-      // Change to a directory where WASM won't be found
-      const tempDir = await Deno.makeTempDir();
-      Deno.chdir(tempDir);
-
-      // This should fail because the WASM file won't be found
-      await assertRejects(
-        async () => {
-          // Try to prepare from a location with no WASM files
-          await prepareWasmForEmbedding("/invalid/path/taglib.wasm");
-        },
-        Error,
-        "Failed to prepare WASM for embedding",
-      );
-    } finally {
-      // Restore original directory
-      Deno.chdir(originalCwd);
-    }
-  });
+  // The Deno-compile surface (initializeForDenoCompile, isDenoCompiled,
+  // prepareWasmForEmbedding, WASM_EMBED_SEARCH_PATHS) was removed in 3.0.0 —
+  // see docs/superpowers/specs/2026-10-09-deno-to-viteplus-migration-design.md §5.
+  // The Emscripten loader coverage above is unconditional.
 });

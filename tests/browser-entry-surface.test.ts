@@ -61,13 +61,6 @@ const CLASSIFICATION: Record<string, { where: Disposition; because: string }> =
       because:
         "pure grouping over a FolderScanResult, runtime-agnostic by contract",
     },
-    isDenoCompiled: {
-      where: "browser",
-      because:
-        "reads `typeof Deno` and returns false where Deno is absent; " +
-        "deno-detect.ts has no imports (the embedding helpers that do " +
-        "Deno I/O — initializeForDenoCompile, prepareWasmForEmbedding — stay out)",
-    },
     copyCoverArt: {
       where: "node-only",
       because: "writes the target audio file to a path (utils/write.ts)",
@@ -104,17 +97,9 @@ const CLASSIFICATION: Record<string, { where: Disposition; because: string }> =
       where: "node-only",
       because: "reads an image path and rewrites the audio path",
     },
-    initializeForDenoCompile: {
-      where: "node-only",
-      because: "Deno-compiled-binary bootstrap (Deno.mainModule, file URLs)",
-    },
     loadPictureFromFile: {
       where: "node-only",
       because: "reads an image from a path and sniffs its extension",
-    },
-    prepareWasmForEmbedding: {
-      where: "node-only",
-      because: "Deno compile embedding, resolves file paths",
     },
     savePictureToFile: {
       where: "node-only",
@@ -351,7 +336,6 @@ it("browser barrel exports every browser-capable Node export, and nothing else",
   expect(typeof browserEntry.groupAlbums).toStrictEqual("function");
   expect(browserEntry.discFolderInfo("CD1")?.number).toStrictEqual(1);
   expect(browserEntry.discFolderInfo("Greatest Hits")).toStrictEqual(undefined);
-  expect(typeof browserEntry.isDenoCompiled()).toStrictEqual("boolean");
 });
 
 it("the browser barrel's declared surface matches the shipped runtime surface", async () => {
@@ -474,7 +458,6 @@ it("browser entries reach no Node-only module and no undeclared dependency", asy
     "src/bwf/bext.ts",
     "src/folder-api/folder-disc.ts",
     "src/folder-api/album-grouping.ts",
-    "src/runtime/deno-detect.ts",
   ]) {
     expect(
       indexGraph.modules.includes(leaf),

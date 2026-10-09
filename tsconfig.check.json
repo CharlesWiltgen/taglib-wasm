@@ -34,7 +34,6 @@
     "tests/deno-detect.test.ts",
     "tests/deno-compat-patches.test.ts",
     "tests/wasi-fs-provider.test.ts",
-    "tests/offline-support.test.ts",
     "tests/wasi-vs-emscripten.bench.ts",
     "tests/test-files/_gen/make-bwf-fixtures.ts"
   ]
