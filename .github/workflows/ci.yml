@@ -277,18 +277,18 @@ jobs:
 
       # Byte-compare freshness gate (taglib-peml): build-wasm.sh pins
       # BINARYEN_ROOT to emsdk's vendored Binaryen, so the fresh rebuild must
-      # be byte-identical to the committed binary. Comment-only C++ edits
-      # produce identical bytes and pass.
+      # be byte-identical to the committed artifacts. The wrapper is covered
+      # too: it is committed unpatched, so a fresh build must not change it
+      # either. Comment-only C++ edits produce identical bytes and pass.
       - name: Verify committed Emscripten binary is fresh
         run: |
-          if ! git diff --quiet -- build/taglib-web.wasm; then
-            echo "::error::build/taglib-web.wasm is stale — the fresh build differs from the committed binary."
-            echo "Rebuild with 'deno task build:wasm' (both backends) or 'deno task build:wasm:emscripten',"
-            echo "then commit the updated binary."
-            git diff --stat -- build/taglib-web.wasm
+          if ! git diff --quiet -- build/taglib-web.wasm build/taglib-wrapper.js; then
+            echo "::error::build/taglib-web.wasm or build/taglib-wrapper.js is stale — the fresh build differs from the committed artifacts."
+            echo "Rebuild with 'npm run build:wasm:emscripten', then commit the updated artifacts."
+            git diff --stat -- build/taglib-web.wasm build/taglib-wrapper.js
             exit 1
           fi
-          echo "build/taglib-web.wasm matches the fresh build"
+          echo "build/taglib-web.wasm and build/taglib-wrapper.js match the fresh build"
 
       # Hard gate: the Emscripten wasm must actually instantiate on Deno. The
       # unit suite skips the Emscripten backend on load-failure (so a broken
@@ -478,20 +478,11 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup Deno
-        # Deno stays in this job: the residual Deno-only tests below still run
-        # under `deno task test`.
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: "2.9.6"
-
       - name: Cache dependencies
         uses: actions/cache@v6
         with:
-          # Cache only the npm download cache, not node_modules itself:
-          # node_modules contains Deno-managed junctions (nodeModulesDir: auto),
-          # and restoring a stale tree on Windows breaks `deno test` with
-          # "failed to create junction ... (os error 183)".
+          # Cache only the npm download cache, not node_modules itself —
+          # restoring a stale tree can mask what `npm ci` would install.
           path: ~/.npm
           key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
@@ -524,14 +515,6 @@ jobs:
         # decoration (extra-state-registry.test.ts caught _mp4ItemNames to no
         # one). --expose-gc comes from vite.config.ts `test.execArgv`.
         run: npx vp test --coverage
-
-      - name: Run residual Deno-only tests
-        # The four Deno-gated files (deno-detect, deno-compat-patches,
-        # wasi-fs-provider, offline-support) import Deno-only modules, so they
-        # are excluded from the Vitest run; `deno task test` runs exactly them
-        # (deno.json test.exclude lists everything else). They are deleted or
-        # rewritten in phase 2, which retires this gate.
-        run: deno task test
 
       - name: Upload coverage reports
         if: matrix.os == 'ubuntu-latest'

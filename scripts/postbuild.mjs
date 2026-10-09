@@ -49,32 +49,17 @@ wasmFiles.forEach((file) => {
 
 // No longer copying TypeScript source files - only compiled output should be in dist
 
-// Fix imports for Deno compatibility
-console.log("\n🔧 Fixing imports for Deno compatibility...");
-try {
-  const { execSync } = await import("node:child_process");
-  execSync("deno run --allow-read --allow-write scripts/fix-imports.js", {
+// Fix import specifiers for the built bundle
+console.log("\n🔧 Fixing import specifiers for the built bundle...");
+{
+  const { execFileSync } = await import("node:child_process");
+  // Hard failure on purpose: fix-imports.js rewrites .ts → .js specifiers and
+  // build/ wasm URLs. A swallowed error here ships dist/ with unfixed import
+  // paths while the build reports success.
+  execFileSync(process.execPath, ["scripts/fix-imports.js"], {
     cwd: rootDir,
     stdio: "inherit",
   });
-
-  // Apply Deno-specific patches to the distributed wrapper
-  console.log(
-    "🔧 Applying Deno compatibility patches to dist/taglib-wrapper.js...",
-  );
-  // Same patcher as the build step, pointed at the shipped copy. Sharing it is
-  // what keeps dist/ from drifting: the separate script this replaced still had
-  // the any-of-N-is-success behaviour taglib-2z1b removed, so the file npm
-  // actually receives had none of the protection (review finding 4).
-  execSync(
-    "deno run --allow-read --allow-write scripts/fix-deno-compat.js dist/taglib-wrapper.js",
-    {
-      cwd: rootDir,
-      stdio: "inherit",
-    },
-  );
-} catch (error) {
-  console.error("❌ Failed to fix imports:", error.message);
 }
 
 // Verify no stale build/ wasm references remain

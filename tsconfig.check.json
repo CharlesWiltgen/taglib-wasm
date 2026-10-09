@@ -24,14 +24,12 @@
     "lib",
     "build",
     "examples",
-    // Deno-only files: they use the `Deno` namespace and JSR (`@std/*`)
-    // specifiers, which tsc cannot resolve, and only `deno check`/`deno test`
-    // can type-check. Phase 1 keeps them on the residual Deno gate
-    // (`deno task test` type-checks every module it runs); phase 2 deletes or
-    // rewrites them. Listing them here keeps this gate aligned with the files
-    // the Node test gate actually runs — it is not a way to hide a
-    // type error in code that Node executes.
-    "tests/deno-compat-patches.test.ts",
+    // Deno-only files: tests/wasi-vs-emscripten.bench.ts and
+    // tests/test-files/_gen/make-bwf-fixtures.ts use the `Deno` namespace
+    // and/or JSR (`@std/*`) specifiers, which tsc cannot resolve. After the
+    // Deno test gate was retired they are on no gate at all; they stay listed
+    // here until phase 3 deletes deno.json. Listing them is not a way to hide
+    // a type error in code that Node executes.
     "tests/wasi-vs-emscripten.bench.ts",
     "tests/test-files/_gen/make-bwf-fixtures.ts"
   ]

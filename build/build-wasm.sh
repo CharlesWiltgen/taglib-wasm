@@ -114,11 +114,6 @@ emcc "$BUILD_DIR/taglib_wasm.cpp" \
   --no-entry \
   -O3
 
-echo "🔧 Applying Deno compatibility patches..."
-
-# Apply comprehensive Deno compatibility fixes
-node "$PROJECT_ROOT/scripts/fix-deno-compat.js"
-
 # Rename the WASM file to taglib-web.wasm
 mv "$OUTPUT_DIR/taglib-wrapper.wasm" "$OUTPUT_DIR/taglib-web.wasm"
 
@@ -129,15 +124,12 @@ rm "$OUTPUT_DIR/taglib-wrapper.js.bak"
 # ── Build-time consistency guard (do NOT remove) ──────────────────────────
 # Validates that the freshly-built wasm's (minified) import MODULE name matches
 # the glue's import-object key, so a build-time skew (e.g. a stray wasm-opt) that
-# desyncs them can't ship. NOTE: this cannot catch Deno's *publish-time* wasm
-# unfurl (deno publish >= 2.8.2 rewrites the published wasm's import names) — that
-# is handled by the "./"-aliased import objects (fix-deno-compat.js,
-# wasi-host-loader.ts) plus the post-publish smoke test in publish-everywhere.yml.
+# desyncs them can't ship.
 WASM_DIS="${BINARYEN_ROOT:+$BINARYEN_ROOT/bin/wasm-dis}"
 [ -x "$WASM_DIS" ] || WASM_DIS="wasm-dis"
 WASM_IMPORT_MODULE="$("$WASM_DIS" "$OUTPUT_DIR/taglib-web.wasm" 2>/dev/null \
   | grep -m1 -oE '\(import "[^"]+"' | sed 's/(import "//; s/"$//')"
-# Match the first import-object key (glue may now alias it as {a:...,"./a":...}).
+# Match the first import-object key.
 GLUE_IMPORT_KEY="$(grep -oE 'var imports=\{[A-Za-z_]+:wasmImports' "$OUTPUT_DIR/taglib-wrapper.js" \
   | grep -m1 -oE '\{[A-Za-z_]+:' | tr -d '{:')"
 if [ -z "$WASM_IMPORT_MODULE" ] || [ -z "$GLUE_IMPORT_KEY" ]; then
