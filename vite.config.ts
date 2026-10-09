@@ -26,23 +26,43 @@ export default defineConfig({
   lint: {
     options: { typeAware: true },
     // `options.typeAware` only makes the type-checked rules AVAILABLE, it does
-    // not enable them, so the type-checked set of typescript-eslint's
-    // `recommendedTypeChecked` is listed by name below. Measured against the
-    // installed typescript-eslint v8 preset: 23 rules carry
-    // `requiresTypeChecking` (not 24 — the brief listed `no-throw-literal`,
-    // which v8 removed from the preset in favour of `only-throw-error` and
-    // which oxlint does not ship as a `typescript/` rule at all).
-    //
-    // They default to `error`, the severity the retired eslint.config.mjs ran
-    // them at, so a `src/` non-test violation fails the gate. Two deviations,
-    // both scoped by `overrides` below rather than by lowering the default:
-    //   * `scripts/`, `examples/`, `tools/` — excluded by both retired linters
-    //     (eslint.config.mjs `ignores`, deno.json `lint.exclude`), so the rules
-    //     are off there;
-    //   * `tests/**` and every `*.test.ts` — never linted by the type-checked
-    //     set (eslint.config.mjs ignored them), so the rules that carry
-    //     pre-existing findings report at `warn`: new coverage, reported but
-    //     not gating.
+    // not enable them, and oxlint's own defaults are mostly `warn`, so nothing
+    // below exits non-zero on its own. `categories.correctness` is the lever
+    // for the 111 rules oxlint enables by default (no-const-assign, the
+    // no-unsafe-* family where it has a non-type-aware form, unicorn's
+    // default set, …): they ran at `warn` and never failed the gate, while
+    // both retired linters failed CI at `error`. Setting the category to
+    // `error` restores that. `overrides` cannot set a category (oxlint accepts
+    // only `files`/`rules`/… there), so the trees the retired linters never
+    // linted at all are excluded from linting outright below.
+    categories: { correctness: "error" },
+    // Excluded by both retired linters (eslint.config.mjs `ignores` and
+    // deno.json `lint.exclude`), so nothing in them was ever enforced —
+    // keeping them unlinted is the pre-existing scope, not a new exemption.
+    // Same scope the old `eslint .` and `deno lint` had.
+    ignorePatterns: ["scripts/", "examples/", "tools/"],
+    // Rules that oxlint does NOT enable by default (category `pedantic`,
+    // `style`, `restriction`, or `correctness` with `default: false`) but
+    // that a retired linter ran at `error`. Two sources:
+    //   * the non-type-checked half of typescript-eslint's
+    //     `recommendedTypeChecked` (the retired eslint.config.mjs extended that
+    //     preset, so all 43 of its `error` rules were enforced for `src/`
+    //     non-test). The 22 type-checked ones are listed first; the rest are
+    //     below. Two of the preset's rules have no `typescript/` form in
+    //     oxlint (`@typescript-eslint/no-array-constructor`,
+    //     `@typescript-eslint/no-unused-expressions`), so their eslint core
+    //     equivalents are enabled instead; `typescript/no-unused-vars` is off
+    //     (both retired linters turned it off, and oxlint's `no-unused-vars`
+    //     does not understand the `void x` idiom this repo uses).
+    //   * deno lint's `recommended` set (87 rules, `deno lint` ran it at
+    //     `error` over `src/` AND `tests/`). Its TS/ESLint rules that oxlint
+    //     does not default-enable are enabled here. Its rules that oxlint does
+    //     not ship at all (`ban-untagged-ignore`, `no-sloppy-imports`,
+    //     `no-window*`, the `jsx-*` set — this repo has no JSX, …) cannot be
+    //     restored; `ban-types` / `no-empty-interface` are covered by their
+    //     typescript-eslint v8 successors `no-unsafe-function-type`,
+    //     `no-wrapper-object-types` and `no-empty-object-type`, which are
+    //     already on via the category.
     rules: {
       "typescript/await-thenable": "error",
       "typescript/no-array-delete": "error",
@@ -67,48 +87,54 @@ export default defineConfig({
       "typescript/restrict-template-expressions": "error",
       "typescript/unbound-method": "error",
 
+      // The `@typescript-eslint/ban-ts-comment` form of the retired eslint
+      // config banned `@ts-nocheck` outright; deno lint's version (which also
+      // covered `tests/`) allowed a directive that carries an explanation, and
+      // the surviving four directives in this repo all carry one. Match deno's
+      // semantics so those pre-existing, previously-green comments stay green.
+      "typescript/ban-ts-comment": [
+        "error",
+        {
+          "ts-check": "allow-with-description",
+          "ts-expect-error": "allow-with-description",
+          "ts-ignore": "allow-with-description",
+          "ts-nocheck": "allow-with-description",
+        },
+      ],
+      "typescript/adjacent-overload-signatures": "error",
+      "typescript/no-empty-object-type": "error",
+      "typescript/no-namespace": "error",
+      "typescript/no-require-imports": "error",
+      "typescript/no-unnecessary-type-constraint": "error",
+      "typescript/no-unsafe-function-type": "error",
+      "eslint/no-array-constructor": "error",
+      "eslint/no-case-declarations": "error",
+      "eslint/no-empty": "error",
+      "eslint/no-fallthrough": "error",
+      "eslint/no-inner-declarations": "error",
+      "eslint/no-prototype-builtins": "error",
+      "eslint/no-regex-spaces": "error",
+      "eslint/no-var": "error",
+      "eslint/prefer-const": "error",
+      "eslint/prefer-rest-params": "error",
+      "eslint/prefer-spread": "error",
+
       // Decisions inherited from the retired eslint.config.mjs (parity).
-      // require-await is one of the 23 above but the old config switched it
-      // off, so it stays off here.
+      // require-await is one of the 22 type-checked rules above in the preset
+      // but the old config switched it off, so it stays off here.
       "typescript/require-await": "off",
       "typescript/no-explicit-any": "off",
       "no-unused-vars": "off",
     },
     overrides: [
       {
-        // Excluded by both retired linters, so the type-checked set is not
-        // enforced here — same scope the old `eslint .` and `deno lint` had.
-        files: ["scripts/**", "examples/**", "tools/**"],
-        rules: {
-          "typescript/await-thenable": "off",
-          "typescript/no-array-delete": "off",
-          "typescript/no-base-to-string": "off",
-          "typescript/no-duplicate-type-constituents": "off",
-          "typescript/no-floating-promises": "off",
-          "typescript/no-for-in-array": "off",
-          "typescript/no-implied-eval": "off",
-          "typescript/no-misused-promises": "off",
-          "typescript/no-redundant-type-constituents": "off",
-          "typescript/no-unnecessary-type-assertion": "off",
-          "typescript/no-unsafe-argument": "off",
-          "typescript/no-unsafe-assignment": "off",
-          "typescript/no-unsafe-call": "off",
-          "typescript/no-unsafe-enum-comparison": "off",
-          "typescript/no-unsafe-member-access": "off",
-          "typescript/no-unsafe-return": "off",
-          "typescript/no-unsafe-unary-minus": "off",
-          "typescript/only-throw-error": "off",
-          "typescript/prefer-promise-reject-errors": "off",
-          "typescript/restrict-plus-operands": "off",
-          "typescript/restrict-template-expressions": "off",
-          "typescript/unbound-method": "off",
-        },
-      },
-      {
-        // Tests were never type-checked by the retired eslint.config.mjs
-        // (it ignored `tests/` and `**/*.test.ts`), so these rules are new
-        // coverage over them. The twelve that carry pre-existing findings are
-        // reported at `warn` so the gate stays green; the rest stay `error`.
+        // Tests were never type-checked by the retired eslint.config.mjs (it
+        // ignored `tests/` and `**/*.test.ts`), so rules carrying pre-existing
+        // findings there report at `warn`: new coverage, reported but not
+        // gating. Every rule below with a finding in `tests/` was verified
+        // against the pre-branch tree — the offending lines are byte-identical
+        // at the base commit, so nothing here is a regression introduced by
+        // this branch.
         files: ["tests/**", "**/*.test.ts"],
         rules: {
           "typescript/no-base-to-string": "warn",
@@ -123,6 +149,10 @@ export default defineConfig({
           "typescript/no-unsafe-return": "warn",
           "typescript/restrict-template-expressions": "warn",
           "typescript/unbound-method": "warn",
+          "no-unused-expressions": "warn",
+          "no-useless-escape": "warn",
+          "unicorn/no-new-array": "warn",
+          "unicorn/no-useless-length-check": "warn",
         },
       },
       {
@@ -158,6 +188,28 @@ export default defineConfig({
           "typescript/no-unsafe-return": "off",
         },
       },
+      // Rules that neither retired linter enforced for `src/` (unicorn's
+      // default set is oxlint-only; deno lint's `no-useless-escape` is not in
+      // its `recommended` tag and eslint.config.mjs did not enforce core
+      // rules for `.ts`). Each finding below is byte-identical at the base
+      // commit, so `warn` keeps the pre-existing finding visible instead of
+      // gating the branch on it.
+      {
+        files: ["src/simple/batch-operations.ts"],
+        rules: { "unicorn/no-new-array": "warn" },
+      },
+      {
+        files: ["src/folder-api/folder-disc.ts"],
+        rules: { "no-useless-escape": "warn" },
+      },
+      {
+        files: ["src/runtime/wasi-adapter/structured-fields.ts"],
+        rules: { "unicorn/no-useless-fallback-in-spread": "warn" },
+      },
+      {
+        files: ["src/folder-api/album-identity.ts"],
+        rules: { "unicorn/no-useless-spread": "warn" },
+      },
     ],
   },
   test: {
@@ -177,7 +229,6 @@ export default defineConfig({
       "tests/wasi-fs-provider.test.ts",
       "tests/offline-support.test.ts",
     ],
-    passWithNoTests: true,
     pool: "forks",
     execArgv: ["--expose-gc"],
     testTimeout: 120_000,
