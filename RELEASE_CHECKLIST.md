@@ -40,11 +40,13 @@ This checklist ensures a smooth and safe release process.
 
 ## Release Process
 
-> **Blocked pending phase 3.** `scripts/release-safe.sh` has not been migrated to
-> the Vite+ toolchain yet: it runs the retired `deno fmt --check`, `deno lint` and
-> `deno check`, so it fails at its first gate. Every command in this section is
-> unavailable until phase 3 lands. Do **not** run `deno task fmt` to "fix" the
-> formatting failure it reports.
+> **Automated release blocked pending phase 3.** `scripts/release-safe.sh` has not
+> been migrated to the Vite+ toolchain yet: it runs the retired `deno fmt --check`,
+> `deno lint` and `deno check`, so it fails at its first gate. That blocks the
+> **Automated Release** path below — `deno task release` and
+> `./scripts/release-safe.sh` — until phase 3 lands. Every command in the
+> **Manual Release** section works today. Do **not** run `deno task fmt` to "fix"
+> the formatting failure it reports.
 
 ### Automated Release (Recommended)
 
