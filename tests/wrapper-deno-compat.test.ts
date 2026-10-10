@@ -73,10 +73,10 @@ let fixtureSeq = 0;
 
 /** Run the patcher on a fixture under build/ (gitignored), returning the
  * fixture path and the spawn result; the caller cleans up. */
-function runOnFixture(source: string | undefined) {
+function runOnFixture(source: string) {
   const fixture = `build/.deno-compat-test-${process.pid}-${fixtureSeq++}.js`;
   const absolute = fileURLToPath(new URL(`../${fixture}`, import.meta.url));
-  if (source !== undefined) writeFileSync(absolute, source);
+  writeFileSync(absolute, source);
   const result = spawnSync(process.execPath, [PATCHER, fixture], {
     cwd: ROOT,
     encoding: "utf8",
