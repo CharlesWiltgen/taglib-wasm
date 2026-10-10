@@ -45,6 +45,18 @@ function browserRedirect(): TsdownPlugin {
 }
 
 export default defineConfig({
+  // `vpr static` is the commit gate: the read-only whole-tree checks. It lives
+  // here rather than in package.json because Vite Task content-caches tasks
+  // defined in this file and does not cache package.json scripts — the hook
+  // previously ran both passes on every commit.
+  run: {
+    tasks: {
+      static: {
+        command: "vp check",
+        cache: true,
+      },
+    },
+  },
   fmt: {
     printWidth: 80,
     // Vendored trees, generated artifacts, and repo-hygiene scratch, plus

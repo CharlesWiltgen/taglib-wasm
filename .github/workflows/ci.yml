@@ -51,7 +51,10 @@ jobs:
         run: npx vp fmt --check
 
       - name: Run linter
-        run: npx vp lint --type-aware
+        # No --type-aware: vite.config.ts's lint.options.typeAware already
+        # enables the type-checked rules (oxlint documents the flag as
+        # equivalent), so passing it here was a second source of truth.
+        run: npx vp lint
 
       - name: Materialize the glue wrappers for the type check
         # dist/ is gitignored, so a fresh checkout has none, and three modules

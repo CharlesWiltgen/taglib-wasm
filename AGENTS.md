@@ -603,14 +603,21 @@ devDependency installed.
 
 ```bash
 npm ci                    # Install dependencies (required before any `vp` command)
+npm run check:all         # EVERY gate, in one command (see the note below)
+npx vp check              # Format + lint gates (oxlint, type-aware rules)
 npx vp test               # Tests (Vitest): 97 files across tests/ and src/
-npx vp fmt --check        # Format gate (`npx vp fmt` rewrites in place)
-npx vp lint --type-aware  # Lint gate (oxlint with the type-checked rules)
 npx tsc --noEmit -p tsconfig.check.json   # Type gate (includes tests/)
 npm run build:ts          # Bundle gate: catches bundler-resolution breaks
 npm run build:wasm        # Rebuild both Wasm backends
 npm run build:wasm:wasi   # Rebuild WASI Wasm only (requires WASI SDK 34)
 ```
+
+`npm run check:all` is the authoritative gate: it runs format, lint, ast-grep,
+docs coverage, knip, the type check, the tests, the bundle, the emitted-tree
+resolution and Wasm-free guards, and the toolchain pins. The commands above are
+the individual gates for iterating — if you change the gate set, change
+`check:all`, not this list. `vpr static` is the cached commit-time subset
+(format + lint).
 
 `npx vp test` is a **Vite+ built-in**, not the npm `test` script; use `vpr test`
 to run the npm script.

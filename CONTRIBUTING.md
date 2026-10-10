@@ -59,13 +59,16 @@ software together.
 5. **Run the pre-push gates**
 
    ```bash
-   npx vp fmt --check                        # format gate (`npx vp fmt` fixes)
-   npx vp lint --type-aware                  # lint gate
+   npm run check:all                         # every gate, in one command
+   npx vp check                              # format + lint gates
    npx tsc --noEmit -p tsconfig.check.json   # type gate (tests included)
    npx vp test                               # tests (Vitest)
    npm run build:ts                          # bundle gate (bundler-resolution check)
    ```
 
+   > `npm run check:all` is the authoritative gate set — it adds ast-grep, docs
+   > coverage, knip, the emitted-tree guards and the toolchain pins on top of the
+   > five above. `vpr static` is the cached commit-time subset (format + lint).
    > `npm ci` must run before any `npx vp` command — `vp` loads
    > `vite.config.ts` strictly and aborts without the `vite-plus`
    > devDependency. `npx vp test` is a **Vite+ built-in**, not the npm `test`
