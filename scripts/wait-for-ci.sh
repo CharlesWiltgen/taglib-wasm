@@ -22,6 +22,7 @@ INTERVAL="${3:-15}"
 REQUIRED_JOBS=(
     "Lint & Format"
     "Build (Embind)"
+    "Test (C API C++ unit tests)"
     "Test (ubuntu-latest)"
     "Build (WASI)"
     "Test (WASI)"

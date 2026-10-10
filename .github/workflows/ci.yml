@@ -62,6 +62,13 @@ jobs:
       - name: Install ast-grep
         run: npm install -g @ast-grep/cli@0.45.1
 
+      - name: Lint with ast-grep structural rules
+        # The install above was decoration until now: nothing invoked ast-grep in
+        # CI after the Deno-era `lint:ast` task was retired, yet the docs-coverage
+        # comment below calls an unrun guard "decoration". The script itself
+        # no-ops with a warning if ast-grep is absent, so it is safe on any runner.
+        run: npm run lint:ast
+
       - name: Verify docs coverage of public exports
         # Local-only gate made mandatory: flags a shipped export that no doc
         # mentions (name-mention check, not accuracy). A guard that does not
@@ -451,6 +458,10 @@ jobs:
         # [emscripten]` and no `[wasi]` twin. Default-backend tests were never
         # affected (that path resolves build/taglib-wasi.wasm from the
         # checkout). Same fix SonarCloud already carries in sonarcloud.yml.
+        #
+        # windows-latest defaults to pwsh, where `mkdir -p` is not valid: it "works"
+        # only by accident (PowerShell's mkdir takes -p as a path), so pin the shell.
+        shell: bash
         run: |
           mkdir -p dist/wasi
           cp build/taglib-wasi.wasm dist/wasi/taglib-wasi.wasm
@@ -709,18 +720,18 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   summary:
-    # Repository health report, not an enforced gate (2026-08-10): main branch
-    # protection was tried with this job as the required check (taglib-wgz),
-    # but required checks reject direct pushes to main (fresh commits can
-    # never have a check), forcing a PR flow. Reverted to force-push/delete
-    # protection only per workflow decision. If this should become binding
-    # again, the ceremony-free path is a GitHub merge queue (merge_group
-    # trigger + queue config), not required checks on direct pushes.
+    # Repository health report AND the required status check for main: branch
+    # protection on main requires this job's "Summary" check (app_id 15368),
+    # with enforce_admins=false — admins bypass it, which is why a direct push
+    # reports "Bypassed rule violations… Required status check 'Summary' is
+    # expected". Precisely because this is the one enforced check, it must gate
+    # on every job that matters (see the required-jobs loop below).
     name: Summary
     needs:
       [
         lint,
         bundle,
+        test-capi-cpp,
         build-embind,
         build-wasi,
         test,
@@ -738,11 +749,12 @@ jobs:
 
           # Required jobs (must pass)
           FAILED=false
-          for job in lint bundle build-embind test package-compat; do
+          for job in lint bundle test-capi-cpp build-embind test package-compat; do
             result="${{ needs.lint.result }}"
             case "$job" in
               lint) result="${{ needs.lint.result }}" ;;
               bundle) result="${{ needs.bundle.result }}" ;;
+              test-capi-cpp) result="${{ needs.test-capi-cpp.result }}" ;;
               build-embind) result="${{ needs.build-embind.result }}" ;;
               test) result="${{ needs.test.result }}" ;;
               package-compat) result="${{ needs.package-compat.result }}" ;;
