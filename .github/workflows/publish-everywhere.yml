@@ -664,6 +664,18 @@ jobs:
             echo "No tag or GitHub release was created for this version."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify the published artifact
+        # The registry copies are the deliverable, and nothing else here
+        # exercises them: the npm leg's own check is an HTTP 200 on the version
+        # URL, which proves the version exists, not that it works. This installs
+        # the version from the registry and reads a real tag on BOTH wasm
+        # backends, so a stale committed binary or a wrapper the tarball does
+        # not match fails BEFORE the tag and the release exist.
+        if: steps.status.outputs.success == 'true'
+        env:
+          VERSION: ${{ needs.prepare-and-build.outputs.version }}
+        run: node scripts/verify-published.mjs "$VERSION"
+
       - name: Create and push release tag
         # The tag is created HERE, not by scripts/release-safe.sh, and only once
         # every registry has the version (taglib-rkx0): a locally created tag

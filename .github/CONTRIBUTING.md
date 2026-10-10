@@ -385,6 +385,14 @@ is tagged before the release is real, so a failed publish leg cannot leave a
 released-but-unpublished version. The tag points at the commit the workflow
 built, not at whatever `main` happens to be when the run finishes.
 
+Before that tag exists, `finalize` verifies **the artifact that was actually
+published**: `scripts/verify-published.mjs` installs the version from the
+registry and reads a real tag on **both** wasm backends (plus the Wasm-free
+`disc-folder` subpath). A stale committed binary, or a tarball whose wrapper
+does not match, fails there — and no tag and no release are created. Run it
+against any released version locally with
+`npm run verify:published -- <version>`.
+
 A manually created GitHub release still triggers the same workflow
 (`on: release: types: [published]`), which is the escape hatch if you need to
 publish from a release object someone else created. Use
