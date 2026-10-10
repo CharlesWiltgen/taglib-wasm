@@ -32,9 +32,6 @@ function browserRedirect(): TsdownPlugin {
           source.replace("module-loader.ts", "module-loader-browser.ts"),
         );
       }
-      if (source.endsWith("taglib-wrapper.js")) {
-        return { id: "./taglib-wrapper.js", external: true };
-      }
       if (source.endsWith("platform-io.ts")) return "\0taglib:platform-io-stub";
       if (source.endsWith("node-fs.ts")) return "\0taglib:node-fs-stub";
       return null;
@@ -325,6 +322,11 @@ export default defineConfig({
       // an external, so every config sets this. The relative-specifier half is
       // covered by `node scripts/check-dist-resolution.mjs`.
       failOnWarn: true,
+      // Syntax floor: the retired esbuild build passed `--target=es2020` in
+      // every mode, and tsdown would otherwise default to package.json's
+      // `engines.node` (>=24.0.0). The browser entries inherited that Node
+      // default too, so every config sets this.
+      target: "es2020",
       unbundle: true,
       treeshake: false,
       sourcemap: false,
@@ -344,6 +346,7 @@ export default defineConfig({
       entry: ["disc-folder.ts"],
       outDir: "dist",
       failOnWarn: true,
+      target: "es2020",
       platform: "neutral",
       fixedExtension: false,
       dts: false,
@@ -359,6 +362,7 @@ export default defineConfig({
       entry: ["index.browser.ts"],
       outDir: "dist",
       failOnWarn: true,
+      target: "es2020",
       platform: "browser",
       fixedExtension: false,
       dts: false,
@@ -372,6 +376,7 @@ export default defineConfig({
       entry: ["simple.browser.ts"],
       outDir: "dist",
       failOnWarn: true,
+      target: "es2020",
       platform: "browser",
       fixedExtension: false,
       dts: false,
@@ -385,6 +390,7 @@ export default defineConfig({
       entry: ["web.browser.ts"],
       outDir: "dist",
       failOnWarn: true,
+      target: "es2020",
       platform: "browser",
       fixedExtension: false,
       dts: false,

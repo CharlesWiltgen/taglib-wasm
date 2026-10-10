@@ -138,6 +138,13 @@ for (const entry of KNOWN_UNRESOLVED) {
 if (problems.length > 0) {
   console.error(`UNRESOLVED (${problems.length}):`);
   for (const problem of problems) console.error(`  ${problem}`);
+  if (problems.some((problem) => /build\//.test(problem))) {
+    console.error(
+      "Hint: a reference into a build/ path only resolves after `npm run " +
+        "postbuild` materializes the runtime files at the dist/ root and " +
+        "applies the depth-relative rewrite. Run `npm run postbuild` first.",
+    );
+  }
   process.exit(1);
 }
 

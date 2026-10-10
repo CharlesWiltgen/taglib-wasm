@@ -43,10 +43,6 @@ function fixImportsInFile(filePath) {
       (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-wrapper.js";
 
     content = content.replace(
-      /from\s+["'][^"']*(?:build|dist)\/taglib-wrapper\.js["']/g,
-      `from "${wrapperRelPath}"`,
-    );
-    content = content.replace(
       /import\(["'][^"']*(?:build|dist)\/taglib-wrapper\.js["']\)/g,
       `import("${wrapperRelPath}")`,
     );
