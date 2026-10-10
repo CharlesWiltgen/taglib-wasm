@@ -2,23 +2,6 @@
 
 ## Unreleased
 
-### Fixed
-
-- **Deno consumers can instantiate the Emscripten backend from JSR again.**
-  The committed Emscripten glue lost its Deno patches in the toolchain
-  migration (`scripts/fix-deno-compat.js` was deleted and the wrapper rebuilt
-  unpatched), so a copy loaded over `https://` took the glue's Node branch and
-  threw `TypeError: The argument 'filename' must be a file URL object, file URL
-  string, or absolute path string` from `createRequire` — every JSR consumer of
-  the Emscripten backend, on every call. The patcher and a guard test over the
-  committed wrapper are restored; `build/build-wasm.sh` and
-  `scripts/postbuild.mjs` apply the patches again (the committed wrapper is
-  patched). Reproduced and fixed locally by serving the tree over HTTP and
-  importing it in Deno: unpatched fails with the exact error, patched
-  instantiates both backends.
-
-## 2.3.2
-
 ### Added
 
 - **JSR distribution is restored.** `deno publish` ships
@@ -39,10 +22,19 @@
   access failed to typecheck — 38 `TS2339` errors in one downstream consumer
   alone. The const now carries an explicit intersection annotation
   (taglib-c76n); `tsc` output for npm is unchanged in meaning.
-- _Known issue, fixed in the next release:_ the committed Emscripten glue shipped without
-  its Deno patches, so the JSR copy could not instantiate the Emscripten
-  backend (`createRequire` rejects an `https://` URL). npm consumers were
-  unaffected — loading the same glue from disk works either way.
+
+- **Deno consumers can instantiate the Emscripten backend from JSR again.**
+  The committed Emscripten glue lost its Deno patches in the toolchain
+  migration (`scripts/fix-deno-compat.js` was deleted and the wrapper rebuilt
+  unpatched), so a copy loaded over `https://` took the glue's Node branch and
+  threw `TypeError: The argument 'filename' must be a file URL object, file URL
+  string, or absolute path string` from `createRequire` — every JSR consumer of
+  the Emscripten backend, on every call. The patcher and a guard test over the
+  committed wrapper are restored; `build/build-wasm.sh` and
+  `scripts/postbuild.mjs` apply the patches again (the committed wrapper is
+  patched). Reproduced and fixed locally by serving the tree over HTTP and
+  importing it in Deno: unpatched fails with the exact error, patched
+  instantiates both backends.
 
 ## 2.3.1
 
@@ -80,8 +72,8 @@
 - JSR distribution. The `publish-jsr` and `verify-jsr` CI jobs and the
   `deno.json`/`deno.lock` manifests are gone from this release; the
   `@charlesw/taglib-wasm` JSR package was left at 2.3.0. Deno _runtime_ support
-  is unaffected — see Changed above. (Reversed in the next release, which
-  restored JSR publishing; the package was never deprecated on the registry.)
+  is unaffected — see Changed above. (Reversed in the next release: JSR publishing is restored and the package
+  was never deprecated on the registry.)
 
 ### Fixed
 
