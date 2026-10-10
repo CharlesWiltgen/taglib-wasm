@@ -153,6 +153,7 @@
     "test:memory": "vp test tests/memory.test.ts",
     "test:extended": "vp test tests/extended-metadata.test.ts",
     "test:bun": "bun test tests/bun-integration.test.ts",
+    "test:deno": "deno test --allow-read --allow-write --allow-env tests/deno-detect.test.ts",
     "test:cross-runtime": "./tests/cross-runtime/run.sh",
     "test:watch": "vp test --watch",
     "test:coverage": "vp test --coverage",

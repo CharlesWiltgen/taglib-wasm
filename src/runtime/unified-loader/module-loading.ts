@@ -1,5 +1,5 @@
 import type { RuntimeDetectionResult } from "../detector.ts";
-import { supportsExnref } from "../detector.ts";
+import { isDeno, supportsExnref } from "../detector.ts";
 import type { TagLibModule } from "../../wasm.ts";
 import type { LoadModuleResult, UnifiedLoaderOptions } from "./types.ts";
 import { ModuleLoadError } from "./types.ts";
@@ -8,10 +8,16 @@ import { fileUrlToPath } from "../../utils/path.ts";
 import { getNodeFsSync } from "../../utils/node-fs.ts";
 
 function isWindows(): boolean {
-  const proc = (globalThis as Record<string, unknown>).process as
-    | Record<string, string>
-    | undefined;
-  return proc?.platform === "win32";
+  return isDeno()
+    ? Deno.build.os === "windows"
+    : (globalThis as Record<string, unknown>).process
+      ? (
+          (globalThis as Record<string, unknown>).process as Record<
+            string,
+            string
+          >
+        ).platform === "win32"
+      : false;
 }
 
 /** @internal Exported for unit tests (tests/node-fs-acquisition.test.ts). */
@@ -19,7 +25,9 @@ export function getPreopens(): Record<string, string> {
   if (!isWindows()) return { "/": "/" };
   // Acquire fs ONCE, outside the loop: the per-drive catch must only swallow
   // stat failures, or a broken fs acquisition silently skips every drive (GH #24)
-  const statSync = getNodeFsSync()?.statSync;
+  const statSync = isDeno()
+    ? (p: string) => Deno.statSync(p)
+    : getNodeFsSync()?.statSync;
   if (!statSync) {
     console.warn(
       "[taglib-wasm] Windows drive detection unavailable: node:fs could not " +

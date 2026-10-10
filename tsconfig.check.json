@@ -23,9 +23,14 @@
     "dist",
     "lib",
     "build",
-    "examples"
+    "examples",
     // tests/test-files/_gen/make-bwf-fixtures.ts and
     // tests/wasi-vs-emscripten.bench.ts run on Node and type-check under this
     // config, so neither is excluded here.
+    // The Deno-gated tests import `jsr:`/`@std` specifiers that tsc cannot
+    // resolve; `npm run test:deno` type-checks them under Deno instead. Listing
+    // them here keeps this gate aligned with the files the Node test gate
+    // actually runs — it is not a way to hide a type error in code Node executes.
+    "tests/deno-detect.test.ts"
   ]
 }

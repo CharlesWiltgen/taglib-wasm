@@ -35,7 +35,8 @@
     "web.ts",
     "web.browser.ts",
     "rating.ts",
-    "src/**/*"
+    "src/**/*",
+    "src/global.d.ts"
   ],
   "exclude": [
     "node_modules",

@@ -63,6 +63,13 @@ export {
 } from "./src/errors.ts";
 export type { TagLibErrorCode } from "./src/errors.ts";
 
+// Deno compile support
+export {
+  initializeForDenoCompile,
+  isDenoCompiled,
+  prepareWasmForEmbedding,
+} from "./src/deno-compile.ts";
+
 // Simple API
 export {
   addPicture,

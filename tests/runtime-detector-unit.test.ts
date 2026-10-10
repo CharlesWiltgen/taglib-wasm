@@ -29,6 +29,12 @@ describe("detectRuntime", () => {
 });
 
 describe("getEnvironmentDescription", () => {
+  it("should describe deno-wasi", () => {
+    const desc = getEnvironmentDescription("deno-wasi");
+    expect(desc.includes("Deno")).toStrictEqual(true);
+    expect(desc.includes("WASI")).toStrictEqual(true);
+  });
+
   it("should describe node-wasi", () => {
     expect(
       getEnvironmentDescription("node-wasi").includes("Node"),
@@ -98,6 +104,7 @@ describe("supportsExnref", () => {
  * the sniffer that picks the row.
  */
 const ALL_ENVIRONMENTS: RuntimeEnvironment[] = [
+  "deno-wasi",
   "node-wasi",
   "bun-wasi",
   "browser",
@@ -106,9 +113,14 @@ const ALL_ENVIRONMENTS: RuntimeEnvironment[] = [
   "node-emscripten",
 ];
 
-const WASI_ENVIRONMENTS: RuntimeEnvironment[] = ["node-wasi", "bun-wasi"];
+const WASI_ENVIRONMENTS: RuntimeEnvironment[] = [
+  "deno-wasi",
+  "node-wasi",
+  "bun-wasi",
+];
 
 const FILESYSTEM_ENVIRONMENTS: RuntimeEnvironment[] = [
+  "deno-wasi",
   "node-wasi",
   "bun-wasi",
   "node-emscripten",
@@ -133,7 +145,7 @@ describe("environmentProfile (taglib-2b4)", () => {
     }
   });
 
-  it("selects the wasi binary only for the wasi-capable environments", () => {
+  it("selects the wasi binary only for the three wasi-capable environments", () => {
     for (const env of ALL_ENVIRONMENTS) {
       const expected = WASI_ENVIRONMENTS.includes(env) ? "wasi" : "emscripten";
       expect(profileFor(env).wasmType).toStrictEqual(expected);

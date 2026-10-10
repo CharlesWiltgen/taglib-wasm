@@ -1,7 +1,7 @@
 /**
  * @fileoverview Module loading functions for TagLib Wasm initialization
  *
- * Handles both WASI (optimal for Node.js) and Emscripten (browser fallback)
+ * Handles both WASI (optimal for Deno/Node.js) and Emscripten (browser fallback)
  * module loading strategies.
  */
 
@@ -13,6 +13,7 @@ import {
   errorMessage,
   TagLibInitializationError,
 } from "../errors/classes.ts";
+import { isDenoCompiled } from "./deno-detect.ts";
 import { checkNodeVersion } from "./detector.ts";
 
 /**
@@ -21,7 +22,7 @@ import { checkNodeVersion } from "./detector.ts";
  * the loaded module for use with the Full API.
  *
  * Automatically selects the optimal implementation:
- * - WASI for Node.js (faster filesystem access, MessagePack serialization)
+ * - WASI for Deno/Node.js (faster filesystem access, MessagePack serialization)
  * - Emscripten for browsers (universal compatibility)
  *
  * @param options - Optional configuration for module initialization
@@ -38,7 +39,7 @@ import { checkNodeVersion } from "./detector.ts";
  * // Force Emscripten mode (in-memory I/O)
  * const module = await loadTagLibModule({ forceWasmType: "emscripten" });
  *
- * // Force WASI mode (Node.js only)
+ * // Force WASI mode (Deno/Node.js only)
  * const module = await loadTagLibModule({ forceWasmType: "wasi" });
  *
  * // With custom WASM binary (selects the Emscripten backend; the bytes
@@ -76,6 +77,26 @@ export async function loadTagLibModule(
         byteLength: options.wasmBinary.byteLength,
       });
     }
+  }
+
+  if (
+    !options?.wasmBinary &&
+    !options?.wasmUrl &&
+    !options?.forceWasmType &&
+    isDenoCompiled()
+  ) {
+    const wasmBinary = await tryLoadEmbeddedWasm();
+    if (!wasmBinary) {
+      console.warn(
+        "[TagLib] Deno compile detected but embedded Wasm not found. " +
+          "Include taglib-web.wasm with: deno compile --include taglib-web.wasm",
+      );
+    }
+    return loadBufferModeTagLibModule({
+      ...options,
+      forceWasmType: "emscripten",
+      ...(wasmBinary ? { wasmBinary } : {}),
+    });
   }
 
   if (options?.forceWasmType === "emscripten") {
@@ -162,4 +183,25 @@ async function loadBufferModeTagLibModule(
 
   const module = await createTagLibModule(moduleConfig);
   return module as TagLibModule;
+}
+
+/** @internal Try to load embedded Wasm from the default path. */
+async function tryLoadEmbeddedWasm(): Promise<Uint8Array | null> {
+  const strategies: Array<() => Promise<Uint8Array>> = [
+    // Relative to user's entry point (where --include embeds files)
+    () => Deno.readFile(new URL("./taglib-web.wasm", Deno.mainModule)),
+    // Relative to this library module
+    () => Deno.readFile(new URL("./taglib-web.wasm", import.meta.url)),
+    // CWD fallback (last resort — depends on where the binary is invoked)
+    () => Deno.readFile("taglib-web.wasm"),
+  ];
+
+  for (const strategy of strategies) {
+    try {
+      return await strategy();
+    } catch {
+      // Try next strategy
+    }
+  }
+  return null;
 }
