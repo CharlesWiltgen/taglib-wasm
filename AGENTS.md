@@ -626,6 +626,18 @@ to run the npm script.
 catches bundler-resolution breaks — e.g. a JSR import that isn't an npm
 dependency — that pass the test suite but break the published package.
 
+**What actually ships.** The published package is `dist/` plus `package.json`,
+`README.md` and `LICENSE` — nothing else: neither `src/` nor `AGENTS.md` is
+published. Four places define that set and must agree: `package.json` `files`,
+`scripts/check-package-files.sh` (which pins the allowlist text _and_ the packed
+file set), the Publish workflow's "Prepare publish directory" steps, and the
+build-artifacts upload. When they agree, `npm pack` produces exactly the
+published artifact — which is what makes local install tests meaningful.
+`node scripts/verify-published.mjs <dir|tarball|version>` runs the artifact
+probes (both wasm backends under Node, plus path-mode reads and the shipped-Wasm
+resolver under Deno); the Publish workflow runs it on `publish-dir` _before_ the
+PUT and again from the registry afterwards.
+
 **One test suite.** `npx vp test` covers all 97 test files under `tests/` and
 `src/`. The only exclusions are `tests/bun-integration.test.ts` (registered with
 `bun:test`, run via `npm run test:bun`), `tests/cross-runtime/**` (run under

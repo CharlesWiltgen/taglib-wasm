@@ -251,6 +251,13 @@ jobs:
     outputs:
       published: ${{ steps.publish.outputs.published }}
     steps:
+      # The pre-publish verification below runs this commit's
+      # scripts/verify-published.mjs and reads a fixture from tests/test-files,
+      # so the repository has to be here. The downloaded build artifacts land on
+      # top of this checkout (dist/ is not tracked, so nothing is overwritten
+      # that matters).
+      - uses: actions/checkout@v7
+
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -295,6 +302,20 @@ jobs:
             echo "::error::ACTIONS_ID_TOKEN_REQUEST_URL is unset — the job lacks 'id-token: write'."
             exit 1
           fi
+
+      - name: Setup Deno
+        # The pre-publish verification runs the same probes as the post-publish
+        # one, including its Deno leg. Same pinned version as CI.
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: "2.9.6"
+
+      - name: Verify the staged package before publishing
+        # Irreversibility is the point: an npm version cannot be unpublished
+        # after 24h, so the artifact is exercised BEFORE the PUT. The verifier
+        # packs publish-dir itself (applying its `files`), so what it installs
+        # is exactly what the next step sends to the registry.
+        run: node scripts/verify-published.mjs publish-dir
 
       - name: Publish to NPM with retry
         id: publish

@@ -35,10 +35,7 @@
   },
   "files": [
     "dist/**/*",
-    "src/**/*.ts",
-    "!src/**/*.test.ts",
     "README.md",
-    "AGENTS.md",
     "LICENSE"
   ],
   "type": "module",
