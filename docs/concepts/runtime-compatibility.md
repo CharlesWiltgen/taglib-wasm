@@ -198,15 +198,15 @@ Each runtime has different file system capabilities:
 
 ## 📦 Installation Matrix
 
-| Runtime     | Package Manager | Command                                                                                   |
-| ----------- | --------------- | ----------------------------------------------------------------------------------------- |
-| **Deno**    | npm specifier   | `import { TagLib } from "npm:taglib-wasm"` (`@charlesw/taglib-wasm` on JSR is deprecated) |
-| **Bun**     | bun             | `bun add taglib-wasm`                                                                     |
-| **Node.js** | npm             | `npm install taglib-wasm`                                                                 |
-| **Node.js** | yarn            | `yarn add taglib-wasm`                                                                    |
-| **Node.js** | pnpm            | `pnpm add taglib-wasm`                                                                    |
-| **Workers** | npm             | `npm install taglib-wasm`                                                                 |
-| **Browser** | CDN             | `<script type="module" src="...">`                                                        |
+| Runtime     | Package Manager | Command                                                                     |
+| ----------- | --------------- | --------------------------------------------------------------------------- |
+| **Deno**    | jsr / npm       | `import { TagLib } from "jsr:@charlesw/taglib-wasm"` (or `npm:taglib-wasm`) |
+| **Bun**     | bun             | `bun add taglib-wasm`                                                       |
+| **Node.js** | npm             | `npm install taglib-wasm`                                                   |
+| **Node.js** | yarn            | `yarn add taglib-wasm`                                                      |
+| **Node.js** | pnpm            | `pnpm add taglib-wasm`                                                      |
+| **Workers** | npm             | `npm install taglib-wasm`                                                   |
+| **Browser** | CDN             | `<script type="module" src="...">`                                          |
 
 ## 🧪 Testing Across Runtimes
 

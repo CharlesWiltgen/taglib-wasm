@@ -59,11 +59,12 @@ npm install taglib-wasm
 
 ### Deno
 
-Deno installs from npm (Deno's `npm:` specifiers), not from JSR — the JSR
-package `@charlesw/taglib-wasm` is deprecated.
+Deno installs from JSR or from npm:
 
 ```typescript
-import { TagLib } from "npm:taglib-wasm";
+import { TagLib } from "jsr:@charlesw/taglib-wasm"; // JSR
+// or
+import { TagLib } from "npm:taglib-wasm"; // npm
 ```
 
 ### Bun
@@ -135,8 +136,9 @@ path or URL instead — use `wasmUrl` with it.
 
 ## Quick Start
 
-> **Import paths:** all runtimes use the npm package `taglib-wasm` (Deno via
-> `npm:taglib-wasm`); the old JSR package `@charlesw/taglib-wasm` is deprecated.
+> **Import paths:** all runtimes use the npm package `taglib-wasm`; Deno can
+> also install from JSR (`jsr:@charlesw/taglib-wasm`). Both are published for
+> every release.
 
 ### Simple API
 

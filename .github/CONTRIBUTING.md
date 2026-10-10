@@ -14,7 +14,7 @@ software together.
 
 - **Node.js 24+** - Primary development runtime (Active LTS; matches the CI matrix)
 - **npm 11+** - The package manager; run `npm ci` before any `vp` command
-- **Deno 2.x** - Needed for the Deno runtime test leg (`npm run test:deno`; the Deno arm of `tests/cross-runtime/run.sh`); the build and default gates run on `node`/`npx tsx`, and the JSR distribution channel was retired
+- **Deno 2.x** - Needed for the Deno runtime test leg (`npm run test:deno`; the Deno arm of `tests/cross-runtime/run.sh`) and for the JSR publish/verify legs (`publish-jsr`, `verify-jsr` in `publish-everywhere.yml`); the build and default gates run on `node`/`npx tsx`
 - **Emscripten SDK** - For building the Emscripten Wasm backend
 - **WASI SDK 34** - For building the WASI Wasm backend (optional for TS-only changes)
 - **Git** - With submodule support
@@ -75,8 +75,8 @@ software together.
    > script (run that one with `vpr test`). Deno is not required for the build or
    > the default gates: the bundles are produced by `vp pack` (configured in
    > `vite.config.ts`), `scripts/postbuild.mjs` runs under `node` and the
-   > auxiliary `.ts` scripts under `npx tsx`; the JSR channel was retired. Deno
-   > is still needed for the Deno runtime test leg (`npm run test:deno`).
+   > auxiliary `.ts` scripts under `npx tsx`. Deno is still needed for the Deno
+   > runtime test leg (`npm run test:deno`) and the JSR publish leg.
    > `npm run build:ts` builds the
    > shippable bundles and catches bundler-resolution breaks (e.g. an import that
    > isn't an npm dependency) that pass the tests but break the published package.

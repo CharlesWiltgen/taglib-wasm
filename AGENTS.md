@@ -8,6 +8,7 @@ Works in Deno, Node.js, Bun, browsers, and Cloudflare Workers.
 ```text
 npm install taglib-wasm           # Node.js / Bun
 import ... from "npm:taglib-wasm"  # Deno (npm specifier)
+import ... from "jsr:@charlesw/taglib-wasm"  # Deno (JSR)
 ```
 
 ## Quick Start
@@ -652,8 +653,10 @@ and the build pipeline does not require it: the bundles are produced by `vp pack
 (configured in `vite.config.ts`), `scripts/postbuild.mjs` runs under `node`, and
 the auxiliary `.ts` scripts run under `npx tsx`. Deno is still needed for the
 Deno runtime test leg (`npm run test:deno`; the Deno arm of
-`tests/cross-runtime/run.sh`). The JSR distribution channel (`deno publish`) was
-retired with the JSR channel.
+`tests/cross-runtime/run.sh`) and for the JSR legs of the release workflow
+(`publish-jsr` and `verify-jsr` in `publish-everywhere.yml`, OIDC-authenticated;
+the package manifest is `jsr.json`, and `scripts/check-jsr-package-files.sh`
+pins the file set a publish ships).
 
 ### Architecture
 

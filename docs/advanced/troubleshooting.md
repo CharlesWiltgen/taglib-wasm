@@ -144,8 +144,8 @@ deno upgrade
 deno cache --reload mod.ts
 ```
 
-Deno consumes the package from npm via the `npm:` specifier; the old JSR
-package `@charlesw/taglib-wasm` is deprecated.
+Deno can consume the package from npm via the `npm:` specifier, or from JSR as
+`jsr:@charlesw/taglib-wasm`; both are published for every release.
 
 ### Node.js Installation Fails
 

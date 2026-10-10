@@ -5,6 +5,9 @@
 ::: code-group
 
 ```typescript [Deno]
+// From JSR (Deno-native)
+import { TagLib } from "jsr:@charlesw/taglib-wasm";
+// Or from npm
 import { TagLib } from "npm:taglib-wasm";
 ```
 
@@ -25,8 +28,8 @@ bun add taglib-wasm
 
 :::
 
-> **Note:** the JSR package `@charlesw/taglib-wasm` is deprecated —
-> Deno installs from npm via `npm:taglib-wasm`.
+> **Note:** Deno can install from JSR (`jsr:@charlesw/taglib-wasm`) or from npm
+> (`npm:taglib-wasm`) — both channels are published for every release.
 
 ### Node.js Requirements
 

@@ -2,9 +2,10 @@
 
 This guide shows the recommended way to set up a Deno application that uses TagLib-Wasm with both Folder API and compiled binary support.
 
-## ✅ Use the npm package
+## ✅ Install the package
 
-The npm package `taglib-wasm` includes everything you need:
+The package (npm `taglib-wasm`, or JSR `@charlesw/taglib-wasm` — the same
+release is published to both) includes everything you need:
 
 - Folder API (scanFolder, findDuplicates, etc.)
 - Deno compile utilities (isDenoCompiled, initializeForDenoCompile)
@@ -12,8 +13,8 @@ The npm package `taglib-wasm` includes everything you need:
 - Full API (TagLib class)
 - All TypeScript types
 
-Import it with Deno's `npm:` specifier — no JSR package and no import-map
-entry are involved, and `@charlesw/taglib-wasm` on JSR is deprecated.
+Import it with Deno's `jsr:` or `npm:` specifier — no import-map entry is
+involved either way.
 
 ## Project Setup
 
@@ -309,14 +310,15 @@ deno compile --allow-read --allow-net main.ts
 ./my-audio-app ./music
 ```
 
-## Key Advantages of the npm Setup
+## Key Advantages of this Setup
 
-1. **Single Source of Truth** - All imports from one package, the same one every
-   other runtime uses
+1. **Single Source of Truth** - All imports from one package, the same release
+   every other runtime uses
 2. **Better Type Safety** - TypeScript types work automatically
-3. **Deno-First Consumption** - `npm:taglib-wasm` needs no import-map entry
-4. **No JSR Drift** - the deprecated `@charlesw/taglib-wasm` JSR package stops
-   at 0.4.x, so the npm specifier is the only way to get current releases
+3. **No Import Map Needed** - `jsr:@charlesw/taglib-wasm` and
+   `npm:taglib-wasm` both resolve without one
+4. **Same Release on Both Channels** - JSR and npm are published together by
+   the release workflow, so neither drifts behind
 
 ## Common Patterns
 
@@ -343,17 +345,17 @@ const wasmBinary = await Deno.readFile("./taglib-web.wasm");
 const taglib = await TagLib.initialize({ wasmBinary });
 ```
 
-## Migrating off the deprecated JSR package
+## JSR or npm?
 
-If you were importing from JSR, change:
+Both channels carry the same release; use whichever fits your project:
 
 ```typescript
-// ❌ Old way (deprecated JSR package, stops at 0.4.x)
-import { isDenoCompiled, scanFolder } from "@charlesw/taglib-wasm";
+// JSR (Deno-native)
+import { isDenoCompiled, scanFolder } from "jsr:@charlesw/taglib-wasm";
 
-// ✅ Current way (npm, all supported versions)
+// npm
 import { isDenoCompiled, scanFolder } from "npm:taglib-wasm";
 ```
 
-That's it — everything is available from the npm package, and no import-map
-entry is needed.
+Either way everything is available from the package and no import-map entry is
+needed.
