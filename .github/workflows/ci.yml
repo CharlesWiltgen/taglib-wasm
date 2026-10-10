@@ -585,11 +585,15 @@ jobs:
         run: npm run test:deno
 
       - name: NPM - publint
-        run: npx publint
+        # --no-install and a devDependency pin: without them `npx` resolves
+        # `publint` from the registry at run time, so the check analyzes
+        # whatever version is published that day (the same reasoning as the
+        # knip step above).
+        run: npx --no-install publint
 
       - name: NPM - arethetypeswrong
         run: |
-          npx @arethetypeswrong/cli --pack --profile esm-only
+          npx --no-install @arethetypeswrong/cli --pack --profile esm-only
           echo "Note: Using esm-only profile (CJS dynamic import warnings are expected)"
 
       - name: Bun - import test

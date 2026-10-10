@@ -209,18 +209,18 @@ run_preflight_checks() {
 
     # publint (verify package.json)
     print_step "Running publint..."
-    if ! npx publint > /dev/null 2>&1; then
+    if ! npx --no-install publint > /dev/null 2>&1; then
         print_error "publint failed"
-        print_warning "Run 'npx publint' to see details"
+        print_warning "Run 'npx --no-install publint' to see details"
         exit 1
     fi
     print_success "publint passed"
 
     # arethetypeswrong (verify type exports)
     print_step "Checking TypeScript type exports..."
-    if ! npx @arethetypeswrong/cli --pack --profile esm-only > /dev/null 2>&1; then
+    if ! npx --no-install @arethetypeswrong/cli --pack --profile esm-only > /dev/null 2>&1; then
         print_error "arethetypeswrong check failed"
-        print_warning "Run 'npx @arethetypeswrong/cli --pack --profile esm-only' to see details"
+        print_warning "Run 'npx --no-install @arethetypeswrong/cli --pack --profile esm-only' to see details"
         exit 1
     fi
     print_success "Type exports check passed"
