@@ -18,7 +18,7 @@ import { TagLibInitializationError } from "../errors/classes.ts";
 export async function loadTagLibModule(
   options?: LoadTagLibOptions,
 ): Promise<TagLibModule> {
-  // These import paths are rewritten by the esbuild browser plugin to
+  // These import paths are rewritten by the browser-build redirect plugin to
   // "./taglib-wrapper.js" (co-located in dist/). Source paths kept for tsc.
   // The Emscripten factory's shape is typed explicitly: build/ carries the
   // wrapper's .d.ts, but dist/ is gitignored (absent in CI), so the dist

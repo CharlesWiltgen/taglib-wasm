@@ -23,7 +23,6 @@
   "ignoreIssues": {
     "src/file-utils/index.ts": ["exports", "types"],
     "src/constants/properties.ts": ["exports", "types"],
-    "src/folder-api/types.ts": ["exports", "types"],
-    "scripts/build-js.mjs": ["unresolved"]
+    "src/folder-api/types.ts": ["exports", "types"]
   }
 }

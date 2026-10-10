@@ -145,45 +145,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Bundle the TS entry points with esbuild (~3s, no Emscripten/WASI). Use
-      # `npm run build:js` (node scripts/build-js.mjs), NOT `npm run build:ts`:
-      # build:ts also runs `tsc`, which fails in a fresh checkout because
-      # dist/taglib-wrapper.js (a wasm-build artifact) is absent. esbuild
-      # externalizes that wrapper and hard-fails on any unresolvable bare
-      # specifier in the browser entries, so this still catches
-      # bundler-resolution regressions (a bare specifier that is not a declared
-      # dependency) without the multi-minute build-embind job. See taglib-uo1.
+      # Bundle the TS entry points through `vp pack` (seconds, no Emscripten/WASI).
+      # Use `npm run build:js`, NOT `npm run build:ts`: build:ts also runs `tsc`,
+      # which fails in a fresh checkout because dist/taglib-wrapper.js (a
+      # wasm-build artifact) is absent. The pack configs externalize that wrapper
+      # and fail on any unresolvable bare specifier, so this still catches
+      # bundler-resolution regressions without the multi-minute build-embind job.
       - name: Build TypeScript bundles
         run: npm run build:js
 
       - name: Verify disc-folder entry stays Wasm-free
         # taglib-cd7b: the disc-folder subpath is DECLARED dependency-free so
         # clients (tuneup) can import discFolderInfo without a wasm runtime.
-        # esbuild's metafile lists every resolved module in the graph; anything
-        # outside the exact pure allowlist is a regression of that contract.
-        # The re-bundle must also byte-match the artifact build-js.mjs shipped
-        # to dist/ moments ago — otherwise the guard would police a parallel
-        # build while the real bundle regressed.
-        run: |
-          set -euo pipefail
-          npx esbuild disc-folder.ts --bundle --format=esm --platform=neutral \
-            --outfile=/tmp/disc-folder-bundle.js \
-            --metafile=/tmp/disc-folder-meta.json
-          if ! cmp -s /tmp/disc-folder-bundle.js dist/disc-folder.js; then
-            echo "::error::disc-folder bundle diverged from build-js.mjs output (taglib-cd7b)"
-            exit 1
-          fi
-          STRAY="$(
-            jq -r '.inputs | keys[]' /tmp/disc-folder-meta.json \
-              | grep -vE '^(disc-folder\.ts|src/folder-api/(album-types|album-grouping|album-identity|album-discs|album-corroborate|folder-disc)\.ts|src/utils/path\.ts)$' \
-              || true
-          )"
-          if [ -n "$STRAY" ]; then
-            echo "::error::disc-folder.ts pulled non-pure imports (taglib-cd7b):"
-            printf '%s\n' "$STRAY"
-            exit 1
-          fi
-          echo ":: disc-folder entry Wasm-free: $(jq -r '.inputs | length' /tmp/disc-folder-meta.json) modules, matches dist/"
+        # scripts/check-disc-folder.mjs rebuilds the subpath from the pack
+        # config, byte-compares it against the shipped artifact, and walks the
+        # source graph to prove nothing outside the pure allowlist was pulled in.
+        run: node scripts/check-disc-folder.mjs
 
       - name: Verify npm package ships no stray C++/CMake
         # taglib-asy / taglib-qrp: a subtree once shipped ~88 C++/CMake files

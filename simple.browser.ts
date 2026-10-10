@@ -1,6 +1,6 @@
 /**
  * Simple API browser entry point.
- * The esbuild redirect plugin ensures the browser module loader is used.
+ * The browser build's redirect plugin ensures the browser module loader is used.
  *
  * @module simple/browser
  */
