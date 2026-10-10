@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-run
+#!/usr/bin/env -S npx tsx
 /**
  * docs-coverage.ts — flags public exports not referenced anywhere in the docs.
  *
@@ -9,9 +9,12 @@
  * signature still matches. That accuracy judgment is the skill's job; this script
  * only catches the "shipped an export, never mentioned it" class of drift.
  *
- * Usage:   deno task docs:coverage
+ * Usage:   npm run docs:coverage [-- --list-exports]
  * Exit:    0 if every export is documented or allowlisted; 1 otherwise.
  */
+
+import { readdir, readFile, stat } from "node:fs/promises";
+import ts from "typescript";
 
 const ENTRY_POINTS = [
   "index.ts",
@@ -48,10 +51,7 @@ const ALLOWLIST = new Set<string>([
   "isNamedAudioInput", // internal NamedAudioInput type guard
 ]);
 
-const KIND =
-  /^(?:export\s+)?(?:async\s+)?(function|class|interface|type|const|enum|namespace)\s+([A-Za-z_$][\w$]*)/;
-
-/** Group a deno-doc kind keyword into a report category. */
+/** Group an export declaration kind into a report category. */
 function category(kind: string): string {
   if (kind === "function") return "Functions";
   if (kind === "class") return "Classes";
@@ -61,37 +61,63 @@ function category(kind: string): string {
 }
 
 /** Map of public export name -> report category, across all entry points. */
-async function publicExports(): Promise<Map<string, string>> {
-  const { stdout } = await new Deno.Command("deno", {
-    args: ["doc", ...ENTRY_POINTS],
-    stdout: "piped",
-    stderr: "null",
-  }).output();
-  const text = new TextDecoder().decode(stdout).replace(
-    // deno-lint-ignore no-control-regex
-    /\x1b\[[0-9;]*m/g,
-    "",
-  );
+function publicExports(): Map<string, string> {
+  const program = ts.createProgram({
+    rootNames: ENTRY_POINTS.map((p) => ts.sys.resolvePath(p)),
+    options: {
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      allowImportingTsExtensions: true,
+      noEmit: true,
+      skipLibCheck: true,
+    },
+  });
+  const checker = program.getTypeChecker();
   const exports = new Map<string, string>();
-  for (const line of text.split("\n")) {
-    const m = KIND.exec(line);
-    if (m && !exports.has(m[2])) exports.set(m[2], category(m[1]));
+  for (const entry of ENTRY_POINTS) {
+    const sf = program.getSourceFile(ts.sys.resolvePath(entry));
+    if (!sf) continue;
+    const moduleSymbol = checker.getSymbolAtLocation(sf);
+    if (!moduleSymbol) continue;
+    for (const sym of checker.getExportsOfModule(moduleSymbol)) {
+      const name = sym.getName();
+      if (exports.has(name)) continue;
+      exports.set(name, category(tsSymbolKind(sym, checker)));
+    }
   }
   return exports;
 }
 
+/** Classify an exported symbol into the same kind keywords deno doc used. */
+function tsSymbolKind(sym: ts.Symbol, checker: ts.TypeChecker): string {
+  const decl =
+    sym.flags & ts.SymbolFlags.Alias
+      ? checker.getAliasedSymbol(sym).getDeclarations()?.[0]
+      : sym.getDeclarations()?.[0];
+  if (!decl) return "unknown";
+  if (ts.isFunctionDeclaration(decl)) return "function";
+  if (ts.isClassDeclaration(decl)) return "class";
+  if (ts.isInterfaceDeclaration(decl)) return "interface";
+  if (ts.isTypeAliasDeclaration(decl)) return "type";
+  if (ts.isEnumDeclaration(decl)) return "enum";
+  if (ts.isModuleDeclaration(decl)) return "namespace";
+  if (ts.isVariableDeclaration(decl)) return "const";
+  return "unknown";
+}
+
 async function collectDocText(path: string, sink: string[]): Promise<void> {
-  let info: Deno.FileInfo;
+  let info;
   try {
-    info = await Deno.stat(path);
+    info = await stat(path);
   } catch {
     return;
   }
-  if (info.isFile && path.endsWith(".md")) {
-    sink.push(await Deno.readTextFile(path));
-  } else if (info.isDirectory) {
-    for await (const entry of Deno.readDir(path)) {
-      if (entry.isDirectory && SKIP_DIRS.has(entry.name)) continue;
+  if (info.isFile() && path.endsWith(".md")) {
+    sink.push(await readFile(path, "utf8"));
+  } else if (info.isDirectory()) {
+    for (const entry of await readdir(path, { withFileTypes: true })) {
+      if (entry.isDirectory() && SKIP_DIRS.has(entry.name)) continue;
       await collectDocText(`${path}/${entry.name}`, sink);
     }
   }
@@ -158,7 +184,7 @@ async function main(): Promise<void> {
       "\nDocument each in README.md / AGENTS.md / docs, or add to ALLOWLIST " +
         "(with justification) in scripts/docs-coverage.ts.",
     );
-    Deno.exit(1);
+    process.exit(1);
   }
   console.log("✅ Every public export is referenced in the docs.");
 
@@ -175,7 +201,7 @@ async function main(): Promise<void> {
     console.log(
       "\nFix the docs to import a real export, or export the name if it should be public.",
     );
-    Deno.exit(1);
+    process.exit(1);
   }
   console.log(
     "✅ Every doc-imported name resolves against the public exports.",
@@ -192,4 +218,8 @@ async function main(): Promise<void> {
   );
 }
 
-if (import.meta.main) await main();
+if (process.argv.includes("--list-exports")) {
+  console.log([...publicExports().keys()].sort().join("\n"));
+} else {
+  await main();
+}

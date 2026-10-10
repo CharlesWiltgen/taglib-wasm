@@ -8,9 +8,9 @@ set -euo pipefail
 # Packages all carry the version (taglib-rkx0).
 #
 # Usage:
-#   deno task release                    # Auto-increment patch version (0.0.1)
-#   deno task release 2.3.4              # Set specific version
-#   SKIP_PUBLISH_WATCH=1 deno task release   # Do not wait for the publish result
+#   npm run release                    # Auto-increment patch version (0.0.1)
+#   npm run release 2.3.4              # Set specific version
+#   SKIP_PUBLISH_WATCH=1 npm run release   # Do not wait for the publish result
 
 # Colors for output
 RED='\033[0;31m'
@@ -80,16 +80,16 @@ run_tests() {
 
     # Run format check
     print_step "Checking code formatting..."
-    if ! deno fmt --check > /dev/null 2>&1; then
+    if ! npx vp fmt --check > /dev/null 2>&1; then
         print_error "Code formatting check failed"
-        print_warning "Run 'deno task fmt' to fix formatting"
+        print_warning "Run 'npx vp fmt' to fix formatting"
         exit 1
     fi
     print_success "Code formatting check passed"
 
     # Run lint
     print_step "Running linter..."
-    if ! deno lint > /dev/null 2>&1; then
+    if ! npx vp lint --type-aware > /dev/null 2>&1; then
         print_error "Linting failed"
         print_warning "Fix linting errors before releasing"
         exit 1
@@ -98,7 +98,7 @@ run_tests() {
 
     # Run type check
     print_step "Running type check..."
-    if ! deno check ./src ./tests > /dev/null 2>&1; then
+    if ! npx tsc --noEmit -p tsconfig.check.json > /dev/null 2>&1; then
         print_error "Type checking failed"
         exit 1
     fi
@@ -106,7 +106,7 @@ run_tests() {
 
     # Run tests
     print_step "Running test suite..."
-    if ! deno task test; then
+    if ! npx vp test; then
         print_error "Tests failed"
         exit 1
     fi
@@ -114,7 +114,7 @@ run_tests() {
 
     # Check if build works
     print_step "Verifying build process..."
-    if ! deno task build > /dev/null 2>&1; then
+    if ! npm run build:release > /dev/null 2>&1; then
         print_error "Build failed"
         exit 1
     fi
@@ -135,7 +135,7 @@ verify_wasm_freshness() {
     fi
     print_success "build/taglib-web.wasm matches fresh build"
 
-    # Same check for the WASI binary. `deno task build` now rebuilds both
+    # Same check for the WASI binary. `npm run build:release` now rebuilds both
     # backends, so a stale committed binary shows up as a dirty working tree.
     #
     # This replaces an older cmp against dist/wasi/taglib-wasi.wasm, which
@@ -145,7 +145,7 @@ verify_wasm_freshness() {
     # WASI binary built from an older lib/taglib passed silently (taglib-mpw).
     if [ ! -f build/taglib-wasi.wasm ]; then
         print_error "build/taglib-wasi.wasm is missing!"
-        print_warning "Run: deno task build:wasm:wasi"
+        print_warning "Run: npm run build:wasm:wasi"
         exit 1
     fi
     # The WASI reference binary is the CI/Linux build: wasi-sdk's clang emits
@@ -172,22 +172,23 @@ verify_wasm_freshness() {
 run_preflight_checks() {
     print_step "Running package publishing preflight checks..."
 
-    # JSR publish dry-run (catches module exclusion issues)
-    print_step "Checking JSR publish compatibility..."
-    if ! deno publish --dry-run --allow-dirty > /dev/null 2>&1; then
-        print_error "JSR publish dry-run failed"
-        print_warning "Run 'deno publish --dry-run' to see details"
+    # The npm distribution guard (replaces the retired JSR publish guard):
+    # asserts the package.json `files` allowlist and the packed tarball.
+    print_step "Verifying npm package contents guard..."
+    if ! bash scripts/check-package-files.sh > /dev/null 2>&1; then
+        print_error "Package files guard failed"
+        print_warning "Run 'bash scripts/check-package-files.sh' to see details"
         exit 1
     fi
-    print_success "JSR publish check passed"
+    print_success "Package files guard passed"
 
     # The npm checks below lint the packed npm tarball, so dist/ must hold a
-    # complete package first. `deno task build` above does not produce one:
-    # its build:ts is scripts/build-js.mjs, which emits .js only — the .d.ts
+    # complete package first. `npm run build:release` above does not produce one:
+    # its build:js is scripts/build-js.mjs, which emits .js only — the .d.ts
     # files come from tsc, which lives in the npm build:ts. Without this step
     # the checks lint whatever stale dist/ happened to be lying around (and
     # fail outright once it is cleaned). The wasm is copied rather than
-    # rebuilt; `deno task build` already produced fresh binaries.
+    # rebuilt; `npm run build:release` already produced fresh binaries.
     print_step "Building npm package artifacts..."
     if ! (npm run build:clean && npm run build:copy-wasm && npm run build:ts \
         && npm run postbuild) > /dev/null 2>&1; then
@@ -234,13 +235,13 @@ run_preflight_checks() {
     print_success "NPM package contents verified"
 }
 
-# Function to check version sync (delegates to sync-version.ts for all 4 files)
+# Function to check version sync (delegates to sync-version.ts for the version files)
 check_version_sync() {
     print_step "Checking version synchronization..."
 
-    if ! deno task version:check; then
+    if ! npx tsx scripts/sync-version.ts check; then
         print_error "Version mismatch detected!"
-        print_warning "Run 'deno task version:set <version>' to synchronize all version references"
+        print_warning "Run 'npx tsx scripts/sync-version.ts set <version>' to synchronize all version references"
         exit 1
     fi
 
@@ -249,13 +250,13 @@ check_version_sync() {
     echo "$pkg_version"
 }
 
-# Function to update versions (delegates to sync-version.ts for all 4 files)
+# Function to update versions (delegates to sync-version.ts for the version files)
 update_versions() {
     local new_version=$1
 
     print_step "Updating version to $new_version..."
 
-    if ! deno task version:set "$new_version"; then
+    if ! npx tsx scripts/sync-version.ts set "$new_version"; then
         print_error "Failed to update versions"
         exit 1
     fi
@@ -342,7 +343,7 @@ publish_release() {
     fi
 
     # Commit version changes (skip if already at target version)
-    git add package.json deno.json sonar-project.properties src/version.ts
+    git add package.json sonar-project.properties src/version.ts
     if git diff --cached --quiet; then
         print_warning "Version already at $version, skipping commit"
     else
@@ -458,11 +459,20 @@ main() {
     echo
 
     # --skip-watch: dispatch the publish workflow without waiting for the result.
-    # Exposed as `deno task release:quick`; every gate still runs (the old
+    # Exposed as `npm run release:quick`; every gate still runs (the old
     # release:quick skipped them and then tagged before publishing, which is the
     # 2.2.3 failure shape this script exists to prevent — review finding SEC-06).
     if [[ "${1:-}" == "--skip-watch" ]]; then
         SKIP_PUBLISH_WATCH=1
+        shift
+    fi
+
+    # --dry-run: run every gate with the real commands, then stop before any
+    # version bump, commit, push, CI wait or dispatch. Skips exactly:
+    # check_main_branch, check_clean_working_tree, check_up_to_date, the version
+    # prompt, update_versions, the post-update test re-run, and publish_release.
+    if [[ "${1:-}" == "--dry-run" ]]; then
+        DRY_RUN=1
         shift
     fi
 
@@ -495,15 +505,27 @@ main() {
         fi
     fi
 
-    # Pre-release checks
-    print_step "Running pre-release checks..."
-    check_main_branch
-    check_clean_working_tree
-    check_up_to_date
+    # Pre-release checks. A dry run runs no commit, push or CI wait, so branch
+    # and remote state cannot affect its outcome — and requiring main + a clean
+    # tree would make it unusable on the feature branch it is verified from.
+    if [[ "${DRY_RUN:-}" != "1" ]]; then
+        print_step "Running pre-release checks..."
+        check_main_branch
+        check_clean_working_tree
+        check_up_to_date
+    fi
 
     # Check current version synchronization
     local current_version=$(check_version_sync)
-    
+
+    if [[ "${DRY_RUN:-}" == "1" ]]; then
+        run_tests
+        verify_wasm_freshness
+        run_preflight_checks
+        print_success "Dry run complete — all release gates passed (no commit, push or dispatch)."
+        exit 0
+    fi
+
     # Show version change
     echo
     print_step "Version change: $current_version → $new_version"

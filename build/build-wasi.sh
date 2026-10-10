@@ -396,7 +396,7 @@ cat > "$DIST_DIR/taglib-wasi.json" << EOF
     "exception_handling": true,
     "threads": false
   },
-  "optimized_for": ["Deno", "Node.js", "Cloudflare Workers"]
+  "optimized_for": ["Node.js", "Cloudflare Workers"]
 }
 EOF
 
@@ -414,10 +414,10 @@ echo "Output files:"
 echo "  📦 WASM: $DIST_DIR/taglib-wasi.wasm ($WASM_SIZE)"
 echo "  📝 Meta: $DIST_DIR/taglib-wasi.json"
 echo ""
-echo "Target environments: Deno, Node.js (WASI), Cloudflare Workers"
+echo "Target environments: Node.js (WASI), Cloudflare Workers"
 echo "Optimizations: Size-optimized (-Oz), stripped"
 
-# Copy WASI binary to build/ for JSR publishing
+# Copy WASI binary to build/ for distribution
 cp "$DIST_DIR/taglib-wasi.wasm" "$PROJECT_ROOT/build/taglib-wasi.wasm"
 echo ""
 echo "Published copy: build/taglib-wasi.wasm"

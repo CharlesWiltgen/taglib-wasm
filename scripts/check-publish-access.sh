@@ -21,11 +21,9 @@
 # The verdicts below are pinned by tests/check-publish-access.test.ts, which runs
 # this script against a stub `npm` on a shimmed PATH (no session, no registry):
 # run it after any change to the checks, or a shape npm prints differently will
-# be found on a release instead of there. The bare invocation, since the file
-# needs a grant CI does not use:
+# be found on a release instead of there. Run it with:
 #
-#   deno test --allow-read --allow-write --allow-env --allow-run \
-#     tests/check-publish-access.test.ts
+#   npx vp test tests/check-publish-access.test.ts
 set -uo pipefail
 
 PACKAGE="taglib-wasm"

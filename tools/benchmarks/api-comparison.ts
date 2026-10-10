@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-hrtime
+#!/usr/bin/env -S npx tsx
 
 /**
  * Performance benchmarks comparing Simple vs TagLib API styles
@@ -10,6 +10,7 @@
  * - Memory usage patterns
  */
 
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../index";
 import { applyTags, readProperties, readTags } from "../src/simple";
 
@@ -83,7 +84,7 @@ console.log("🏃‍♂️ Running API Performance Benchmarks...");
 console.log("⚠️  Note: Results vary by runtime and hardware\n");
 
 // Load test file once
-const fileData = await Deno.readFile(TEST_FILE);
+const fileData = await readFile(TEST_FILE);
 
 const results: BenchmarkResult[] = [];
 
@@ -184,7 +185,7 @@ console.log("-".repeat(70));
 const batchStart1 = performance.now();
 for (const file of TEST_FILES) {
   try {
-    const data = await Deno.readFile(file);
+    const data = await readFile(file);
     const audioFile = taglib!.open(data);
     audioFile.tag();
     audioFile.audioProperties();

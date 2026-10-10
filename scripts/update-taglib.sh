@@ -69,5 +69,5 @@ echo
 echo "Next steps:"
 echo "  1. bash build/build-wasi.sh && bash build/build-wasm.sh"
 echo "  2. cp build/taglib-{web.wasm,wrapper.js} dist/"
-echo "  3. deno task test"
+echo "  3. npx vp test"
 echo "  4. Review & commit (Conventional Commits: 'chore(deps): update TagLib to $VERSION')"
