@@ -240,12 +240,12 @@ audioFile.setProperty(PROPERTIES.replayGainTrackGain.key, "-3.5 dB");
 audioFile.removeProperty(PROPERTIES.replayGainTrackGain.key); // clears
 audioFile.setProperties({ albumArtist: ["VA"], composer: ["Bach"] });
 
-// Clearing contract (taglib-qyw2): writing an EMPTY value removes the
+// Clearing contract: writing an EMPTY value removes the
 // property — setProperty(key, "") and removeProperty(key) are equivalent on
 // both backends (WASI's setProperties is replace-style; an absent/empty key
 // removes). Empty-string values are NOT stored.
 
-// Tag shape contract (taglib-sip2): tag READS are arrays everywhere —
+// Tag shape contract: tag READS are arrays everywhere —
 // readTags/readTagsBatch/scanFolder, properties(), and getProperty() all
 // return string[] (undefined = absent). Scalars exist only in the typed
 // accessors (tag().title) and the write side (setProperty takes a single
@@ -374,7 +374,7 @@ Standalone recognizer (no resolve-to-parent semantics — the caller decides
 what the parse means). The grammar is PURE — no Wasm, no runtime deps — and is
 declared as such: import it from the dedicated `taglib-wasm/disc-folder`
 subpath (also exports the pure `groupAlbums` core and its types), which CI
-verifies stays dependency-free (taglib-cd7b). Browser/UI consumers must use
+verifies stays dependency-free. Browser/UI consumers must use
 the subpath rather than the main entry:
 
 ```typescript
@@ -436,7 +436,7 @@ embed with `deno compile --allow-read --include taglib-web.wasm myapp.ts`.
 
 **Memory**: Simple API auto-manages. Full API requires `using` (preferred) or `dispose()`; a best-effort
 FinalizationRegistry also releases a forgotten handle when its wrapper is garbage-collected, but that path
-is non-deterministic — explicit disposal is still the contract (taglib-t4sn).
+is non-deterministic — explicit disposal is still the contract.
 WASI path mode (Deno/Node.js with file paths) uses ~1-2MB regardless of file size.
 Buffer mode (browsers, or when passing Uint8Array) uses ~2x file size.
 
@@ -446,11 +446,11 @@ Matroska/WebM. Auto-detected from content.
 
 **Tag mapping**: All format-specific tag names normalized to camelCase via `properties()`.
 Example: ID3v2 `TPE2` / Vorbis `ALBUMARTIST` / iTunes `aART` → `albumArtist`.
-**Read-side aliases** (taglib-7ru2): legacy wire names resolve to the canonical
+**Read-side aliases**: legacy wire names resolve to the canonical
 property — `ALBUM ARTIST`/`ALBUM_ARTIST`→albumArtist, `ORGANIZATION`/`PUBLISHER`→label,
 `UPC`/`EAN`/`GTIN`→barcode, `TOTALTRACKS`→totalTracks, `TOTALDISCS`→totalDiscs,
 `MUSICBRAINZ_ALBUMTYPE`→releaseType, `CONTENTADVISORY`/`EXPLICIT`→itunesAdvisory.
-**Content advisory** (taglib-an30): typed `advisory: "explicit" | "clean" | "unspecified"`
+**Content advisory**: typed `advisory: "explicit" | "clean" | "unspecified"`
 on `readTags()`/`applyTags()` — wire values `ITUNESADVISORY` "1"/"2"/"0". On MP4 the
 value lives in the native `rtng` atom (0/1/2), bridged in C++ on both backends; other
 formats use ITUNESADVISORY (TXXX/freeform/Vorbis/APE/ASF). `"unspecified"` clears the
@@ -649,8 +649,8 @@ Key files: `build/taglib_embind.cpp` (Emscripten), `src/capi/taglib_shim.cpp` (W
 `src/capi/core/taglib_boundary.c` (C boundary), `src/taglib.ts` (core TS API).
 
 Dependencies are git submodules: `lib/taglib`, `lib/mpack`. (The C
-`lib/msgpack` submodule was removed with the orphan Emscripten C-API path in
-taglib-g0f; the WASI backend speaks MessagePack through `lib/mpack`, and the
+`lib/msgpack` submodule was removed with the orphan Emscripten C-API path;
+the WASI backend speaks MessagePack through `lib/mpack`, and the
 TS side has its own encoder/decoder in `src/msgpack/`.)
 
 ### The dual-backend state model (read before adding a feature)
@@ -691,7 +691,7 @@ written against one silently misbehaves on the other.
 
 #### Where the abstraction leaks
 
-- **Immediate vs. deferred reads.** The recurring trap. `taglib-y91`:
+- **Immediate vs. deferred reads.** The recurring trap:
   `hasID3v1Tag()` checked a C++ location on Emscripten and a cache field on
   WASI — same name, different semantics. TagLib 2.3.1 introduced a fresh
   instance upstream: FLAC's `hasBEXTData()`/`hasiXMLData()` changed from
@@ -707,7 +707,7 @@ written against one silently misbehaves on the other.
   (`file-handle.ts:458` → `taglib_chapters.cpp:254`) and `_stripId3`
   (`file-handle.ts:506-519` → `taglib_id3_strip.cpp:66`). They are filtered
   from real tag data by allowlists (`src/msgpack/encoder.ts:24`,
-  `file-handle.ts:54`). Emscripten needs no equivalent. See `taglib-7gs`.
+  `file-handle.ts:54`). Emscripten needs no equivalent.
 - **Optimistic cache updates.** Because WASI cannot ask C++ mid-session, some
   writes update the cache to predict what C++ will do. When the prediction is
   wrong, the backends diverge until save/reopen.
@@ -718,7 +718,7 @@ written against one silently misbehaves on the other.
 #### Rules when adding or changing an `AudioFile` method
 
 1. Implement it on **both** backends, or make it fail loudly on the one that
-   lacks it. Silent no-ops are how `taglib-nc5` happened.
+   lacks it. Silent no-ops are how backend-specific bugs hide.
 2. Add a parity test that runs the **same scenario** on both backends —
    `forEachBackend()` / `BackendAdapter` (`tests/backend-adapter.ts:435`), or
    a loop over `TagLib.initialize({ forceWasmType })`. Without `forceWasmType`
@@ -757,42 +757,3 @@ genuinely predates the fix — verify it by hash, because binaries are sometimes
 staged in a different commit than the source change they carry.
 
 See `.github/CONTRIBUTING.md` for full contributor guide.
-
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-
-## Beads Issue Tracker
-
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
-
-### Quick Reference
-
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
-
-### Rules
-
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
-
-## Session Completion
-
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git add <files>
-   git commit -m "..."
-   git push
-   ```
-
-<!-- END BEADS INTEGRATION -->
