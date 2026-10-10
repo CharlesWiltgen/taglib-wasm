@@ -125,18 +125,17 @@ for (const [format, paths] of Object.entries(FORMAT_FILES)) {
   await bench(`${group} :: WASI host (path I/O)`, () => {
     readTagsViaPath(wasi!, paths.virtual);
   });
-  // Emscripten needs the host to load the file itself, so it can only run for
-  // formats that have a TEST_FILES path. FORMAT_FILES (the WASI view) is a
-  // superset — wasi-test-helpers covers wv/tta/wma/oga/opus/mp4 which
-  // test-utils.ts does not — so skip those rather than crash on undefined.
-  const key = format.toLowerCase() as keyof typeof TEST_FILES;
-  const emscriptenPath = TEST_FILES[key] as string | undefined;
-  if (!emscriptenPath) {
+  // Emscripten needs the host to load the file itself. Resolve each
+  // FORMAT_FILES entry's repo-relative `real` path — FORMAT_FILES covers
+  // wv/tta/wma/oga/opus/mp4, which test-utils.ts's TEST_FILES does not — and
+  // skip only a fixture that is genuinely absent.
+  const emscriptenPath = resolve(TEST_FILES_DIR, paths.real);
+  if (!existsSync(emscriptenPath)) {
     console.log(`${group} :: Emscripten (buffer I/O): skipped (no fixture)`);
     continue;
   }
   await bench(`${group} :: Emscripten (buffer I/O)`, async () => {
-    const buf = await readFile(resolve(PROJECT_ROOT, emscriptenPath));
+    const buf = await readFile(emscriptenPath);
     await readTagsEmscripten(emTagLib!, buf);
   });
 }

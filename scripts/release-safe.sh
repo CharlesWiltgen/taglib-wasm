@@ -4,7 +4,7 @@ set -euo pipefail
 # Safe Release Script for TagLib-Wasm
 # Runs the gates, bumps and pushes the version, waits for CI on that commit, and
 # then dispatches the publish workflow. The tag and the GitHub release are
-# created by that workflow's finalize job, only after JSR, npm, and GitHub
+# created by that workflow's finalize job, only after npm and GitHub
 # Packages all carry the version (taglib-rkx0).
 #
 # Usage:
@@ -424,7 +424,7 @@ publish_release() {
     fi
 
     print_success "Publish run queued: https://github.com/CharlesWiltgen/TagLib-Wasm/actions/runs/$run_id"
-    print_warning "The workflow tags and releases v$version only after JSR, npm, and GitHub Packages all have it."
+    print_warning "The workflow tags and releases v$version only after npm and GitHub Packages have it."
     announce_approval_gate "$run_id" "$gate_rules"
 
     if [ "${SKIP_PUBLISH_WATCH:-}" = "1" ]; then
@@ -441,7 +441,7 @@ publish_release() {
         print_error "Publish workflow failed — no release was created"
         print_warning "The run's step summary says which legs published. Note the two cases it covers:"
         print_warning "  • a post-publish verification failure blocks the tag while a version may already"
-        print_warning "    be live on JSR and/or npm (nothing can un-publish those)"
+        print_warning "    be live on npm (unpublish is restricted to a short window)"
         print_warning "  • a tag conflict means a v$version tag already exists at another commit, so the"
         print_warning "    registries may carry the version with no release to show for it"
         print_warning "Read the summary, then either: gh run rerun $run_id --failed — or, for a tag"
@@ -454,7 +454,7 @@ publish_release() {
     # skipped job does not fail a run. Verify the release object itself.
     if gh release view "v$version" >/dev/null 2>&1; then
         echo
-        print_success "🎉 v$version published to JSR, npm, and GitHub Packages; tag and GitHub release created"
+        print_success "🎉 v$version published to npm and GitHub Packages; tag and GitHub release created"
     else
         print_error "The run finished green but no GitHub release exists for v$version"
         print_warning "That is what a fully skipped run looks like: the version is already on npm, so"
