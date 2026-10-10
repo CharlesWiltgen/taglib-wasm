@@ -236,7 +236,9 @@ jobs:
       # Byte-compare freshness gate (taglib-peml): build-wasm.sh pins
       # BINARYEN_ROOT to emsdk's vendored Binaryen, so the fresh rebuild must
       # be byte-identical to the committed artifacts. The wrapper is covered
-      # too: it is committed unpatched, so a fresh build must not change it
+      # too: build-wasm.sh applies the Deno compatibility patches
+      # (scripts/fix-deno-compat.js) before the compare, exactly as the
+      # committed wrapper was produced, so a fresh build must not change it
       # either. Comment-only C++ edits produce identical bytes and pass.
       - name: Verify committed Emscripten binary is fresh
         run: |

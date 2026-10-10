@@ -198,6 +198,9 @@
     "ignoreDependencies": [
       "vitest-sonar-reporter"
     ],
+    "ignoreBinaries": [
+      "vite"
+    ],
     "ignoreExportsUsedInFile": true,
     "ignoreIssues": {
       "src/file-utils/index.ts": [

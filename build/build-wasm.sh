@@ -114,6 +114,15 @@ emcc "$BUILD_DIR/taglib_wasm.cpp" \
   --no-entry \
   -O3
 
+# Apply the Deno compatibility patches (deno-environment-detection,
+# node-module-loading, deno-file-reading, wasm-instantiation-checks, and the
+# JSR wasm-import-unfurl alias). Every patch is required: the script hard-fails
+# and writes nothing when one stops matching, so a future emcc glue change
+# cannot ship half-patched — which is broken in every environment (taglib-2z1b).
+# postbuild.mjs runs the same patcher on the dist/ copy that ships to npm/JSR.
+echo "🔧 Applying Deno compatibility patches..."
+node "$PROJECT_ROOT/scripts/fix-deno-compat.js"
+
 # Rename the WASM file to taglib-web.wasm
 mv "$OUTPUT_DIR/taglib-wrapper.wasm" "$OUTPUT_DIR/taglib-web.wasm"
 

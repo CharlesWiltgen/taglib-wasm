@@ -61,6 +61,23 @@ console.log("\n🔧 Fixing import specifiers for the built bundle...");
   });
 }
 
+// Patch the shipped glue for Deno (and JSR's publish-time wasm import unfurl).
+// The same patcher the wasm build applies to build/taglib-wrapper.js, pointed
+// at the copy that ships to npm and JSR — sharing it is what keeps dist/ from
+// drifting from build/. Hard failure on purpose: a half-patched glue is broken
+// in every environment (taglib-2z1b, and the 2.3.2 verify-jsr failure).
+console.log(
+  "\n🔧 Applying Deno compatibility patches to dist/taglib-wrapper.js...",
+);
+{
+  const { execFileSync } = await import("node:child_process");
+  execFileSync(
+    process.execPath,
+    ["scripts/fix-deno-compat.js", "dist/taglib-wrapper.js"],
+    { cwd: rootDir, stdio: "inherit" },
+  );
+}
+
 // Verify no stale build/ wasm references remain
 console.log("\n🔍 Verifying wasm path resolution...");
 const { readFileSync } = await import("node:fs");
