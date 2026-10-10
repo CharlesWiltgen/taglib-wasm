@@ -1,7 +1,7 @@
 # TagLib-Wasm — AI Agent Reference
 
 WebAssembly build of TagLib for reading/writing audio metadata in JS/TS.
-Works in Node.js, Bun, browsers, and Cloudflare Workers.
+Works in Deno, Node.js, Bun, browsers, and Cloudflare Workers.
 
 ## Install
 
@@ -315,7 +315,7 @@ import { exportFolderMetadata, findDuplicates, scanFolder } from "taglib-wasm";
 ```
 
 ```typescript
-// Scan (Node.js/Bun only)
+// Scan (Deno/Node.js/Bun only)
 const result = await scanFolder("/music", {
   recursive: true,
   extensions: [".mp3", ".flac"],
@@ -427,13 +427,17 @@ Tree-Shaking".
 
 ## Key Behaviors
 
-**Runtime auto-detection**: WASI backend for Node.js (seek-based filesystem I/O).
+**Runtime auto-detection**: WASI backend for Deno/Node.js (seek-based filesystem I/O).
 Emscripten for browsers (loads full buffer). No configuration needed.
+
+**Deno compile**: `TagLib.initialize()` auto-detects compiled mode. For custom Wasm
+paths: `import { initializeForDenoCompile } from "taglib-wasm"`. For offline,
+embed with `deno compile --allow-read --include taglib-web.wasm myapp.ts`.
 
 **Memory**: Simple API auto-manages. Full API requires `using` (preferred) or `dispose()`; a best-effort
 FinalizationRegistry also releases a forgotten handle when its wrapper is garbage-collected, but that path
 is non-deterministic — explicit disposal is still the contract (taglib-t4sn).
-WASI path mode (Node.js with file paths) uses ~1-2MB regardless of file size.
+WASI path mode (Deno/Node.js with file paths) uses ~1-2MB regardless of file size.
 Buffer mode (browsers, or when passing Uint8Array) uses ~2x file size.
 
 **Supported formats**: MP3 (ID3v1/v2), ADTS/raw AAC, MP4/M4A, FLAC, OGG (Vorbis,
@@ -621,15 +625,17 @@ dependency — that pass the test suite but break the published package.
 three runtimes via `tests/cross-runtime/run.sh`). No Deno-gated test file
 remains.
 
-**Deno** is no longer the dev toolchain for tests, formatting, linting or type
-checking, and nothing requires it: the bundles are produced by `vp pack`
+**Deno** is no longer the dev toolchain for formatting, linting or type checking,
+and the build pipeline does not require it: the bundles are produced by `vp pack`
 (configured in `vite.config.ts`), `scripts/postbuild.mjs` runs under `node`, and
-the auxiliary `.ts` scripts run under `npx tsx`. The JSR distribution channel
-(`deno publish`) was retired with the JSR channel.
+the auxiliary `.ts` scripts run under `npx tsx`. Deno is still needed for the
+Deno runtime test leg (`npm run test:deno`; the Deno arm of
+`tests/cross-runtime/run.sh`). The JSR distribution channel (`deno publish`) was
+retired with the JSR channel.
 
 ### Architecture
 
-Two Wasm backends: **Emscripten** (browsers) and **WASI** (Node.js).
+Two Wasm backends: **Emscripten** (browsers) and **WASI** (Deno/Node.js).
 Auto-selected at runtime. Both wrap TagLib 2.3.2 C++ via a C boundary layer.
 
 Key files: `build/taglib_embind.cpp` (Emscripten), `src/capi/taglib_shim.cpp` (WASI),

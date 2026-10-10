@@ -5,7 +5,7 @@
 #   bash tests/cross-runtime/run.sh
 #
 # Why this exists (and why it must stay honest): the library's promise is one
-# API across Bun and Node and two wasm backends. The previous harness
+# API across Deno, Bun and Node and two wasm backends. The previous harness
 # (tests/test-runtimes.sh) had rotted — it generated a file importing a path
 # that had moved, its WASI half pointed at a deleted file, and it asserted
 # nothing, so it could not fail. This driver asserts, reports skips LOUDLY (a
@@ -39,6 +39,15 @@ run_suite() {
 
 echo "Cross-runtime smoke suite"
 echo "========================="
+
+# Deno — first-class runtime, native TS and wasm.
+if command -v deno >/dev/null 2>&1; then
+  for suite in "${SUITES[@]}"; do
+    run_suite "deno" "$suite" deno run --allow-read --allow-write --allow-env
+  done
+else
+  echo "  ⚠ deno not installed — SKIPPED"; skipped=$((skipped + 1))
+fi
 
 # Bun — native TS; used by the Simple-API half of the published-package tests.
 if command -v bun >/dev/null 2>&1; then
@@ -88,7 +97,7 @@ if [ "$failures" -ne 0 ] || [ "$ran" -eq 0 ]; then
   # `ran` counts PASSED suites, so ran==0 with failures>0 means suites ran and
   # failed — only the genuinely-nothing-executed case gets the install hint.
   if [ "$ran" -eq 0 ] && [ "$failures" -eq 0 ]; then
-    echo "  ✗ nothing ran — install a runtime (bun/node+tsx)"
+    echo "  ✗ nothing ran — install a runtime (deno/bun/node+tsx)"
   fi
   exit 1
 fi

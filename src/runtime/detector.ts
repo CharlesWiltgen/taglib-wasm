@@ -1,4 +1,5 @@
 export type RuntimeEnvironment =
+  | "deno-wasi"
   | "node-wasi"
   | "bun-wasi"
   | "browser"
@@ -31,6 +32,12 @@ export interface EnvironmentProfile {
 }
 
 const ENVIRONMENT_PROFILES: Record<RuntimeEnvironment, EnvironmentProfile> = {
+  "deno-wasi": {
+    wasmType: "wasi",
+    supportsFilesystem: true,
+    supportsStreaming: true,
+    performanceTier: 1,
+  },
   "node-wasi": {
     wasmType: "wasi",
     supportsFilesystem: true,
@@ -106,6 +113,7 @@ export function checkNodeVersion(
 }
 
 function hasWASISupport(): boolean {
+  if (g.Deno !== undefined) return true;
   if (g.process !== undefined && (g.process as any).versions?.node) {
     const [major] = (g.process as any).versions.node.split(".").map(Number);
     return major >= 16;
@@ -130,6 +138,7 @@ function isCloudflareWorker(): boolean {
     g.caches !== undefined &&
     g.Request !== undefined &&
     typeof g.addEventListener === "function" &&
+    g.Deno === undefined &&
     g.process === undefined
   );
 }
@@ -145,7 +154,16 @@ function isNode(): boolean {
   );
 }
 
+/** Shared Deno-runtime check — do not hand-roll `typeof Deno` tests (taglib-rfr). */
+export function isDeno(): boolean {
+  return g.Deno !== undefined;
+}
+
 export function detectRuntime(): RuntimeDetectionResult {
+  if (isDeno() && hasWASISupport()) {
+    return { environment: "deno-wasi", ...environmentProfile("deno-wasi") };
+  }
+
   if (isBun()) {
     return { environment: "bun-wasi", ...environmentProfile("bun-wasi") };
   }
@@ -215,6 +233,8 @@ export function supportsExnref(): boolean {
 
 export function getEnvironmentDescription(env: RuntimeEnvironment): string {
   switch (env) {
+    case "deno-wasi":
+      return "Deno with WASI (optimal filesystem performance)";
     case "node-wasi":
       return "Node.js with WASI (high performance)";
     case "bun-wasi":

@@ -78,7 +78,7 @@ initialization.
 
 ```bash
 # Emscripten binary
-deno task build:wasm
+npm run build:wasm
 
 # WASI binary (requires WASI SDK 34 — stock sysroot ships C++ exceptions)
 bash build/setup-wasi-sdk.sh        # One-time: download WASI SDK 34
@@ -91,7 +91,7 @@ Tests use a `forEachBackend` pattern to run against both WASI and Emscripten:
 
 ```bash
 npx vp test                                       # Full Vitest suite (tests/ + src/)
-deno task test                                    # The four Deno-only files
+npm run test:deno                                 # Deno-gated tests (requires Deno)
 npx vp test tests/wasi-host.test.ts               # WASI-specific tests
-deno task bench                                   # WASI vs Emscripten benchmarks
+npm run bench                                     # WASI vs Emscripten benchmarks
 ```

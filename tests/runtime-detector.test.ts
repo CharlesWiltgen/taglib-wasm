@@ -66,6 +66,7 @@ describe("RuntimeDetector", () => {
 
   it("getEnvironmentDescription - provides human-readable descriptions", () => {
     const environments: RuntimeEnvironment[] = [
+      "deno-wasi",
       "node-wasi",
       "bun-wasi",
       "browser",

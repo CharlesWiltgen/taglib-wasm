@@ -61,6 +61,13 @@ const CLASSIFICATION: Record<string, { where: Disposition; because: string }> =
       because:
         "pure grouping over a FolderScanResult, runtime-agnostic by contract",
     },
+    isDenoCompiled: {
+      where: "browser",
+      because:
+        "reads `typeof Deno` and returns false where Deno is absent; " +
+        "deno-detect.ts has no imports (the embedding helpers that do " +
+        "Deno I/O — initializeForDenoCompile, prepareWasmForEmbedding — stay out)",
+    },
     copyCoverArt: {
       where: "node-only",
       because: "writes the target audio file to a path (utils/write.ts)",
@@ -97,9 +104,17 @@ const CLASSIFICATION: Record<string, { where: Disposition; because: string }> =
       where: "node-only",
       because: "reads an image path and rewrites the audio path",
     },
+    initializeForDenoCompile: {
+      where: "node-only",
+      because: "Deno-compiled-binary bootstrap (Deno.mainModule, file URLs)",
+    },
     loadPictureFromFile: {
       where: "node-only",
       because: "reads an image from a path and sniffs its extension",
+    },
+    prepareWasmForEmbedding: {
+      where: "node-only",
+      because: "Deno compile embedding, resolves file paths",
     },
     savePictureToFile: {
       where: "node-only",

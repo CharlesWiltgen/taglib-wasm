@@ -1,13 +1,14 @@
 {
   "name": "taglib-wasm",
   "version": "2.3.0",
-  "description": "TagLib-Wasm is the universal tagging library for TypeScript/JavaScript platforms: Browsers, Node.js, Bun, Cloudflare Workers, and Electron apps",
+  "description": "TagLib-Wasm is the universal tagging library for TypeScript/JavaScript platforms: Browsers, Node.js, Deno, Bun, Cloudflare Workers, and Electron apps",
   "keywords": [
     "acoustid",
     "audio",
     "browser",
     "bun",
     "cloudflare",
+    "deno",
     "electron",
     "flac",
     "metadata",
@@ -153,6 +154,7 @@
     "test:memory": "vp test tests/memory.test.ts",
     "test:extended": "vp test tests/extended-metadata.test.ts",
     "test:bun": "bun test tests/bun-integration.test.ts",
+    "test:deno": "deno test --allow-read --allow-write --allow-env tests/deno-detect.test.ts tests/deno-fs-provider.test.ts tests/deno-compile.test.ts",
     "test:cross-runtime": "./tests/cross-runtime/run.sh",
     "test:watch": "vp test --watch",
     "test:coverage": "vp test --coverage",

@@ -199,3 +199,6 @@ package.json.backup
 
 # vp test junit report
 junit.xml
+
+# Deno is not a build dependency; its test runner writes a local lockfile
+deno.lock

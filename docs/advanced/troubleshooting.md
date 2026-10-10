@@ -128,7 +128,7 @@ try {
 
 ### Deno Import Issues
 
-**Problem**: JSR import not working.
+**Problem**: `import ... from "npm:taglib-wasm"` fails to resolve.
 
 ```bash
 # Error: Module not found "taglib-wasm"
@@ -140,12 +140,12 @@ try {
 # Update Deno to latest version
 deno upgrade
 
-# Clear cache and retry
+# Clear the module cache and retry
 deno cache --reload mod.ts
-
-# Specify version explicitly
-import { TagLib } from "npm:taglib-wasm@0.2.7";
 ```
+
+Deno consumes the package from npm via the `npm:` specifier; the old JSR
+package `@charlesw/taglib-wasm` is deprecated.
 
 ### Node.js Installation Fails
 

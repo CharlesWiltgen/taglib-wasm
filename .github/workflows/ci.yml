@@ -549,6 +549,13 @@ jobs:
           # every run, which 503s intermittently from Actions runners
           bun-version: 1.4.2
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          # Quoted so YAML keeps it a string. Deno is a supported consumer
+          # runtime; the cross-runtime smoke below exercises it like Bun/Node.
+          deno-version: "2.9.6"
+
       - name: Install dependencies
         run: npm ci
 
@@ -558,8 +565,8 @@ jobs:
           name: embind-build
           path: .
 
-      - name: Cross-runtime smoke (Bun, Node × both backends)
-        # tests/cross-runtime/*.ts run unmodified under both runtimes and
+      - name: Cross-runtime smoke (Deno, Bun, Node × both backends)
+        # tests/cross-runtime/*.ts run unmodified under every runtime and
         # assert real values for both wasm backends. A backend a runtime cannot
         # load is reported with its reason and fails the run — never a silent
         # skip — and any failed check exits non-zero. A run that executes

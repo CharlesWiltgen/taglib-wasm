@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env -S deno run --allow-read --allow-write
 
 /**
  * Simple API Examples for TagLib-Wasm
@@ -14,7 +14,7 @@ import {
   readFormat,
   readProperties,
   readTags,
-} from "../../src/simple/index.ts";
+} from "../src/simple/index.ts";
 
 // For go-taglib style constants
 import * as taglib from "../../src/simple/index.ts";

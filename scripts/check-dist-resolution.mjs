@@ -38,12 +38,18 @@ if (!existsSync(root)) {
  * reference is exempt only when both its file (relative to the tree root) and
  * its specifier match an entry exactly.
  *
- * The single entry: `module-loader-browser.ts` is compiled into the Node tree
+ * The entries: `module-loader-browser.ts` is compiled into the Node tree
  * by the per-file `js` pack config even though it is only ever reached from the
  * browser bundles, where the wasm sits beside the bundle and `./taglib-web.wasm`
  * is correct. In the Node tree the same specifier points at a file that was
  * never emitted. The condition is pre-existing — the esbuild-built tree fails
  * identically — so it is recorded here rather than fixed by moving the source.
+ *
+ * `module-loader.ts`'s `./taglib-web.wasm` is the Deno-compile branch's
+ * best-effort probe for a wasm embedded with `deno compile --include`, which
+ * lands beside the *entry* module (`Deno.mainModule`), not this one. It runs
+ * inside a try/catch that falls through to the next strategy, so it can never
+ * break loading; the wasm is deliberately not part of the Node tree.
  */
 const KNOWN_UNRESOLVED = [
   {
@@ -51,6 +57,12 @@ const KNOWN_UNRESOLVED = [
     spec: "./taglib-web.wasm",
     reason:
       "browser-only loader; the wasm sits beside the browser bundle, not in the Node tree",
+  },
+  {
+    file: "src/runtime/module-loader.js",
+    spec: "./taglib-web.wasm",
+    reason:
+      "Deno-compile embed probe (import.meta.url fallback) inside a try/catch; the embedded wasm lands beside the entry module, never in the Node tree",
   },
 ];
 

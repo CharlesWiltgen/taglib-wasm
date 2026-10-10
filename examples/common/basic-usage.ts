@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env -S deno run --allow-read
 
 /**
  * Basic TagLib-Wasm Usage Example
@@ -97,7 +97,7 @@ async function demonstrateBasicUsage() {
     if (error.stack) {
       console.error("Stack trace:", error.stack);
     }
-    process.exit(1);
+    Deno.exit(1);
   }
 }
 

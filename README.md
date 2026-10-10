@@ -89,6 +89,50 @@ import { TagLib } from "taglib-wasm";
 See [Platform Examples](docs/guide/platform-examples.md#electron) for full IPC
 setup.
 
+### Deno Compiled Binaries (Offline Support)
+
+For Deno compiled binaries that need to work offline, you can embed the WASM
+file:
+
+```typescript
+// 1. Prepare your build by copying the WASM file
+import { prepareWasmForEmbedding } from "npm:taglib-wasm";
+await prepareWasmForEmbedding("./taglib-web.wasm");
+
+// 2. In your application, use the helper for automatic handling
+import { initializeForDenoCompile } from "npm:taglib-wasm";
+const taglib = await initializeForDenoCompile();
+
+// 3. Compile with the embedded WASM
+// deno compile --allow-read --include taglib-web.wasm myapp.ts
+```
+
+See the
+[complete Deno compile guide](https://charleswiltgen.github.io/TagLib-Wasm/guide/deno-compile.html)
+for more options including CDN loading.
+
+`prepareWasmForEmbedding` and `initializeForDenoCompile` resolve a Deno main
+module and file paths, so they belong to the Node/Deno entry: they are absent
+from the `browser` condition, and a browser-targeted build reports them as
+missing exports — the section below, "Bundle Size and Tree-Shaking", shows how
+to get that as a TypeScript error instead of a bundler error. `isDenoCompiled`,
+the `typeof Deno` probe under them, is exported by both: in a browser it answers
+`false`.
+
+For manual control:
+
+```typescript
+// Load embedded WASM in compiled binaries
+const wasmBinary = await Deno.readFile(
+  new URL("./taglib-web.wasm", import.meta.url),
+);
+const taglib = await TagLib.initialize({ wasmBinary });
+```
+
+Supplying `wasmBinary` selects the Emscripten backend (the bytes above are
+`taglib-web.wasm`, its artifact). The WASI backend loads from a filesystem
+path or URL instead — use `wasmUrl` with it.
+
 ## Quick Start
 
 > **Import paths:** all runtimes use the npm package `taglib-wasm` (Deno via
@@ -414,6 +458,7 @@ Supported formats:
 - [Album Processing Guide](https://charleswiltgen.github.io/TagLib-Wasm/guide/album-processing.html)
 - [Folder Operations](https://charleswiltgen.github.io/TagLib-Wasm/guide/folder-operations.html)
 - [Codec Detection](https://charleswiltgen.github.io/TagLib-Wasm/guide/codec-detection.html)
+- [Deno Compile](https://charleswiltgen.github.io/TagLib-Wasm/guide/deno-compile.html)
 - [Platform Examples](https://charleswiltgen.github.io/TagLib-Wasm/guide/platform-examples.html)
 - [Working with Cover Art](https://charleswiltgen.github.io/TagLib-Wasm/guide/cover-art.html)
 - [Track Ratings](https://charleswiltgen.github.io/TagLib-Wasm/guide/ratings.html)
@@ -664,7 +709,7 @@ under every bundler:
 | ---------------------- | ------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
 | **Node.js**            | Full    | `npm install taglib-wasm` | TypeScript via tsx                                                                                 |
 | **Deno**               | Full    | `npm:taglib-wasm`         | Native TypeScript                                                                                  |
-| **Bun**                | Partial | `bun add taglib-wasm`     | Import + init verified; full test suite is Deno-only                                               |
+| **Bun**                | Partial | `bun add taglib-wasm`     | Import + init verified; covered by `npm run test:bun` and the cross-runtime smoke                  |
 | **Browser**            | Full    | Via bundler               | Full API support                                                                                   |
 | **Cloudflare Workers** | Full    | `npm install taglib-wasm` | Buffer-based (Emscripten); no filesystem. See [Workers guide](docs/advanced/cloudflare-workers.md) |
 | **Electron**           | Node.js | `npm install taglib-wasm` | Main process; renderer via IPC                                                                     |

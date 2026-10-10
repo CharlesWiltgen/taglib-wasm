@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env -S deno run --allow-read --allow-write
 
 /**
  * Example: Batch folder operations with TagLib-Wasm
@@ -7,8 +7,6 @@
  * read metadata from multiple files efficiently, and perform
  * batch operations like finding duplicates and updating tags.
  */
-
-import { readFile, stat } from "node:fs/promises";
 
 import { exportFolderMetadata, findDuplicates, scanFolder } from "../index.ts";
 import { writeTagsBatch } from "../src/simple/index.ts";
@@ -149,7 +147,7 @@ async function exportMetadata() {
   console.log(`Metadata exported to: ${outputPath}`);
 
   // Read and display summary
-  const data = JSON.parse(await readFile(outputPath, "utf8"));
+  const data = JSON.parse(await Deno.readTextFile(outputPath));
   console.log("\nExport Summary:");
   console.log(`  Scan date: ${data.scanDate}`);
   console.log(`  Total files: ${data.summary.totalFiles}`);
@@ -199,7 +197,7 @@ async function main() {
 
   // Check if sample music directory exists
   try {
-    await stat("./examples/sample-music");
+    await Deno.stat("./examples/sample-music");
   } catch {
     console.log("\n⚠️  Sample music directory not found!");
     console.log(
@@ -220,7 +218,7 @@ async function main() {
   }
 
   // Run examples based on command line argument
-  const example = process.argv.slice(2)[0];
+  const example = Deno.args[0];
 
   switch (example) {
     case "scan":
@@ -240,11 +238,21 @@ async function main() {
       break;
     default:
       console.log("\nAvailable examples:");
-      console.log("  npx tsx examples/folder-operations.ts scan");
-      console.log("  npx tsx examples/folder-operations.ts duplicates");
-      console.log("  npx tsx examples/folder-operations.ts update");
-      console.log("  npx tsx examples/folder-operations.ts export");
-      console.log("  npx tsx examples/folder-operations.ts performance");
+      console.log(
+        "  deno run --allow-read --allow-write examples/folder-operations.ts scan",
+      );
+      console.log(
+        "  deno run --allow-read --allow-write examples/folder-operations.ts duplicates",
+      );
+      console.log(
+        "  deno run --allow-read --allow-write examples/folder-operations.ts update",
+      );
+      console.log(
+        "  deno run --allow-read --allow-write examples/folder-operations.ts export",
+      );
+      console.log(
+        "  deno run --allow-read --allow-write examples/folder-operations.ts performance",
+      );
       console.log("\nRunning all examples...");
 
       await scanAndDisplay();
