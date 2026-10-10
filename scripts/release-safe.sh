@@ -274,6 +274,47 @@ update_versions() {
         print_error "Failed to update versions"
         exit 1
     fi
+
+    cut_changelog_section "$new_version"
+}
+
+# Retitle the CHANGELOG's "## Unreleased" heading to "## <version>".
+#
+# The publish workflow builds the GitHub release body by extracting the CHANGELOG
+# section whose heading is exactly "## <version>"; with no such heading it warns
+# and falls back to a one-line body plus a compare link (publish-everywhere.yml,
+# "Extract release notes"). That retitle used to be manual — fc58c99 did it by
+# hand for 2.3.0 — and nothing enforced it.
+cut_changelog_section() {
+    local new_version=$1
+    local changelog="CHANGELOG.md"
+
+    if [ ! -f "$changelog" ]; then
+        print_warning "$changelog not found — the release body will fall back to a compare link"
+        return 0
+    fi
+
+    # Exact heading, or the heading followed by a space (never "## 2.3.10" for
+    # "## 2.3.1") — the same rule the workflow's extractor applies.
+    if grep -qE "^## ${new_version//./\\.}( |$)" "$changelog"; then
+        print_success "CHANGELOG already has a '## $new_version' section"
+        return 0
+    fi
+
+    if ! grep -q "^## Unreleased$" "$changelog"; then
+        print_warning "CHANGELOG has no '## Unreleased' heading to cut for $new_version"
+        print_warning "The release body will fall back to a compare link — add the section first"
+        return 0
+    fi
+
+    # awk, not sed: the heading is a literal string, never a pattern.
+    local tmp
+    tmp=$(mktemp)
+    awk -v ver="$new_version" \
+        '$0 == "## Unreleased" { print "## " ver; next } { print }' \
+        "$changelog" > "$tmp"
+    mv "$tmp" "$changelog"
+    print_success "CHANGELOG: '## Unreleased' retitled to '## $new_version'"
 }
 
 # Function to wait for remote CI to pass on the current HEAD commit.
@@ -357,7 +398,7 @@ publish_release() {
     fi
 
     # Commit version changes (skip if already at target version)
-    git add package.json sonar-project.properties src/version.ts
+    git add package.json sonar-project.properties src/version.ts CHANGELOG.md
     if git diff --cached --quiet; then
         print_warning "Version already at $version, skipping commit"
     else
