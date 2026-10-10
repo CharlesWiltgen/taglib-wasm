@@ -253,9 +253,11 @@ jobs:
     steps:
       # The pre-publish verification below runs this commit's
       # scripts/verify-published.mjs and reads a fixture from tests/test-files,
-      # so the repository has to be here. The downloaded build artifacts land on
-      # top of this checkout (dist/ is not tracked, so nothing is overwritten
-      # that matters).
+      # so the repository has to be here. The artifact then lands ON TOP of the
+      # checkout: it overwrites package.json, README.md and LICENSE (its copies
+      # are the publish inputs) and adds dist/. That is only correct because the
+      # artifact was built from this same SHA — which is exactly why the
+      # verification below also checks the staged version.
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
@@ -313,9 +315,10 @@ jobs:
       - name: Verify the staged package before publishing
         # Irreversibility is the point: an npm version cannot be unpublished
         # after 24h, so the artifact is exercised BEFORE the PUT. The verifier
-        # packs publish-dir itself (applying its `files`), so what it installs
-        # is exactly what the next step sends to the registry.
-        run: node scripts/verify-published.mjs publish-dir
+        # packs publish-dir itself (applying its `files`), asserts the installed
+        # tree carries every file the registry must receive and exactly the
+        # version this run publishes, then runs the Node and Deno probes.
+        run: node scripts/verify-published.mjs publish-dir "$VERSION"
 
       - name: Publish to NPM with retry
         id: publish
@@ -449,6 +452,47 @@ jobs:
 
             fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
             console.log('Updated package.json for GitHub Packages');
+          "
+
+      - name: Verify the rewritten manifest
+        # The npm leg verified this same dist/ byte-for-byte; what differs on
+        # this leg is the manifest rewritten above, so check that the rewrite
+        # produced a publishable one: the scoped name, the registry, and every
+        # path the manifest points at must exist in the staging directory.
+        # (This leg deliberately does not re-run the wasm/Deno probes: they
+        # exercise dist/, which the npm leg already verified.)
+        run: |
+          node -e "
+            const { existsSync, readFileSync } = require('node:fs');
+            const { join } = require('node:path');
+            const dir = 'publish-dir';
+            const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+            const problems = [];
+            if (pkg.name !== '@charleswiltgen/taglib-wasm') problems.push('name is ' + pkg.name);
+            if (pkg.publishConfig?.registry !== 'https://npm.pkg.github.com') {
+              problems.push('registry is ' + pkg.publishConfig?.registry);
+            }
+            const targets = [];
+            for (const field of ['main', 'module', 'browser', 'types']) {
+              if (typeof pkg[field] === 'string') targets.push([field, pkg[field]]);
+            }
+            const walk = (value, key) => {
+              if (typeof value === 'string') {
+                if (value.startsWith('./')) targets.push([key, value]);
+                return;
+              }
+              for (const [k, child] of Object.entries(value ?? {})) walk(child, k.startsWith('.') ? k : key + '.' + k);
+            };
+            walk(pkg.exports, 'exports');
+            for (const [key, path] of targets) {
+              if (!existsSync(join(dir, path))) problems.push(key + ' -> ' + path + ' is missing');
+            }
+            if (problems.length > 0) {
+              console.error('::error::the GitHub Packages manifest is broken:');
+              for (const p of problems) console.error('  ' + p);
+              process.exit(1);
+            }
+            console.log('✅ manifest verified: ' + pkg.name + '@' + pkg.version + ', ' + targets.length + ' paths resolve');
           "
 
       - name: Determine NPM tag

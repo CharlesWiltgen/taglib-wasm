@@ -30,11 +30,15 @@
  * Usage:
  *   node scripts/verify-published.mjs            # version from package.json
  *   node scripts/verify-published.mjs 2.3.1      # an explicit version
- *   node scripts/verify-published.mjs publish-dir   # a local artifact (dir or .tgz)
+ *   node scripts/verify-published.mjs publish-dir [expected-version]
+ *                                               # a local artifact (dir or .tgz)
  *
  * The local form runs BEFORE a publish: it packs the staging directory (or
  * takes a tarball) and installs that, so the artifact is exercised while a
  * failure is still cheap — an npm version cannot be unpublished after 24h.
+ * Pass the version the release intends to publish and the installed manifest
+ * must carry exactly it, so a stale artifact fails here instead of becoming a
+ * published version.
  *
  * Exit codes: 0 verified · 1 verification failed · 2 usage/environment.
  */
@@ -66,6 +70,7 @@ const arg = process.argv[2];
 // such as `publish-dir` would not exist.
 const localArtifact =
   arg !== undefined && existsSync(arg) ? resolve(arg) : null;
+const expectedVersion = process.argv[3] ?? null;
 const version = localArtifact ? repoPkg.version : (arg ?? repoPkg.version);
 
 if (!localArtifact && !/^\d+\.\d+\.\d+/.test(version)) {
@@ -114,26 +119,68 @@ if (localArtifact) {
   // installed is a tarball — the same shape a consumer downloads, not a
   // symlinked directory that hides a packaging mistake.
   let tarball = localArtifact;
-  if (statSync(localArtifact).isDirectory()) {
-    const packed = execFileSync(
+  try {
+    if (statSync(localArtifact).isDirectory()) {
+      const packed = execFileSync(
+        "npm",
+        ["pack", "--json", "--pack-destination", app, localArtifact],
+        { cwd: app, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
+      );
+      tarball = join(app, JSON.parse(packed)[0].filename);
+      console.log(`  packed ${localArtifact} -> ${tarball}`);
+    }
+    execFileSync(
       "npm",
-      ["pack", "--json", "--pack-destination", app, localArtifact],
-      { cwd: app, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
+      [
+        "install",
+        tarball,
+        "--no-save",
+        "--no-audit",
+        "--no-fund",
+        "--loglevel=error",
+      ],
+      { cwd: app, stdio: ["ignore", "ignore", "inherit"] },
     );
-    tarball = join(app, JSON.parse(packed)[0].filename);
-    console.log(`  packed ${localArtifact} -> ${tarball}`);
+  } catch (error) {
+    // A path that cannot be packed or installed is an environment problem, not
+    // a verdict on the package: exit 2 (and say so) rather than surfacing raw
+    // npm output as "verification failed" in the step that blocks a release.
+    console.error(
+      `\n✗ Not a packable package directory or tarball: ${localArtifact}`,
+    );
+    console.error(`  ${String(error.message).split("\n")[0]}`);
+    process.exit(2);
   }
-  execFileSync(
-    "npm",
-    [
-      "install",
-      tarball,
-      "--no-save",
-      "--no-audit",
-      "--no-fund",
-      "--loglevel=error",
-    ],
-    { cwd: app, stdio: ["ignore", "ignore", "inherit"] },
+
+  // The delivered set. `files` names dist/** plus package.json, README.md and
+  // LICENSE (scripts/check-package-files.sh pins that allowlist on the repo
+  // side); npm filters anything else at pack time, so extra staging files
+  // cannot ship — but a file the staging step forgot to copy is lost silently
+  // unless something asserts presence. This is that assertion, on the
+  // installed tree, which is byte-for-byte what a consumer receives.
+  const installed = join(app, "node_modules", "taglib-wasm");
+  const missing = ["package.json", "README.md", "LICENSE"].filter(
+    (f) => !existsSync(join(installed, f)),
+  );
+  if (missing.length > 0 || !existsSync(join(installed, "dist"))) {
+    console.error(`\n✗ ${label} is missing files the registry must receive:`);
+    for (const f of missing) console.error(`  ${f}`);
+    if (!existsSync(join(installed, "dist"))) console.error("  dist/");
+    process.exit(1);
+  }
+
+  // The version tie: a stale or foreign artifact would otherwise publish under
+  // whatever version its manifest carries while every probe passed.
+  const installedVersion = JSON.parse(
+    readFileSync(join(installed, "package.json"), "utf8"),
+  ).version;
+  if (expectedVersion !== null && installedVersion !== expectedVersion) {
+    console.error(`\n✗ ${label} carries version ${installedVersion},`);
+    console.error(`  but this run publishes ${expectedVersion}.`);
+    process.exit(1);
+  }
+  console.log(
+    `  installed ${join("node_modules", "taglib-wasm")} @ ${installedVersion}`,
   );
 } else {
   for (let attempt = 1; ; attempt++) {
