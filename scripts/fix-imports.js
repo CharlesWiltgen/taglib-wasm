@@ -20,8 +20,8 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
 
 function fixImportsInFile(filePath) {
-  let content = readFileSync(filePath, "utf8");
-  let modified = false;
+  const original = readFileSync(filePath, "utf8");
+  let content = original;
 
   if (filePath.endsWith(".d.ts")) {
     // tsc declaration emit keeps the `.ts` specifiers written in source, in all
@@ -69,9 +69,8 @@ function fixImportsInFile(filePath) {
       `resolveWasmPath("${wasiWasmRelPath}"`,
     );
   }
-  modified = true;
 
-  if (modified) {
+  if (content !== original) {
     writeFileSync(filePath, content);
     console.log(`    ✓ Fixed imports in ${filePath}`);
   }

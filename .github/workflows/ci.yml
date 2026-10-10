@@ -154,6 +154,18 @@ jobs:
       - name: Build TypeScript bundles
         run: npm run build:js
 
+      - name: Materialize the runtime files for the resolution check
+        # `vp pack` keeps the source-shaped glue/wasm specifiers; postbuild
+        # copies the runtime files into dist/ and applies the depth-relative
+        # fixes that make every emitted reference resolve.
+        run: npm run postbuild
+
+      - name: Verify the emitted dist tree resolves
+        # Every relative specifier and import.meta.url asset reference in the
+        # emitted tree must resolve on disk: dist/src/** is load-bearing at
+        # runtime for the Node entries, and no earlier gate walks it.
+        run: node scripts/check-dist-resolution.mjs
+
       - name: Verify disc-folder entry stays Wasm-free
         # taglib-cd7b: the disc-folder subpath is DECLARED dependency-free so
         # clients (tuneup) can import discFolderInfo without a wasm runtime.

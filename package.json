@@ -144,7 +144,7 @@
     "version:check": "npx tsx scripts/sync-version.ts check",
     "lint:ast": "bash -c 'command -v ast-grep >/dev/null 2>&1 || { echo \"ast-grep not installed — skipping structural rules\"; exit 0; }; ast-grep test && ast-grep scan'",
     "test:sonar": "SONAR_REPORT=1 vp test --coverage",
-    "check:all": "npx vp fmt --check && npx vp lint --type-aware && npm run lint:ast && npm run docs:coverage && npm run knip && npx tsc --noEmit -p tsconfig.check.json && npx vp test && npm run build:js && bash scripts/check-toolchain-pins.sh",
+    "check:all": "npx vp fmt --check && npx vp lint --type-aware && npm run lint:ast && npm run docs:coverage && npm run knip && npx tsc --noEmit -p tsconfig.check.json && npx vp test && npm run build:js && npm run postbuild && node scripts/check-dist-resolution.mjs && node scripts/check-disc-folder.mjs && bash scripts/check-toolchain-pins.sh",
     "test": "vp test",
     "test:core": "vp test tests/taglib.test.ts",
     "test:pictures": "vp test tests/picture-api.test.ts",
