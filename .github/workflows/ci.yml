@@ -565,6 +565,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify JSR publish ships the intended file set
+        # taglib-asy / taglib-qrp class: what the JSR package ships is decided
+        # by jsr.json's publish.exclude plus .gitignore, and the 2.3.0 package
+        # shipped .claude/**, repo dotfiles and src/**.test.ts (measured on the
+        # published tarball). Dry-runs the publish and pins the exact file set
+        # and the version agreement with package.json. Runs before the build
+        # artifacts are downloaded so the asserted tree is the reviewable one.
+        run: bash scripts/check-jsr-package-files.sh
+
       - name: Download build artifacts
         uses: actions/download-artifact@v8
         with:

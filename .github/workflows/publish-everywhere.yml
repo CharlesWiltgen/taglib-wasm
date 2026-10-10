@@ -1,4 +1,4 @@
-name: Publish to NPM/GitHub
+name: Publish to JSR/NPM/GitHub
 
 on:
   workflow_dispatch:
@@ -24,9 +24,12 @@ concurrency:
 
 # Job execution order:
 # 1. prepare-and-build: Confirm CI passed, then build the package
-# 2. publish-npm: Publish to NPM
-# 3. publish-github: Publish to GitHub Packages (only if NPM succeeds)
-# 4. finalize: On success, create the release tag + GitHub release (notes from
+# 2. publish-jsr: Publish to JSR first (fail-fast if JSR OIDC is not working)
+# 3. verify-jsr: Instantiate both wasm backends from the published JSR package —
+#    the only check that can catch Deno's publish-time wasm import unfurl
+# 4. publish-npm: Publish to NPM (only if JSR succeeds)
+# 5. publish-github: Publish to GitHub Packages (only if JSR and NPM succeed)
+# 6. finalize: On success, create the release tag + GitHub release (notes from
 #    CHANGELOG); on failure, write the failure summary with rollback commands.
 #    Tag/release creation lives here rather than in scripts/release-safe.sh so a
 #    failed publish leg cannot leave a released-but-unpublished version
@@ -190,6 +193,13 @@ jobs:
             const versionTsPath = path.join(__dirname, 'src', 'version.ts');
             fs.writeFileSync(versionTsPath, 'export const VERSION = \"$VERSION\";\n');
 
+            // Update jsr.json (the JSR package manifest — published verbatim,
+            // so its version must match package.json)
+            const jsrPath = path.join(__dirname, 'jsr.json');
+            const jsr = JSON.parse(fs.readFileSync(jsrPath, 'utf8'));
+            jsr.version = '$VERSION';
+            fs.writeFileSync(jsrPath, JSON.stringify(jsr, null, 2) + '\n');
+
             console.log('Updated versions to $VERSION');
           "
 
@@ -236,14 +246,114 @@ jobs:
           path: |
             dist/
             package.json
+            jsr.json
             README.md
             LICENSE
           retention-days: 1
 
-  publish-npm:
-    name: Publish to NPM
+  publish-jsr:
+    name: Publish to JSR
     needs: prepare-and-build
     if: needs.prepare-and-build.outputs.should-publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Required for OIDC authentication to JSR
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: "2.9.6"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: build-artifacts
+          path: .
+
+      - name: Verify the JSR package file set
+        # What ships is decided by jsr.json's publish.exclude plus .gitignore,
+        # and nothing else asserts it: the 2.3.0 JSR package shipped
+        # .claude/**, repo dotfiles and src/**.test.ts. The guard pins the
+        # exact file set before anything is published (taglib-asy class).
+        run: bash scripts/check-jsr-package-files.sh
+
+      - name: Publish to JSR with retry
+        id: publish
+        run: |
+          MAX_ATTEMPTS=3
+          RETRY_WAIT=30
+          PER_ATTEMPT_TIMEOUT=300
+
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "::group::JSR publish attempt $attempt of $MAX_ATTEMPTS"
+            # OIDC handles auth; --allow-dirty because we hydrate artifacts.
+            if OUTPUT=$(timeout "$PER_ATTEMPT_TIMEOUT" deno publish --allow-slow-types --allow-dirty 2>&1); then
+              echo "$OUTPUT"
+              echo "::endgroup::"
+              echo "✅ JSR publish successful"
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "$OUTPUT"
+            echo "::endgroup::"
+
+            # Idempotent: treat "already published" as success.
+            if echo "$OUTPUT" | grep -qiE "already published|already exists"; then
+              echo "✅ JSR version already published, treating as success"
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              echo "⚠️ Attempt $attempt failed, retrying in ${RETRY_WAIT}s..."
+              sleep "$RETRY_WAIT"
+            fi
+          done
+
+          echo "❌ JSR publish failed after $MAX_ATTEMPTS attempts"
+          echo "published=false" >> "$GITHUB_OUTPUT"
+          exit 1
+
+  # Post-publish gate: pull the ACTUAL published JSR package and instantiate
+  # both backends. This is the only check that can catch Deno's publish-time
+  # wasm unfurl (deno publish rewrites the wasm's import names AFTER the build
+  # guard runs) — it would have caught the 1.4.1/1.4.2 regressions. The
+  # "./"-aliased import objects (fix-deno-compat.js, wasi-host-loader.ts) make
+  # this pass.
+  verify-jsr:
+    name: Verify published JSR package
+    needs: [prepare-and-build, publish-jsr]
+    if: needs.prepare-and-build.outputs.should-publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: "2.9.6"
+      - name: Instantiate both backends from the published JSR package
+        env:
+          VERSION: ${{ needs.prepare-and-build.outputs.version }}
+        run: |
+          printf 'import { TagLib } from "jsr:@charlesw/taglib-wasm@%s";\nawait TagLib.initialize({ forceWasmType: "wasi" });\nawait TagLib.initialize({ forceWasmType: "emscripten" });\nconsole.log("both backends instantiate");\n' "$VERSION" > verify.ts
+          for attempt in 1 2 3 4 5 6; do
+            echo "verify attempt $attempt (jsr @$VERSION)..."
+            if deno run --reload --no-lock --minimum-dependency-age=0 --allow-read --allow-env --allow-net verify.ts; then
+              echo "✅ published JSR @$VERSION instantiates on Deno (both backends)"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::published JSR @$VERSION failed to instantiate on Deno — the wasm may be corrupted"
+          exit 1
+
+  publish-npm:
+    name: Publish to NPM
+    needs: [prepare-and-build, publish-jsr] # Depends on JSR success (fail-fast)
+    if: needs.prepare-and-build.outputs.should-publish == 'true' && needs.publish-jsr.outputs.published == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -377,13 +487,11 @@ jobs:
         run: |
           VERSION="${{ needs.prepare-and-build.outputs.version }}"
           # This is the npm leg's only post-publish verification: it proves the
-          # version is retrievable from the registry. The retired post-publish
-          # JSR verification job additionally instantiated both wasm backends
-          # from the published JSR package — a check that existed only because
-          # `deno publish` rewrites the wasm's import names after the build
-          # guard runs (the 1.4.1/1.4.2 regressions). `npm publish` performs no
-          # such rewrite, so there is no npm analogue; the check died with the
-          # JSR channel.
+          # version is retrievable from the registry. The post-publish wasm
+          # unfurl check lives on the JSR leg (verify-jsr) — `deno publish`
+          # rewrites the wasm's import names after the build guard runs, which
+          # is what the 1.4.1/1.4.2 regressions were. `npm publish` performs no
+          # such rewrite, so there is no npm analogue.
           # Query the IMMUTABLE version endpoint, not the packument that
           # `npm view pkg@ver` reads: the packument is CDN-cached, so a check
           # seconds after a publish can serve a pre-publish document and report
@@ -420,8 +528,8 @@ jobs:
 
   publish-github:
     name: Publish to GitHub Packages
-    needs: [prepare-and-build, publish-npm] # Depends on NPM success
-    if: needs.prepare-and-build.outputs.should-publish == 'true' && needs.publish-npm.outputs.published == 'true'
+    needs: [prepare-and-build, publish-jsr, publish-npm] # Depends on JSR and NPM success
+    if: needs.prepare-and-build.outputs.should-publish == 'true' && needs.publish-jsr.outputs.published == 'true' && needs.publish-npm.outputs.published == 'true'
     permissions:
       contents: read
       packages: write # Required to publish to npm.pkg.github.com (SEC-03)
@@ -626,9 +734,11 @@ jobs:
 
   finalize:
     name: Finalize Release
-    needs: [prepare-and-build, publish-npm, publish-github] # every publish leg is
+    needs:
+      [prepare-and-build, publish-jsr, verify-jsr, publish-npm, publish-github] # every publish leg is
     # listed so a failed leg cannot produce a tag/release (review findings
-    # SEC-04 / rkx0 review finding 2).
+    # SEC-04 / rkx0 review finding 2, and verify-jsr so a failed post-publish
+    # check cannot produce one either).
     if: always() && needs.prepare-and-build.outputs.should-publish == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -661,11 +771,15 @@ jobs:
           VERSION: ${{ needs.prepare-and-build.outputs.version }}
           NPM_RESULT: ${{ needs.publish-npm.result }}
           GITHUB_RESULT: ${{ needs.publish-github.result }}
+          JSR_RESULT: ${{ needs.publish-jsr.result }}
+          VERIFY_JSR_RESULT: ${{ needs.verify-jsr.result }}
         run: |
           SUCCESS=true
           FAILURES=""
 
           for entry in \
+            "JSR:${JSR_RESULT}" \
+            "JSR verification:${VERIFY_JSR_RESULT}" \
             "npm:${NPM_RESULT}" \
             "GitHub Packages:${GITHUB_RESULT}"; do
             name="${entry%%:*}"
@@ -705,6 +819,7 @@ jobs:
           FAILURES="${{ steps.status.outputs.failures }}"
           NPM_PUBLISHED="${{ needs.publish-npm.outputs.published }}"
           GITHUB_PUBLISHED="${{ needs.publish-github.outputs.published }}"
+          JSR_PUBLISHED="${{ needs.publish-jsr.outputs.published }}"
 
           {
             echo "## ❌ Publication Failed for v${VERSION}"
@@ -714,13 +829,20 @@ jobs:
             echo "### Publication Status"
             echo "| Registry | Status |"
             echo "|----------|--------|"
+            echo "| JSR | $([ "$JSR_PUBLISHED" = "true" ] && echo "✅ Published" || echo "❌ Failed") |"
             echo "| NPM | $([ "$NPM_PUBLISHED" = "true" ] && echo "✅ Published" || echo "❌ Failed") |"
             echo "| GitHub Packages | $([ "$GITHUB_PUBLISHED" = "true" ] && echo "✅ Published" || echo "❌ Failed") |"
             echo ""
 
-            if [ "$NPM_PUBLISHED" = "true" ] || [ "$GITHUB_PUBLISHED" = "true" ]; then
+            if [ "$JSR_PUBLISHED" = "true" ] || [ "$NPM_PUBLISHED" = "true" ] || [ "$GITHUB_PUBLISHED" = "true" ]; then
               echo "### ⚠️ Rollback Required"
               echo ""
+
+              if [ "$JSR_PUBLISHED" = "true" ]; then
+                echo "#### JSR Rollback"
+                echo "JSR does not support unpublishing. Consider publishing a patch version."
+                echo ""
+              fi
 
               if [ "$NPM_PUBLISHED" = "true" ]; then
                 echo "#### NPM Rollback"

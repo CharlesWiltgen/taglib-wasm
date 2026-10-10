@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **JSR distribution is restored.** `deno publish` ships
+  `@charlesw/taglib-wasm` again: the `publish-jsr` (OIDC-authenticated) and
+  `verify-jsr` legs return to `publish-everywhere.yml`, and a new `jsr.json`
+  declares the package for the current layout. Deno can install from JSR
+  (`jsr:@charlesw/taglib-wasm`) or from npm (`npm:taglib-wasm`); every release
+  publishes both. `scripts/check-jsr-package-files.sh` pins the exact file set
+  the publish ships — the 2.3.0 JSR package had leaked `.claude/**`, repo
+  dotfiles and `src/**.test.ts`.
+
+### Fixed
+
+- **`PROPERTIES` keeps its full type in JSR's declaration output.** Deno's
+  declaration emitter (behind `deno pack` and the npm-compat package JSR
+  serves) dropped the four-spread object's inferred type and emitted
+  `export declare const PROPERTIES: {}`, so a consumer's `PROPERTIES.<key>`
+  access failed to typecheck — 38 `TS2339` errors in one downstream consumer
+  alone. The const now carries an explicit intersection annotation
+  (taglib-c76n); `tsc` output for npm is unchanged in meaning.
+
 ## 2.3.1
 
 ### Changed
@@ -7,7 +30,8 @@
 - **Deno remains a supported runtime; its _development_ toolchain is not.**
   The Deno runtime and its public API (`initializeForDenoCompile`,
   `isDenoCompiled`, `prepareWasmForEmbedding`) are unchanged. What was retired
-  is the Deno _dev_ toolchain and the JSR _distribution_ channel (below); the
+  is the Deno _dev_ toolchain and — for this release only — the JSR
+  _distribution_ channel (below; restored in the next release); the
   project now builds and gates on Node + Vite+ (`vp`). Its examples and docs
   were corrected in this release, not withdrawn.
 - The published `dist/*.js` files are built by the Vite+ bundler (`vp pack`)
@@ -32,10 +56,11 @@
 
 ### Removed
 
-- JSR distribution. The `@charlesw/taglib-wasm` JSR package is deprecated;
-  Deno installs from npm via `npm:taglib-wasm`. The `publish-jsr` and
-  `verify-jsr` CI jobs and the `deno.json`/`deno.lock` manifests are gone.
-  Deno _runtime_ support is unaffected — see Changed above.
+- JSR distribution. The `publish-jsr` and `verify-jsr` CI jobs and the
+  `deno.json`/`deno.lock` manifests are gone from this release; the
+  `@charlesw/taglib-wasm` JSR package was left at 2.3.0. Deno _runtime_ support
+  is unaffected — see Changed above. (Reversed in the next release, which
+  restored JSR publishing; the package was never deprecated on the registry.)
 
 ### Fixed
 

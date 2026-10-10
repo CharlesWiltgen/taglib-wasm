@@ -4,7 +4,7 @@ set -euo pipefail
 # Safe Release Script for TagLib-Wasm
 # Runs the gates, bumps and pushes the version, waits for CI on that commit, and
 # then dispatches the publish workflow. The tag and the GitHub release are
-# created by that workflow's finalize job, only after npm and GitHub
+# created by that workflow's finalize job, only after JSR, npm and GitHub
 # Packages all carry the version (taglib-rkx0).
 #
 # Usage:
@@ -243,8 +243,9 @@ verify_wasm_freshness() {
 run_preflight_checks() {
     print_step "Running package publishing preflight checks..."
 
-    # The npm distribution guard (replaces the retired JSR publish guard):
-    # asserts the package.json `files` allowlist and the packed tarball.
+    # Registry distribution guards. The npm one asserts the package.json
+    # `files` allowlist and the packed tarball; the JSR one dry-runs the
+    # publish and pins the file set jsr.json would ship.
     print_step "Verifying npm package contents guard..."
     if ! bash scripts/check-package-files.sh > /dev/null 2>&1; then
         print_error "Package files guard failed"
@@ -252,6 +253,14 @@ run_preflight_checks() {
         exit 1
     fi
     print_success "Package files guard passed"
+
+    print_step "Verifying JSR package contents guard..."
+    if ! bash scripts/check-jsr-package-files.sh > /dev/null 2>&1; then
+        print_error "JSR package files guard failed"
+        print_warning "Run 'bash scripts/check-jsr-package-files.sh' to see details"
+        exit 1
+    fi
+    print_success "JSR package files guard passed"
 
     # The npm checks below lint the packed npm tarball, so dist/ must hold a
     # complete package first. `npm run build:release` above does not produce one:
@@ -536,7 +545,7 @@ publish_release() {
     fi
 
     print_success "Publish run queued: https://github.com/CharlesWiltgen/TagLib-Wasm/actions/runs/$run_id"
-    print_warning "The workflow tags and releases v$version only after npm and GitHub Packages have it."
+    print_warning "The workflow tags and releases v$version only after JSR, npm and GitHub Packages have it."
     announce_approval_gate "$run_id" "$gate_rules"
 
     if [ "${SKIP_PUBLISH_WATCH:-}" = "1" ]; then
@@ -566,7 +575,7 @@ publish_release() {
     # skipped job does not fail a run. Verify the release object itself.
     if gh release view "v$version" >/dev/null 2>&1; then
         echo
-        print_success "🎉 v$version published to npm and GitHub Packages; tag and GitHub release created"
+        print_success "🎉 v$version published to JSR, npm and GitHub Packages; tag and GitHub release created"
     else
         print_error "The run finished green but no GitHub release exists for v$version"
         print_warning "That is what a fully skipped run looks like: the version is already on npm, so"

@@ -6,11 +6,9 @@
  * Every other guard in this repo reads the working tree: the dist-resolution
  * walker, the disc-folder purity guard and the unit suite all run against files
  * this checkout produced. None of them answers "does `npm install taglib-wasm`
- * give a working library", which is the only question a consumer asks. The
- * JSR-era `verify-jsr` job did instantiate both wasm backends from the
- * published package; it died with that channel, and the npm leg's replacement
- * was an HTTP 200 on the version URL — proof the version exists, not that it
- * works.
+ * give a working library", which is the only question a consumer asks. (The
+ * separate `verify-jsr` workflow job covers the JSR copy the same way; this
+ * script is the npm artifact's verifier.)
  *
  * This installs the version from the registry into a temp directory and runs
  * scripts/verify-published-probe.mjs FROM THAT DIRECTORY, so every import in it
