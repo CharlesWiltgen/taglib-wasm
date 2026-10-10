@@ -521,38 +521,41 @@ Partial loading (`{ partial: true }`) works on both paths; see the
 ### Bundle Size and Tree-Shaking
 
 Importing the barrel (`taglib-wasm`) does **not** pull in the Folder or Web API:
-every bundler tested here tree-shakes to leaf granularity. Measured on
-taglib-wasm 2.2.3 installed from a packed tarball (`npm pack` →
-`npm install <tarball>`), minified ES2022 ESM bundles on Node 24.21.0. Figures
-are minified JavaScript bytes — the ~700 KB Wasm binary is loaded at runtime and
-is not part of the bundle in any scenario below. The `./web` figures further down
-were re-measured with the same invocations after that subpath gained a `browser`
-condition.
+every bundler tested here tree-shakes to leaf granularity. Measured from a packed
+tarball of this repository's build (`npm pack` → `npm install <tarball>`),
+minified ES2022 ESM bundles on Node 24.21.0 with esbuild 0.28.2, rollup 4.63.3,
+vite 8.3.0 and webpack 5.111.1. Figures are minified JavaScript bytes — the
+~700 KB Wasm binary is loaded at runtime and is not part of the bundle in any
+scenario below.
 
 Each row is a one-file app whose whole body is that import plus the call the row
 names, keeping the imported function reachable (`globalThis.__app = { … }`).
-Exact invocations, so the table can be reproduced:
+Where a build splits its output into several files, the figure is the total of
+every JavaScript chunk it emits. Exact invocations, so the table can be
+reproduced:
 
 - **esbuild 0.28.2** — `esbuild <app> --bundle --minify --format=esm
-  --target=es2022 --platform=browser --external:module` for the browser column;
-  the same with `--platform=node` and no `--external` for the Node column.
-  (`--external` takes a colon, not `=`.)
+  --target=es2022 --platform=browser --external:node:module` for the browser
+  column; the same with `--platform=node` and no `--external` for the Node
+  column. The `--external` matches the dynamic `import("node:module")` in
+  `dist/taglib-wrapper.js`. (`--external` takes a colon, not `=`.)
 - **rollup 4.63.3** — `input: <app>`, plugins `@rollup/plugin-node-resolve`
   (`{ browser: true, exportConditions: ["browser", "default"] }` for the browser
   column, default options for the Node column) and `@rollup/plugin-terser`,
   output `{ format: "esm", inlineDynamicImports: true }`.
 - **vite 8.3.0** — a real app build: `index.html` plus a
   `<script type="module">` pointing at the entry, `build.minify: "esbuild"`,
-  `target: "es2022"`. Vite builds for the browser.
+  `target: "es2022"`. Vite builds for the browser; the figures below that name
+  the `node` condition instead add `resolve.conditions: ["node"]`.
 - **webpack 5.111.1** — `mode: "production"`, `target: "web"`,
   `externals: { module: "module" }`. `target: "web"` alone fails on the
-  `import("module")` inside `dist/taglib-wrapper.js`.
+  `import("node:module")` inside `dist/taglib-wrapper.js`.
 
 | Consumer app                          | esbuild (browser)¹ | rollup (browser)¹ | vite (app) | webpack (web)² | esbuild (Node)³ | rollup (Node)³ |
 | ------------------------------------- | ------------------ | ----------------- | ---------- | -------------- | --------------- | -------------- |
-| `taglib-wasm` — `TagLib.initialize()` | 81,991             | 78,374            | 84,802     | 57,141         | 145,056         | 134,312        |
-| `taglib-wasm/simple` — `getTagLib()`  | 81,279             | 78,495            | 84,094     | 57,260         | 146,047         | 134,713        |
-| `taglib-wasm/folder` — `scanFolder`⁴  | —                  | 138,075⁴          | 146,094⁴   | —              | 149,396         | 138,075        |
+| `taglib-wasm` — `TagLib.initialize()` | 78,968             | 76,247            | 81,925     | 79,952         | 141,711         | 130,254        |
+| `taglib-wasm/simple` — `getTagLib()`  | 78,689             | 76,505            | 81,659     | 80,770         | 142,716         | 130,625        |
+| `taglib-wasm/folder` — `scanFolder`⁴  | —                  | 134,016⁴          | 144,427⁴   | —              | 146,061         | 134,016        |
 
 ¹ the `browser` `exports` condition. ² `target: "web"`. ³ the Node `exports`
 condition. ⁴ Node-only entry — see below.
@@ -561,28 +564,29 @@ condition. ⁴ Node-only entry — see below.
 because `scanFolder` and friends read and write a filesystem, so a
 browser-targeted build resolves the Node-oriented graph and fails: esbuild
 `--platform=browser` reports `Could not resolve "node:fs/promises"`, and webpack
-`target: "web"` fails with four errors (`./taglib-web.wasm`, `node:fs`,
-`node:fs/promises`, `node:buffer`). That outcome is the design: a build error
-beats a stub that throws on the first call in production. If the same cells were
-reachable they would come from shimming Node builtins into a bundle that cannot
-work — which is exactly what vite and rollup did before the condition was
-declared. `./rating` and `./disc-folder` are pure JavaScript and build for
-either target. In a browser, scan on a server and post the result; the pure
+`target: "web"` fails with three errors (`node:buffer`, `node:fs/promises`,
+`node:fs`). That outcome is the design: a build error beats a stub that throws
+on the first call in production. If the same cells were reachable they would
+come from shimming Node builtins into a bundle that cannot work — which is
+exactly what vite and rollup did before the condition was declared. `./rating`
+and `./disc-folder` are pure JavaScript and build for either target. In a
+browser, scan on a server and post the result; the pure
 `groupAlbums` / `discFolderInfo` half is exported from `taglib-wasm` and
 `taglib-wasm/disc-folder` and runs anywhere.
 
 **`./web` builds for the browser.** It declares a `browser` condition, so a
 browser-targeted build resolves an Emscripten-only build of that entry and pulls
 **`taglib-web.wasm` alone** — measured with the vite invocation above on
-`pictureToDataURL` from `taglib-wasm/web`: one 703,477-byte Wasm asset where the
-Node-oriented graph emitted both `taglib-web.wasm` and `taglib-wasi.wasm`
-(1.4 MB of assets for a call that needs neither engine), and a 6,289-byte
-JavaScript bundle where the shimmed Node graph produced 17,461 bytes. Note the
-browser build is a pre-bundled file like `index.browser.js`, so it does not
-tree-shake to a leaf the way the Node files do: the same call costs 80,959 bytes
-in the browser column against 205 bytes on Node, and importing any pure helper
-from the barrel costs ~82 KB there too. That granularity is a property of the
-pre-bundled browser entries, not of this subpath.
+`pictureToDataURL` from `taglib-wasm/web`: one 703,477-byte Wasm asset, where
+the vite build on the `node` condition instead emits both `taglib-web.wasm` and
+`taglib-wasi.wasm` (1,458,150 bytes of assets for a call that needs neither
+engine). The browser build is a pre-bundled file like `index.browser.js`, so it
+barely tree-shakes: that call is 80,153 bytes in the vite app build and 77,670
+under the esbuild browser column, against 205 bytes under esbuild's Node column —
+and importing any pure helper from the barrel costs ~79 KB there too. Rollup is
+the exception: it shakes the pre-bundled file down to 758 bytes, though still
+not to the 210-byte leaf its Node column reaches. That granularity is a property
+of the pre-bundled browser entries, not of this subpath.
 
 **TypeScript resolves the same condition.** A browser consumer gets the matching
 type surface only if TypeScript is told about it — in `tsconfig.json`:
@@ -606,8 +610,8 @@ instead of a bundler error — and importing `bwf`, `groupAlbums`,
 mismatch is what produced the original silent failure.
 
 **Bundler interop.** `dist/taglib-wrapper.js` — the Emscripten glue — contains a
-dynamic `import("module")`, and browser targets have no such builtin, so the two
-targets need one line each: esbuild `--external:module`, webpack
+dynamic `import("node:module")`, and browser targets have no such builtin, so the
+two targets need one line each: esbuild `--external:node:module`, webpack
 `externals: { module: "module" }` (webpack `target: "web"` alone fails on it).
 Rollup needs nothing extra; vite externalizes it for the browser with a warning.
 The `browser` condition itself is resolved by default by esbuild
@@ -616,42 +620,41 @@ The `browser` condition itself is resolved by default by esbuild
 
 **The barrel is not a tax.** Adding an API to an import that already loads the
 engine costs only that API. Against the `taglib-wasm` row above (esbuild, Node
-column): adding `scanFolder` costs **4,377 bytes** and adding
+column): adding `scanFolder` costs **4,384 bytes** and adding
 `pictureToDataURL` costs **187 bytes**, because neither drags in the rest of the
 Folder or Web module tree.
 
-**The browser barrel's residue.** The browser entry is a pre-bundled file, and
-aligning its export surface with the Node barrel's added the pure
-`bwf` / `groupAlbums` / `discFolderInfo` exports to it. A browser consumer that
-imports none of them pays **350 bytes** more than before (measured on
-`import { TagLib }`, one toolchain and one snapshot, pre- and post-change
-entries): **56 bytes** for the `bwf` namespace object's top-level export table
-and **294 bytes** for the `discFolderInfo`/`groupAlbums` re-export entries —
-neither is droppable when unused. Nothing else moved: `isDenoCompiled`, a plain
-function, shakes away completely, the Folder and Web APIs are still reached only
-when imported, and the Node entries are unchanged.
+**The browser barrel's export list is already paid for.** The browser entry is a
+pre-bundled file, so a consumer of the barrel downloads the whole file whatever
+it imports; adding the pure `bwf` / `groupAlbums` / `discFolderInfo` exports to
+that file's export list therefore costs nothing measurable. Bundling
+`import { TagLib }` against the entry with and without those three export names
+gives identical bytes under esbuild (78,968) and rollup (76,247) and 12 bytes
+more under vite (81,911 → 81,923). Nothing else moved: the Folder and Web APIs
+are still reached only when imported, and the Node entries are unchanged.
 
 **Entry-point choice is not a size lever.** `taglib-wasm` and
-`taglib-wasm/simple` differ by less than 1 KB in either direction — in a browser
-bundle `simple` is 712 bytes _smaller_, on Node 991 bytes _larger_, because
+`taglib-wasm/simple` differ by about a kilobyte either way — in a browser bundle
+`simple` is 279 bytes _smaller_, on Node 1,005 bytes _larger_, because
 `getTagLib()` reaches the full `TagLib` class through a dynamic import. Pick by
 API surface. The lever that does matter is the `browser` export condition: a
-browser-targeted bundle is ~82 KB where a Node-targeted one is ~145 KB.
+browser-targeted bundle is ~79 KB where a Node-targeted one is ~142 KB.
 
 **`"sideEffects": false`** is set in `package.json`, so a bundler may drop any
 module whose exports go unused. Before that field, importers of the sub-entries
 paid ~17 KB for property-metadata tables that were kept only because module-level
 table building looked impure; those bundles are now a few hundred bytes or less.
-Measured with esbuild `--platform=node`, rollup with default `node-resolve`
-options, and vite's app build — the combination under which all four apps build
+Measured on the **`node` condition** — esbuild `--platform=node`, rollup with
+default `node-resolve` options, and vite's app build with
+`resolve.conditions: ["node"]` — the combination under which all four apps build
 under every bundler:
 
-| Consumer app                                                   | esbuild off → on  | rollup off → on   | vite off → on   |
-| -------------------------------------------------------------- | ----------------- | ----------------- | --------------- |
-| `import "taglib-wasm/web"` (uses nothing)                      | 17,198 → 21       | 16,329 → 21       | 17,348 → 731    |
-| `import "taglib-wasm/folder"` (uses nothing)                   | 17,430 → 21       | 16,380 → 21       | 17,689 → 731    |
-| `pictureToDataURL` from `taglib-wasm/web`                      | 17,361 → 184      | 16,497 → 189      | 17,519 → 902    |
-| `import { TagLib } from "taglib-wasm"`, referenced by `typeof` | 145,596 → 145,030 | 134,337 → 134,286 | 84,278 → 84,278 |
+| Consumer app                                                   | esbuild off → on  | rollup off → on   | vite off → on     |
+| -------------------------------------------------------------- | ----------------- | ----------------- | ----------------- |
+| `import "taglib-wasm/web"` (uses nothing)                      | 17,224 → 0        | 16,428 → 1        | 17,328 → 711      |
+| `import "taglib-wasm/folder"` (uses nothing)                   | 17,428 → 0        | 16,479 → 1        | 17,669 → 711      |
+| `pictureToDataURL` from `taglib-wasm/web`                      | 17,428 → 205      | 16,637 → 210      | 17,540 → 923      |
+| `import { TagLib } from "taglib-wasm"`, referenced by `typeof` | 142,691 → 141,690 | 130,284 → 130,233 | 140,376 → 139,985 |
 
 ## Runtime Compatibility
 
