@@ -151,12 +151,21 @@ async function readVersionTs(): Promise<string | null> {
 /**
  * Update the JSR package manifest (jsr.json) when present. The manifest is
  * published verbatim, so its version must match package.json.
+ *
+ * Replacing the version value in the text beats re-serializing the JSON:
+ * JSON.stringify expands the manifest's short arrays (compilerOptions.lib),
+ * while the formatter collapses them — so a re-serialized file fails the
+ * release's post-bump `vp fmt --check` (it aborted the first 2.3.2 attempt).
  */
 async function updateJsrManifest(newVersion: string): Promise<boolean> {
   try {
-    const manifest = await readJsonFile<PackageJson>(JSR_MANIFEST_PATH);
-    manifest.version = newVersion;
-    await writeJsonFile(JSR_MANIFEST_PATH, manifest);
+    const content = await readFile(JSR_MANIFEST_PATH, "utf8");
+    const next = content.replace(
+      /^(\s*"version":\s*")[^"]*(")/m,
+      `$1${newVersion}$2`,
+    );
+    if (next === content) return false;
+    await writeFile(JSR_MANIFEST_PATH, next);
     return true;
   } catch {
     return false;
