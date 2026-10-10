@@ -756,7 +756,7 @@ rebuilding (~5 min per backend) or swapping in a binary from a commit that
 genuinely predates the fix — verify it by hash, because binaries are sometimes
 staged in a different commit than the source change they carry.
 
-See `CONTRIBUTING.md` for full contributor guide.
+See `.github/CONTRIBUTING.md` for full contributor guide.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 

@@ -466,7 +466,7 @@ Supported formats:
 - [Broadcast Metadata (BWF bext / iXML)](https://charleswiltgen.github.io/TagLib-Wasm/guide/broadcast-metadata.html)
 - [Cloudflare Workers](https://charleswiltgen.github.io/TagLib-Wasm/advanced/cloudflare-workers.html)
 - [Error Handling](https://charleswiltgen.github.io/TagLib-Wasm/concepts/error-handling.html)
-- [Contributing](CONTRIBUTING.md)
+- [Contributing](.github/CONTRIBUTING.md)
 - [AI Agent Documentation](AGENTS.md)
 
 ## Supported Formats
@@ -726,7 +726,7 @@ under every bundler:
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
+Contributions are welcome! Please read our [Contributing Guide](.github/CONTRIBUTING.md)
 for details on our code of conduct and the process for submitting pull requests.
 
 ## License

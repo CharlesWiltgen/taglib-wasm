@@ -369,8 +369,8 @@ Releases are cut from `main` with one command:
 
 ```bash
 npm run release                 # auto-increment patch version
-npm run release -- 3.1.0        # explicit version (npm needs `--` to pass it through)
-npm run release:quick -- 3.1.0  # same gates and same flow, but do not wait for the result
+npm run release -- 2.4.0        # explicit version (npm needs `--` to pass it through)
+npm run release:quick -- 2.4.0  # same gates and same flow, but do not wait for the result
 ```
 
 `scripts/release-safe.sh` runs the gates, bumps the version, pushes the bump
