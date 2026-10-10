@@ -173,6 +173,24 @@ export default defineConfig({
         },
       },
       {
+        // `docs/` is a separate package: its dependencies live in
+        // docs/package.json, and CI's lint job installs only the root
+        // node_modules. With VitePress unresolved, docs/.vitepress/config.ts's
+        // `defineConfig` import types as `error` and every type-aware
+        // `no-unsafe-*` rule fires there — on CI only, and never a code defect
+        // (measured: `vp lint --type-aware` exits 1 with docs/node_modules
+        // hidden and 0 with it present, the identical one-line finding). Keep
+        // the family visible at `warn` rather than red on missing deps.
+        files: ["docs/**"],
+        rules: {
+          "typescript/no-unsafe-argument": "warn",
+          "typescript/no-unsafe-assignment": "warn",
+          "typescript/no-unsafe-call": "warn",
+          "typescript/no-unsafe-member-access": "warn",
+          "typescript/no-unsafe-return": "warn",
+        },
+      },
+      {
         // Multi-runtime boundary code that necessarily uses `any` for
         // globalThis.Deno / .Bun / .process runtime detection. The old ESLint
         // config turned the whole `no-unsafe-*` family off for these five
