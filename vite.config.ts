@@ -326,6 +326,14 @@ export default defineConfig({
       // every mode, and tsdown would otherwise default to package.json's
       // `engines.node` (>=24.0.0). The browser entries inherited that Node
       // default too, so every config sets this.
+      //
+      // Lowering to ES2020 makes oxc route class fields/private members through
+      // runtime helpers, which the unbundled `js` config emits as separate
+      // modules under `_virtual/_@oxc-project_runtime@<toolchain version>/`
+      // (the browser entries inline them instead, ~1.6 KB each). The version in
+      // that directory name is the one vite-plus pins, so a toolchain bump
+      // renames it and the published file list moves with it; the files are
+      // internal (no `exports` subpath reaches them) and ship under `dist/**`.
       target: "es2020",
       unbundle: true,
       treeshake: false,
