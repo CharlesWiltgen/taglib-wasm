@@ -625,7 +625,7 @@ remains.
 checking, and nothing requires it: the TypeScript bundle scripts
 (`scripts/build-js.mjs`, `scripts/postbuild.mjs`) run under `node` and the
 auxiliary `.ts` scripts run under `npx tsx`. The JSR distribution channel
-(`deno publish`) was retired in 3.0.0.
+(`deno publish`) was retired with the JSR channel.
 
 ### Architecture
 

@@ -1,6 +1,5 @@
 /**
  * Validation and mapping helpers for the raw ID3v2 frame API (taglib-b67).
- * See docs/superpowers/specs/2026-07-09-raw-id3v2-frames-design.md.
  */
 
 import { MetadataError, UnsupportedFormatError } from "../errors/classes.ts";

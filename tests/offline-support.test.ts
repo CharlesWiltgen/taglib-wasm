@@ -163,7 +163,6 @@ describe("OfflineSupport", () => {
   );
 
   // The Deno-compile surface (initializeForDenoCompile, isDenoCompiled,
-  // prepareWasmForEmbedding, WASM_EMBED_SEARCH_PATHS) was removed in 3.0.0 —
-  // see docs/superpowers/specs/2026-10-09-deno-to-viteplus-migration-design.md §5.
+  // prepareWasmForEmbedding, WASM_EMBED_SEARCH_PATHS) was removed.
   // The Emscripten loader coverage above is unconditional.
 });

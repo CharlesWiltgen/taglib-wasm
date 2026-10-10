@@ -428,9 +428,7 @@ for (const backend of BACKENDS) {
   // raw-then-typed on the same ID. tag.title = "..." calls
   // ID3v2::Tag::setTextFrame(), which does front()->setText() on the existing
   // frame object — a no-op on the raw UnknownFrame — so the typed write is
-  // silently discarded and the raw bytes persist through save+reload. See the
-  // 2026-07-09 implementation-phase amendment in
-  // docs/superpowers/specs/2026-07-09-raw-id3v2-frames-design.md.
+  // silently discarded and the raw bytes persist through save+reload.
   it(`[${backend}] raw-then-typed write to the same ID: raw wins (I3 spec amendment)`, async () => {
     const { taglib, file } = await openMp3(backend);
     const body = new Uint8Array([

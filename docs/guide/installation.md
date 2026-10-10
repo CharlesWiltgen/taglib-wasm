@@ -25,7 +25,7 @@ bun add taglib-wasm
 
 :::
 
-> **Note:** the JSR package `@charlesw/taglib-wasm` is deprecated as of 3.0.0 —
+> **Note:** the JSR package `@charlesw/taglib-wasm` is deprecated —
 > Deno installs from npm via `npm:taglib-wasm`.
 
 ### Node.js Requirements
