@@ -22,7 +22,7 @@ This checklist ensures a smooth and safe release process.
 
 ### 2. Version Synchronization
 
-- [ ] Version in `package.json` matches version in `deno.json`
+- [ ] Version in `package.json` matches `src/version.ts` (`npx tsx scripts/sync-version.ts check`)
 - [ ] Version follows semantic versioning (MAJOR.MINOR.PATCH)
 
 ### 3. Git Status
@@ -72,7 +72,7 @@ This script will:
 4. Run all tests (format, lint, type-check, unit tests)
 5. Verify build process works
 6. Check version synchronization
-7. Update versions in both package.json and deno.json
+7. Update the version in `package.json` and `src/version.ts`
 8. Commit version changes
 9. Create and push git tag
 10. Trigger the publish workflow
@@ -94,12 +94,12 @@ If you must release manually:
 
 2. **Update versions**:
    - Edit `package.json` version
-   - Edit `deno.json` version
+   - Edit `src/version.ts` version
    - Ensure they match
 
 3. **Commit and tag**:
    ```bash
-   git add package.json deno.json
+   git add package.json src/version.ts
    git commit -m "chore: bump version to X.Y.Z"
    git tag -a vX.Y.Z -m "Release version X.Y.Z"
    git push origin main
@@ -156,7 +156,7 @@ If not done automatically:
 
 ### Version Mismatch
 
-- Ensure both `package.json` and `deno.json` have the same version
+- Ensure both `package.json` and `src/version.ts` have the same version
 - Use the release script which handles this automatically
 
 ### Publish Workflow Fails
