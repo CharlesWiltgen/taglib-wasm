@@ -135,7 +135,7 @@
     "version:check": "npx tsx scripts/sync-version.ts check",
     "lint:ast": "bash -c 'command -v ast-grep >/dev/null 2>&1 || { echo \"ast-grep not installed — skipping structural rules\"; exit 0; }; ast-grep test && ast-grep scan'",
     "test:sonar": "SONAR_REPORT=1 vp test --coverage",
-    "check:all": "npx vp check && npm run lint:ast && npm run docs:coverage && npm run knip && npx tsc --noEmit -p tsconfig.check.json && npx vp test && npm run build:js && npm run postbuild && node scripts/check-dist-resolution.mjs && node scripts/check-disc-folder.mjs && bash scripts/check-toolchain-pins.sh",
+    "check:all": "npx vp check && npm run lint:ast && npm run docs:coverage && npm run knip && npm run knip:strict && npx tsc --noEmit -p tsconfig.check.json && npx vp test && npm run build:js && npm run postbuild && node scripts/check-dist-resolution.mjs && node scripts/check-disc-folder.mjs && bash scripts/check-toolchain-pins.sh",
     "test": "vp test",
     "test:bun": "bun test tests/bun-integration.test.ts",
     "test:deno": "deno test --allow-read --allow-write --allow-env tests/deno-*.test.ts",
@@ -147,7 +147,8 @@
     "docs:build": "cd docs && npm install && npm run build",
     "update-taglib": "./scripts/update-taglib.sh",
     "release": "./scripts/release-safe.sh",
-    "release:quick": "./scripts/release-safe.sh --skip-watch"
+    "release:quick": "./scripts/release-safe.sh --skip-watch",
+    "knip:strict": "npx --no-install knip --no-progress --treat-config-hints-as-errors --strict"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3"
@@ -176,20 +177,20 @@
   "packageManager": "npm@11.19.0",
   "knip": {
     "entry": [
-      "src/{index,index.browser,simple,simple.browser,folder,disc-folder,web,web.browser,rating}.ts",
-      "src/taglib/index.ts",
-      "src/msgpack/index.ts",
-      "src/types/index.ts",
-      "src/runtime/unified-loader/index.ts",
+      "src/{index,index.browser,simple,simple.browser,folder,disc-folder,web,web.browser,rating}.ts!",
+      "src/taglib/index.ts!",
+      "src/msgpack/index.ts!",
+      "src/types/index.ts!",
+      "src/runtime/unified-loader/index.ts!",
       "tests/**/*.test.ts",
       "tests/**/*.bench.ts",
-      "src/**/*.test.ts",
+      "src/**/*.test.ts!",
       "tests/cross-runtime/**/*.ts",
       "tests/test-files/_gen/make-bwf-fixtures.ts",
       "scripts/**/*.{ts,mjs,js}"
     ],
     "project": [
-      "src/**/*.ts",
+      "src/**/*.ts!",
       "tests/**/*.ts",
       "scripts/**/*.{ts,mjs,js}",
       "*.ts"

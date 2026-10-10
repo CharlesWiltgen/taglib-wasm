@@ -231,6 +231,7 @@ export function supportsExnref(): boolean {
   }
 }
 
+/** @internal Exported for unit tests (tests/runtime-detector-unit.test.ts). */
 export function getEnvironmentDescription(env: RuntimeEnvironment): string {
   switch (env) {
     case "deno-wasi":
@@ -252,6 +253,7 @@ export function getEnvironmentDescription(env: RuntimeEnvironment): string {
   }
 }
 
+/** @internal Exported for unit tests (tests/runtime-detector-unit.test.ts). */
 export function canLoadWasmType(
   wasmType: WasmBinaryType,
   env: RuntimeEnvironment = detectRuntime().environment,
