@@ -209,6 +209,15 @@ run_preflight_checks() {
 
     # publint (verify package.json)
     print_step "Running publint..."
+    # `npx --no-install` never fetches, but a warm npm cache can still satisfy a
+    # missing local copy with a different version — which would defeat the pin.
+    # Require the pinned bins to be present rather than trusting the cache.
+    for tool in publint attw; do
+        if [ ! -x "node_modules/.bin/$tool" ]; then
+            print_error "node_modules/.bin/$tool is missing — run 'npm ci' first"
+            exit 1
+        fi
+    done
     if ! npx --no-install publint > /dev/null 2>&1; then
         print_error "publint failed"
         print_warning "Run 'npx --no-install publint' to see details"

@@ -588,7 +588,9 @@ jobs:
         # --no-install and a devDependency pin: without them `npx` resolves
         # `publint` from the registry at run time, so the check analyzes
         # whatever version is published that day (the same reasoning as the
-        # knip step above).
+        # knip step above). --no-install never fetches; note a warm npm cache
+        # can still satisfy a missing local copy with a cached version, so the
+        # unconditional guarantee is CI's: cold cache plus `npm ci`.
         run: npx --no-install publint
 
       - name: NPM - arethetypeswrong
@@ -682,7 +684,7 @@ jobs:
           console.log("taglib-wasm browser imports OK");
           JSEOF
 
-          npx vite build 2>&1
+          npx --no-install vite build 2>&1
           echo ":: Vite build succeeded"
 
           # Check for server-only entry points in the bundle.

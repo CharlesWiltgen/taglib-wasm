@@ -17,6 +17,26 @@ const NODE_FS_BROWSER_STUB = `
   }
 `;
 
+/**
+ * Which comments survive into the browser bundles: the functional ones only.
+ *
+ * rolldown keeps every JSDoc block where the retired esbuild build discarded
+ * nearly all of them, and carrying that prose cost 22 KB on index.browser.js
+ * (151 KB → 173 KB) plus 15 KB of gzip on that entry (37 KB across the three).
+ * `comments: false` recovers that but also throws
+ * away the `@__PURE__` marker, which is not prose — it tells a consumer's
+ * minifier that an allocation or namespace helper is droppable, and losing it
+ * makes minified app bundles ~800 B larger. rolldown exposes the split
+ * declaratively as `{ legal, annotation, jsdoc }`, so the browser entries keep
+ * annotations and legal notices and drop the JSDoc. (rolldown's `//#region`
+ * banners are emitted outside this filter and survive; they carry no code.)
+ */
+const BROWSER_COMMENTS = {
+  legal: true,
+  annotation: true,
+  jsdoc: false,
+} as const;
+
 /** The rolldown equivalent of the retired esbuild browser-redirect plugin: same redirects, same stubs. */
 function browserRedirect(): TsdownPlugin {
   return {
@@ -383,15 +403,17 @@ export default defineConfig({
     // «output.codeSplitting» is false"), and rolldown's default splitting
     // emits hash-named sibling chunks. One entry per config ⇒ one file each.
     //
-    // `outputOptions.comments: false` drops the JSDoc blocks rolldown keeps
-    // and the retired esbuild build discarded: carrying them cost 22 KB on
-    // index.browser.js (151 KB → 173 KB) and 39 KB of *gzip*. rolldown's
-    // `//#region` banners survive the option — nothing removes them — so they
-    // are part of what remains; the rest of the difference is whitespace, the
-    // two builds' emitted code being within ~2 KB of the same size. All three
-    // entries are now smaller than their 2.3.0 files, raw and gzipped;
-    // nothing name-dependent depends on the comments, and the bundles carry
-    // no license text to preserve.
+    // `comments: keepFunctional` rather than `false`: rolldown keeps every
+    // JSDoc block where the retired esbuild build discarded nearly all of them,
+    // and carrying that prose cost 22 KB on index.browser.js (151 KB → 173 KB)
+    // plus 39 KB of *gzip*. Dropping *all* comments is not the fix either —
+    // `/* @__PURE__ */` is functional (it is what lets a consumer's minifier
+    // drop an unused allocation, and a build without it makes minified app
+    // bundles ~800 B larger), and it is the one class of comment in these
+    // files a consumer needs. So keep the annotations and legal notices, drop
+    // the prose. rolldown's `//#region` banners are not comments it filters, so
+    // they remain; they carry no code. All three entries are smaller than their
+    // 2.3.0 files, raw and gzipped.
     {
       name: "browser-index",
       entry: ["src/index.browser.ts"],
@@ -403,7 +425,7 @@ export default defineConfig({
       dts: false,
       clean: false,
       deps: { neverBundle: [/taglib-wrapper\.js$/] },
-      outputOptions: { codeSplitting: false, comments: false },
+      outputOptions: { codeSplitting: false, comments: BROWSER_COMMENTS },
       plugins: [browserRedirect()],
     },
     {
@@ -417,7 +439,7 @@ export default defineConfig({
       dts: false,
       clean: false,
       deps: { neverBundle: [/taglib-wrapper\.js$/] },
-      outputOptions: { codeSplitting: false, comments: false },
+      outputOptions: { codeSplitting: false, comments: BROWSER_COMMENTS },
       plugins: [browserRedirect()],
     },
     {
@@ -431,7 +453,7 @@ export default defineConfig({
       dts: false,
       clean: false,
       deps: { neverBundle: [/taglib-wrapper\.js$/] },
-      outputOptions: { codeSplitting: false, comments: false },
+      outputOptions: { codeSplitting: false, comments: BROWSER_COMMENTS },
       plugins: [browserRedirect()],
     },
   ],

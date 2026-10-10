@@ -19,14 +19,16 @@
   as `node:module` rather than `module`, so a bundler that externalizes that
   dynamic import must match the new specifier. The browser entries end up 15-17%
   smaller than 2.3.0's, raw and 11-13% smaller gzipped: rolldown emits every
-  JSDoc block where esbuild dropped nearly all of them, and
-  `outputOptions.comments: false` now drops those (rolldown's `//#region`
-  banners remain — no option removes them — but they carry no code). The
-  remainder of the difference is whitespace: the two builds' emitted code is
-  within ~2 KB of the same size. A consumer's own bundler sees the same
-  direction — minified app bundles are ~2% smaller. The published tarball is 2%
-  larger (785 KB → 803 KB), the cost of the extra code the ES2020 lowering
-  emits, inlined per module rather than only in its `dist/_virtual/` helpers.
+  JSDoc block where esbuild dropped nearly all of them, and the browser entries
+  are built with `comments: { annotation: true, jsdoc: false }` — that drops the
+  prose while keeping the `@__PURE__` annotations a consumer's minifier uses to
+  drop unused allocations. Dropping every comment instead would have made
+  minified app bundles ~800 B _larger_; keeping only the annotations makes them
+  smaller than 2.3.0's (2-4% depending on the app; ~3.6% on the README's esbuild
+  recipe). rolldown's `//#region` banners are emitted outside that filter and
+  survive — they carry no code. The published tarball is 2% larger (785 KB →
+  803 KB), the cost of the extra code the ES2020 lowering emits, inlined per
+  module rather than only in its `dist/_virtual/` helpers.
 
 ### Removed
 
