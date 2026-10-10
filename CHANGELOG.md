@@ -1,15 +1,15 @@
 # Changelog
 
-## 3.0.0
+## Unreleased
 
 ### Removed (BREAKING)
 
 - Deno runtime support. The `initializeForDenoCompile`, `isDenoCompiled` and
   `prepareWasmForEmbedding` exports are gone; Deno is no longer a supported
   runtime (Node, Bun, browsers, Cloudflare Workers and Electron remain).
-  Version 3.0.0 removes Deno support entirely.
-- JSR distribution. The `@charlesw/taglib-wasm` JSR package is deprecated as
-  of 3.0.0; Deno installs from npm via `npm:taglib-wasm`. The `publish-jsr`
+  Deno support is removed entirely.
+- JSR distribution. The `@charlesw/taglib-wasm` JSR package is deprecated;
+  Deno installs from npm via `npm:taglib-wasm`. The `publish-jsr`
   and `verify-jsr` CI jobs and the `deno.json`/`deno.lock` manifests are gone.
 
 ### Fixed
