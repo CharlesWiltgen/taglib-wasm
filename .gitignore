@@ -42,11 +42,10 @@ cov_profile/
 # IDE
 .vscode/
 .vscode-test
-# .claude/ is machine-local EXCEPT skills: Claude Code discovers project
-# skills from the committed tree (gitignored skills are invisible to it).
-.claude/*
-!.claude/skills/
-!.claude/commands/
+# Machine-local scratch: agent tooling (.claude/) and planning notes
+# (docs/superpowers/). Nothing under either is tracked.
+.claude/
+docs/superpowers/
 .githooks/
 
 # Tool configuration
