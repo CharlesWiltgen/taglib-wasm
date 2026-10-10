@@ -1,13 +1,18 @@
-import { assertEquals } from "jsr:@std/assert@^1.0.19";
-import { describe, it } from "jsr:@std/testing@^1.0.20/bdd";
+/**
+ * @fileoverview Tests for Deno compiled-binary detection.
+ *
+ * Deno-only: Vitest's config excludes this file and `npm run test:deno` owns it.
+ * Dependency-free (`Deno.test` + the local assert helpers) since the retired
+ * deno.json import map is gone.
+ */
+
+import { assertEquals } from "./deno-assert.ts";
 import { isDenoCompiled } from "../src/runtime/deno-detect.ts";
 
-describe("isDenoCompiled", () => {
-  it("returns false in regular Deno runtime", () => {
-    assertEquals(isDenoCompiled(), false);
-  });
+Deno.test("isDenoCompiled returns false in regular Deno runtime", () => {
+  assertEquals(isDenoCompiled(), false);
+});
 
-  it("checks Deno.mainModule for deno-compile:// prefix", () => {
-    assertEquals(Deno.mainModule.includes("deno-compile://"), false);
-  });
+Deno.test("Deno.mainModule carries no deno-compile:// prefix", () => {
+  assertEquals(Deno.mainModule.includes("deno-compile://"), false);
 });

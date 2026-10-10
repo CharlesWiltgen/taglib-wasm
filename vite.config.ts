@@ -291,6 +291,8 @@ export default defineConfig({
       "tests/bun-integration.test.ts",
       "tests/cross-runtime/**",
       "tests/deno-detect.test.ts",
+      "tests/deno-fs-provider.test.ts",
+      "tests/deno-compile.test.ts",
     ],
     pool: "forks",
     execArgv: ["--expose-gc"],
