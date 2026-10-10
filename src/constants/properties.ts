@@ -14,8 +14,18 @@ import { BASIC_PROPERTIES } from "./basic-properties.ts";
 import { GENERAL_EXTENDED_PROPERTIES } from "./general-extended-properties.ts";
 import { SPECIALIZED_PROPERTIES } from "./specialized-properties.ts";
 
-// Combine all properties into a single object
-export const PROPERTIES = {
+// Combine all properties into a single object.
+//
+// The explicit intersection annotation is load-bearing (taglib-c76n): tools
+// that emit declarations without full spread inference — Deno's declaration
+// emitter behind `deno pack`/JSR — wrote `{}` for this const without it, which
+// breaks every consumer's `PROPERTIES.<key>` access. `tsc` emits the full
+// literal either way; the annotation also makes the file compatible with
+// `--isolatedDeclarations`.
+export const PROPERTIES: typeof BASIC_PROPERTIES &
+  typeof GENERAL_EXTENDED_PROPERTIES &
+  typeof SPECIALIZED_PROPERTIES &
+  typeof ADDITIONAL_PROPERTIES = {
   ...BASIC_PROPERTIES,
   ...GENERAL_EXTENDED_PROPERTIES,
   ...SPECIALIZED_PROPERTIES,
