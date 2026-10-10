@@ -16,8 +16,8 @@
  */
 // taglib-ys7m: the grouping surface now spans four modules; export the public
 // names explicitly so internal helpers (DiscParse, OkItem, ...) stay private.
-export { discFolderInfo } from "./src/folder-api/folder-disc.ts";
-export { groupAlbums } from "./src/folder-api/album-grouping.ts";
+export { discFolderInfo } from "./folder-api/folder-disc.ts";
+export { groupAlbums } from "./folder-api/album-grouping.ts";
 export type {
   AlbumDisc,
   AlbumGroup,
@@ -27,5 +27,5 @@ export type {
   DiscConfidence,
   DiscFolderInfo,
   GroupAlbumsOptions,
-} from "./src/folder-api/album-types.ts";
-export type { FolderScanResult } from "./src/folder-api/types.ts";
+} from "./folder-api/album-types.ts";
+export type { FolderScanResult } from "./folder-api/types.ts";

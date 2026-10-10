@@ -12,7 +12,7 @@
  * - WAV: INFO chunk fields
  */
 
-import { TagLib, Tags } from "../../index.ts";
+import { TagLib, Tags } from "../../src/index.ts";
 import { METADATA_MAPPINGS } from "../../src/types.ts";
 
 async function demonstrateAdvancedMetadata() {

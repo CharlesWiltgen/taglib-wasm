@@ -15,7 +15,7 @@ import {
   loadUnifiedTagLibModule,
   ModuleLoadError,
 } from "../src/runtime/unified-loader/index.ts";
-import { loadTagLibModule, TagLib } from "../index.ts";
+import { loadTagLibModule, TagLib } from "../src/index.ts";
 import { expectRejects } from "./_assert-helpers.ts";
 
 describe("Runtime detection", () => {

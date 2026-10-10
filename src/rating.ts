@@ -12,4 +12,4 @@
  * ```
  */
 
-export * from "./src/utils/rating.ts";
+export * from "./utils/rating.ts";

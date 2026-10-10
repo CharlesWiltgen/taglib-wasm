@@ -14,7 +14,7 @@ import { expectThrows } from "./_assert-helpers.ts";
 import fc from "fast-check";
 import { TagLib } from "../src/taglib.ts";
 import { UnsupportedFormatError } from "../src/errors.ts";
-import type { Chapter, SetChaptersOptions } from "../index.ts";
+import type { Chapter, SetChaptersOptions } from "../src/index.ts";
 
 // Compile-time: the public Chapter/SetChaptersOptions shapes.
 const _chapter: Chapter = { startTimeMs: 0 };

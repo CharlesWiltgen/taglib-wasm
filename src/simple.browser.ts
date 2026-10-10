@@ -5,4 +5,4 @@
  * @module simple/browser
  */
 
-export * from "./src/simple/index.ts";
+export * from "./simple/index.ts";

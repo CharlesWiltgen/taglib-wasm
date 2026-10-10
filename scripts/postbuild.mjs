@@ -65,9 +65,9 @@ console.log("\n🔧 Fixing import specifiers for the built bundle...");
 console.log("\n🔍 Verifying wasm path resolution...");
 const { readFileSync } = await import("node:fs");
 const wasmLoaders = [
-  "dist/src/runtime/unified-loader/module-loading.js",
-  "dist/src/runtime/wasi-host-loader.js",
-  "dist/src/runtime/module-loader.js",
+  "dist/runtime/unified-loader/module-loading.js",
+  "dist/runtime/wasi-host-loader.js",
+  "dist/runtime/module-loader.js",
 ];
 let wasmPathsOk = true;
 for (const file of wasmLoaders) {

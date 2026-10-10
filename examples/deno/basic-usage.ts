@@ -3,7 +3,7 @@
  */
 
 // For local development:
-import { TagLib } from "../../index.ts";
+import { TagLib } from "../../src/index.ts";
 
 // When using the published package:
 // import { TagLib } from "npm:taglib-wasm";

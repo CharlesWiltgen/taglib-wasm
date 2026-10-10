@@ -16,7 +16,7 @@ import {
   PropertyKey,
   TagLib,
   Tags,
-} from "../../index.ts";
+} from "../../src/index.ts";
 
 async function demonstrateEnhancedProperties() {
   console.log("🎵 TagLib-Wasm - Enhanced Property System Example");

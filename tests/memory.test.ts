@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import { stat } from "node:fs/promises";
-import { TagLib } from "../index.ts";
+import { TagLib } from "../src/index.ts";
 import { TEST_FILES } from "./test-utils.ts";
 
 const TEST_FILE = TEST_FILES.mp3;

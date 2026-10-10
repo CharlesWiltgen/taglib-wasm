@@ -10,4 +10,4 @@
  * @module taglib-wasm/web/browser
  */
 
-export * from "./src/web-utils/index.ts";
+export * from "./web-utils/index.ts";

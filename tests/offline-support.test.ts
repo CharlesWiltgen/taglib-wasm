@@ -5,7 +5,7 @@
 
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vite-plus/test";
-import { loadTagLibModule } from "../index.ts";
+import { loadTagLibModule } from "../src/index.ts";
 import { createTagLib, TagLib } from "../src/taglib.ts";
 import { expectDefined, expectRejects } from "./_assert-helpers.ts";
 

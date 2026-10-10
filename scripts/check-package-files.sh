@@ -14,8 +14,7 @@ cd "$ROOT"
 # edit here too — that is the point.
 EXPECTED="$(printf '%s\n' \
   '!src/**/*.test.ts' 'AGENTS.md' 'LICENSE' 'README.md' 'dist/**/*' \
-  'disc-folder.ts' 'folder.ts' 'index.browser.ts' 'index.ts' 'rating.ts' \
-  'simple.browser.ts' 'simple.ts' 'src/**/*.ts' 'web.browser.ts' 'web.ts' | LC_ALL=C sort)"
+  'src/**/*.ts' | LC_ALL=C sort)"
 ACTUAL="$(node -e 'process.stdout.write(require("./package.json").files.slice().sort().join("\n"))')"
 if [ "$EXPECTED" != "$ACTUAL" ]; then
   echo "::error::package.json \"files\" allowlist changed — update scripts/check-package-files.sh if intentional:"

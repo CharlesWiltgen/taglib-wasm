@@ -16,4 +16,4 @@
  * ```
  */
 
-export * from "./src/folder-api/index.ts";
+export * from "./folder-api/index.ts";

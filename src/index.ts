@@ -37,10 +37,10 @@
 export type {
   AudioFile,
   TypedAudioFile,
-} from "./src/taglib/audio-file-interface.ts";
-export { AudioFileImpl, createTagLib, TagLib } from "./src/taglib.ts";
-export type { MutableTag } from "./src/taglib.ts";
-export { isNamedAudioInput } from "./src/types/audio-formats.ts";
+} from "./taglib/audio-file-interface.ts";
+export { AudioFileImpl, createTagLib, TagLib } from "./taglib.ts";
+export type { MutableTag } from "./taglib.ts";
+export { isNamedAudioInput } from "./types/audio-formats.ts";
 
 // Error types
 export {
@@ -60,15 +60,15 @@ export {
   TagLibError,
   TagLibInitializationError,
   UnsupportedFormatError,
-} from "./src/errors.ts";
-export type { TagLibErrorCode } from "./src/errors.ts";
+} from "./errors.ts";
+export type { TagLibErrorCode } from "./errors.ts";
 
 // Deno compile support
 export {
   initializeForDenoCompile,
   isDenoCompiled,
   prepareWasmForEmbedding,
-} from "./src/deno-compile.ts";
+} from "./deno-compile.ts";
 
 // Simple API
 export {
@@ -98,13 +98,13 @@ export {
   readTagsBatch,
   replacePictureByType,
   setBufferMode,
-} from "./src/simple/index.ts";
+} from "./simple/index.ts";
 export type {
   ChecksumAlgorithm,
   ChecksumSource,
   MediaChecksum,
   MediaChecksumOptions,
-} from "./src/taglib/audio-file-checksum.ts";
+} from "./taglib/audio-file-checksum.ts";
 
 // Property constants and utilities
 export {
@@ -117,8 +117,8 @@ export {
   PROPERTIES,
   propertyValue,
   propertyValues,
-} from "./src/constants.ts";
-export type { PropertyMetadata } from "./src/constants/property-types.ts";
+} from "./constants.ts";
+export type { PropertyMetadata } from "./constants/property-types.ts";
 
 // File I/O utilities for cover art
 export {
@@ -131,7 +131,7 @@ export {
   importPictureWithType,
   loadPictureFromFile,
   savePictureToFile,
-} from "./src/file-utils/index.ts";
+} from "./file-utils/index.ts";
 
 // Folder/batch operations
 export {
@@ -156,7 +156,7 @@ export {
   scanFolder,
   scanForAlbums,
   type ScanForAlbumsOptions,
-} from "./src/folder-api/index.ts";
+} from "./folder-api/index.ts";
 
 // Web browser utilities
 export {
@@ -168,7 +168,7 @@ export {
   imageFileToPicture,
   pictureToDataURL,
   setCoverArtFromCanvas,
-} from "./src/web-utils/index.ts";
+} from "./web-utils/index.ts";
 
 // Core types
 export type {
@@ -190,20 +190,20 @@ export type {
   SetChaptersOptions,
   Tag,
   TagInput,
-} from "./src/types.ts";
+} from "./types.ts";
 export {
   BITRATE_CONTROL_MODE_NAMES,
   BITRATE_CONTROL_MODE_VALUES,
   PICTURE_TYPE_NAMES,
   PICTURE_TYPE_VALUES,
-} from "./src/types.ts";
+} from "./types.ts";
 
-export type { PropertyKey, PropertyValue } from "./src/constants.ts";
+export type { PropertyKey, PropertyValue } from "./constants.ts";
 export type {
   FormatPropertyKey,
   TagFormat,
-} from "./src/types/format-property-keys.ts";
-export type { TypedAudioProperties } from "./src/types/audio-formats.ts";
+} from "./types/format-property-keys.ts";
+export type { TypedAudioProperties } from "./types/audio-formats.ts";
 
 // Complex property TYPES (the COMPLEX_PROPERTIES/COMPLEX_PROPERTY_KEY value
 // exports were removed in 2.0.0 — they described a generic accessor pattern
@@ -213,16 +213,16 @@ export type {
   Rating,
   UnsyncedLyrics,
   VariantMap,
-} from "./src/constants/complex-properties.ts";
+} from "./constants/complex-properties.ts";
 
 // Rating conversion utilities (individual functions available via taglib-wasm/rating)
-export { RatingUtils } from "./src/utils/rating.ts";
-export type { NormalizedRating, PopmRating } from "./src/utils/rating.ts";
+export { RatingUtils } from "./utils/rating.ts";
+export type { NormalizedRating, PopmRating } from "./utils/rating.ts";
 
 // BWF `bext` chunk codec — for working with raw bext bytes without a file handle
-export * as bwf from "./src/bwf/bext.ts";
+export * as bwf from "./bwf/bext.ts";
 
 // Wasm module types and loader
-export type { TagLibModule, WasmModule } from "./src/wasm.ts";
-export type { LoadTagLibOptions } from "./src/runtime/loader-types.ts";
-export { loadTagLibModule } from "./src/runtime/module-loader.ts";
+export type { TagLibModule, WasmModule } from "./wasm.ts";
+export type { LoadTagLibOptions } from "./runtime/loader-types.ts";
+export { loadTagLibModule } from "./runtime/module-loader.ts";

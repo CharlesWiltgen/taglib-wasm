@@ -15,7 +15,7 @@ import {
   isDenoCompiled,
   readTags,
   TagLib,
-} from "../../index.ts";
+} from "../../src/index.ts";
 
 // Configuration from environment
 const USE_EMBEDDED = Deno.env.get("USE_EMBEDDED_WASM") === "true";

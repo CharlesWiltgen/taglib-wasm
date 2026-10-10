@@ -11,7 +11,7 @@
  * - Properly dispose of resources
  */
 
-import { TagLib } from "../../index.ts";
+import { TagLib } from "../../src/index.ts";
 
 async function demonstrateBasicUsage() {
   console.log("🎵 TagLib-Wasm - Basic Usage Example");

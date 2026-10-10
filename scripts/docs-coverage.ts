@@ -17,12 +17,12 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import ts from "typescript";
 
 const ENTRY_POINTS = [
-  "index.ts",
-  "simple.ts",
-  "folder.ts",
-  "disc-folder.ts",
-  "web.ts",
-  "rating.ts",
+  "src/index.ts",
+  "src/simple.ts",
+  "src/folder.ts",
+  "src/disc-folder.ts",
+  "src/web.ts",
+  "src/rating.ts",
 ];
 
 const DOC_ROOTS = ["README.md", "AGENTS.md", "docs"];

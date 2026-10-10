@@ -12,7 +12,7 @@ import {
   readTags,
   readTagsBatch,
   scanFolder,
-} from "../index.ts";
+} from "../src/index.ts";
 
 // Helper to format duration
 function formatDuration(ms: number): string {

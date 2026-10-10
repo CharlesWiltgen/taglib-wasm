@@ -3,7 +3,7 @@
 // property itself is enforced by the CI metafile guard in the bundle job —
 // this test defends the export surface.
 import { expect, it } from "vite-plus/test";
-import { discFolderInfo, groupAlbums } from "../disc-folder.ts";
+import { discFolderInfo, groupAlbums } from "../src/disc-folder.ts";
 
 it("disc-folder subpath exports the pure grammar", () => {
   expect(typeof discFolderInfo).toStrictEqual("function");

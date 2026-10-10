@@ -7,6 +7,10 @@
     "noEmit": true,
     "emitDeclarationOnly": false,
     "declaration": false,
+    // tsconfig.json sets rootDir to src/ for the *build* (so dist/ mirrors src/).
+    // This config also includes tests/ and the root *.ts, which are outside src/,
+    // and tsc rejects any input outside rootDir (TS6059) even with noEmit.
+    "rootDir": ".",
     // tsconfig.json sets declarationMap: true; TS5069 rejects a declaration map
     // without `declaration` (or `composite`), so this override is required.
     "declarationMap": false,
@@ -17,7 +21,7 @@
     // config is untouched.
     "lib": ["ESNext", "DOM", "ESNext.Disposable"]
   },
-  "include": ["index.ts", "src/**/*", "tests/**/*", "*.ts"],
+  "include": ["src/**/*", "tests/**/*", "*.ts"],
   "exclude": [
     "node_modules",
     "dist",

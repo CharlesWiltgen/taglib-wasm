@@ -45,7 +45,7 @@ try {
 // Test 3: Test Simple API
 console.log("Test 3: Testing Simple API");
 try {
-  const { readTags, isValidAudioFile } = await import("../dist/src/simple.js");
+  const { readTags, isValidAudioFile } = await import("../dist/simple.js");
 
   // Create a minimal WAV file
   const wavHeader = new Uint8Array([

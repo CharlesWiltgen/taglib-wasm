@@ -32,8 +32,8 @@ import { readFile, stat } from "node:fs/promises";
 import { expect, it } from "vite-plus/test";
 // Namespace imports so the export surface itself is the observable: the two
 // barrels are compared name by name, not called.
-import * as nodeEntry from "../index.ts";
-import * as browserEntry from "../index.browser.ts";
+import * as nodeEntry from "../src/index.ts";
+import * as browserEntry from "../src/index.browser.ts";
 
 const ROOT = new URL("../", import.meta.url);
 
@@ -354,7 +354,7 @@ it("browser barrel exports every browser-capable Node export, and nothing else",
 });
 
 it("the browser barrel's declared surface matches the shipped runtime surface", async () => {
-  const browser = await declaredSurface("index.browser.ts");
+  const browser = await declaredSurface("src/index.browser.ts");
   expect(
     browser.values,
     "the parser and the live module disagree — the surface check below would " +
@@ -363,8 +363,8 @@ it("the browser barrel's declared surface matches the shipped runtime surface", 
 });
 
 it("browser and Node barrels declare the same type surface", async () => {
-  const node = await declaredSurface("index.ts");
-  const browser = await declaredSurface("index.browser.ts");
+  const node = await declaredSurface("src/index.ts");
+  const browser = await declaredSurface("src/index.browser.ts");
 
   expect(
     node.types.length >= 20,
@@ -379,8 +379,8 @@ it("browser and Node barrels declare the same type surface", async () => {
 
 it("every browser-variant entry declares the same surface as its Node twin", async () => {
   for (const name of ["simple", "web"]) {
-    const node = await declaredSurface(`${name}.ts`);
-    const browser = await declaredSurface(`${name}.browser.ts`);
+    const node = await declaredSurface(`src/${name}.ts`);
+    const browser = await declaredSurface(`src/${name}.browser.ts`);
     expect(
       browser.values,
       `${name}.browser.ts must export what ${name}.ts does`,
@@ -417,7 +417,9 @@ it("browser export conditions point at sources the build produces, and only the 
       );
     }
     for (const distPath of [browserCondition.types, browserCondition.default]) {
+      // exports targets are dist/*; their sources are src/* (dist mirrors src).
       const source =
+        "src/" +
         distPath.replace(/^\.\/dist\//, "").replace(/(?:\.d)?\.ts$|\.js$/, "") +
         ".ts";
       let built = true;
@@ -446,7 +448,7 @@ it("browser entries reach no Node-only module and no undeclared dependency", asy
   ) as { dependencies: Record<string, string> };
   const declared = new Set(Object.keys(pkg.dependencies));
 
-  for (const entry of ["index.browser.ts", "web.browser.ts"]) {
+  for (const entry of ["src/index.browser.ts", "src/web.browser.ts"]) {
     const { modules, bareSpecifiers } = await runtimeGraph(entry);
 
     const stray = modules.filter((m) => NODE_ONLY_MODULES.test(m));
@@ -468,7 +470,7 @@ it("browser entries reach no Node-only module and no undeclared dependency", asy
     ).toBeTruthy();
   }
 
-  const indexGraph = await runtimeGraph("index.browser.ts");
+  const indexGraph = await runtimeGraph("src/index.browser.ts");
   for (const leaf of [
     "src/bwf/bext.ts",
     "src/folder-api/folder-disc.ts",

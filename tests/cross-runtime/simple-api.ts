@@ -18,7 +18,7 @@
 
 import { fileURLToPath } from "node:url";
 import process from "node:process";
-import { readFormat, readProperties, readTags } from "../../simple.ts";
+import { readFormat, readProperties, readTags } from "../../src/simple.ts";
 
 const fixture = (dir: string, ext: string): string =>
   // fileURLToPath, not URL.pathname: pathname is percent-encoded (a checkout

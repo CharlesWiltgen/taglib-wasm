@@ -26,7 +26,7 @@ import type { RawId3v2Frame } from "../src/wasm.ts";
 import { WasmArena, type WasmExports } from "../src/runtime/wasi-memory.ts";
 import type { WasiModule } from "../src/runtime/wasmer-sdk-loader/types.ts";
 import { TagLib } from "../src/taglib.ts";
-import type { Id3v2Frame } from "../index.ts";
+import type { Id3v2Frame } from "../src/index.ts";
 
 const MP3_FIXTURE = "tests/test-files/mp3/kiss-snippet.mp3";
 const FLAC_FIXTURE = "tests/test-files/flac/kiss-snippet.flac";

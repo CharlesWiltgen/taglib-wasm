@@ -36,7 +36,7 @@ const SHIPPED = "dist/disc-folder.js";
  * runtime.
  */
 const PURE_GRAPH = new Set([
-  "disc-folder.ts",
+  "src/disc-folder.ts",
   "src/folder-api/album-types.ts",
   "src/folder-api/album-grouping.ts",
   "src/folder-api/album-identity.ts",
@@ -111,7 +111,7 @@ function runtimeSpecifiers(source) {
 function walkPureGraph() {
   const visited = new Set();
   const problems = [];
-  const pending = ["disc-folder.ts"];
+  const pending = ["src/disc-folder.ts"];
   while (pending.length > 0) {
     const modulePath = pending.pop();
     if (visited.has(modulePath)) continue;

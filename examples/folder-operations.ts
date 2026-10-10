@@ -8,7 +8,11 @@
  * batch operations like finding duplicates and updating tags.
  */
 
-import { exportFolderMetadata, findDuplicates, scanFolder } from "../index.ts";
+import {
+  exportFolderMetadata,
+  findDuplicates,
+  scanFolder,
+} from "../src/index.ts";
 import { writeTagsBatch } from "../src/simple/index.ts";
 
 // Example 1: Scan a folder and display all metadata

@@ -27,7 +27,7 @@ import {
   readTagsBatch,
   scanFolder,
   TagLib,
-} from "../index.ts";
+} from "../src/index.ts";
 
 const TEST_FILES_DIR = resolve(import.meta.dir, "test-files");
 

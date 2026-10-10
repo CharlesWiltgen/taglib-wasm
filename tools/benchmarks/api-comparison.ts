@@ -11,7 +11,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { TagLib } from "../index";
+import { TagLib } from "../src/index";
 import { applyTags, readProperties, readTags } from "../src/simple";
 
 const TEST_FILE = "./tests/test-files/mp3/kiss-snippet.mp3";

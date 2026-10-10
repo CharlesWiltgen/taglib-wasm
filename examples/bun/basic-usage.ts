@@ -12,7 +12,7 @@
  *   bun run examples/bun/basic_usage.ts
  */
 
-import { TagLib } from "../../index.ts";
+import { TagLib } from "../../src/index.ts";
 import process from "node:process";
 
 async function demonstrateBunUsage() {

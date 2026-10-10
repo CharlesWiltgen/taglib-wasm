@@ -10,7 +10,7 @@ import { expect, it } from "vite-plus/test";
 import { expectThrows } from "./_assert-helpers.ts";
 import { TagLib } from "../src/taglib.ts";
 import { UnsupportedFormatError } from "../src/errors.ts";
-import type { BroadcastAudioExtension } from "../index.ts";
+import type { BroadcastAudioExtension } from "../src/index.ts";
 
 const FILES = {
   wav: join("tests", "test-files", "wav", "bext-ixml.wav"),

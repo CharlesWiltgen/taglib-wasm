@@ -13,7 +13,7 @@
     "lib": ["ES2022", "DOM", "ESNext.Disposable"],
     "types": ["node"],
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "esModuleInterop": true,
@@ -25,19 +25,7 @@
     "removeComments": false,
     "preserveConstEnums": true
   },
-  "include": [
-    "index.ts",
-    "index.browser.ts",
-    "simple.ts",
-    "simple.browser.ts",
-    "folder.ts",
-    "disc-folder.ts",
-    "web.ts",
-    "web.browser.ts",
-    "rating.ts",
-    "src/**/*",
-    "src/global.d.ts"
-  ],
+  "include": ["src/**/*"],
   "exclude": [
     "node_modules",
     "dist",

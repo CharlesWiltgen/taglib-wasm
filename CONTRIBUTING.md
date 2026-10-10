@@ -95,17 +95,23 @@ software together.
 ```
 TagLib-Wasm/
 ├── src/            # TypeScript source (core runtime, types, errors)
+│   ├── index.ts    # Full API entry point        ┐ the public entry
+│   ├── simple.ts   # Simple API entry point      │ barrels: one per
+│   ├── folder.ts   # Folder API entry point      │ published subpath
+│   ├── web.ts, rating.ts, disc-folder.ts, *.browser.ts
 │   ├── capi/       # C/C++ binding layer (Wasm shim, MessagePack, boundary)
 │   └── runtime/    # WASI host implementation
 ├── build/          # Build scripts (Emscripten + WASI)
 ├── tests/          # Test files
 ├── docs/           # Documentation site
 ├── examples/       # Usage examples
-├── simple.ts       # Simple API entry point
-├── index.ts        # Full API entry point
-├── folder.ts       # Folder API entry point
 └── lib/            # Git submodules (taglib, mpack, msgpack)
 ```
+
+`dist/` mirrors `src/` one-for-one: `src/index.ts` → `dist/index.js` +
+`dist/index.d.ts`, and so on. The entry barrels live in `src/` precisely so
+that holds — a source file outside `src/` in a pack entry list raises the
+entry base to the repo root and nests everything under `dist/src/`.
 
 ### Key Files
 
@@ -113,7 +119,7 @@ TagLib-Wasm/
 - `src/capi/taglib_shim.cpp` - WASI C++ shim (FileRef-based)
 - `src/capi/core/taglib_boundary.c` - Pure C WASI exports
 - `src/taglib.ts` - Core TypeScript API
-- `simple.ts` - Simple API entry point
+- `src/simple.ts` - Simple API entry point
 - `tests/index.test.ts` - Main test suite
 
 ## 🧪 Testing

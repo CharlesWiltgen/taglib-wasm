@@ -321,13 +321,16 @@ export default defineConfig({
     {
       name: "js",
       entry: [
-        "index.ts",
-        "simple.ts",
-        "folder.ts",
-        "web.ts",
-        "rating.ts",
+        // The public entry barrels are src/*.ts, so this glob's base is src/
+        // and every file lands flat in dist/ (dist/index.js, dist/taglib/…).
+        // Listing a repo-root file here would raise the base to the repo root
+        // and nest everything under dist/src/ — that is what the retired
+        // root-level barrels used to do.
         "src/**/*.ts",
         "!src/**/*.test.ts",
+        // Owned by their own configs, which emit them as single files.
+        "!src/*.browser.ts",
+        "!src/disc-folder.ts",
       ],
       outDir: "dist",
       // The config default is false, but the retired esbuild build hard-failed
@@ -365,7 +368,7 @@ export default defineConfig({
     },
     {
       name: "disc-folder",
-      entry: ["disc-folder.ts"],
+      entry: ["src/disc-folder.ts"],
       outDir: "dist",
       failOnWarn: true,
       target: "es2020",
@@ -381,7 +384,7 @@ export default defineConfig({
     // emits hash-named sibling chunks. One entry per config ⇒ one file each.
     {
       name: "browser-index",
-      entry: ["index.browser.ts"],
+      entry: ["src/index.browser.ts"],
       outDir: "dist",
       failOnWarn: true,
       target: "es2020",
@@ -395,7 +398,7 @@ export default defineConfig({
     },
     {
       name: "browser-simple",
-      entry: ["simple.browser.ts"],
+      entry: ["src/simple.browser.ts"],
       outDir: "dist",
       failOnWarn: true,
       target: "es2020",
@@ -409,7 +412,7 @@ export default defineConfig({
     },
     {
       name: "browser-web",
-      entry: ["web.browser.ts"],
+      entry: ["src/web.browser.ts"],
       outDir: "dist",
       failOnWarn: true,
       target: "es2020",

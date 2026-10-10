@@ -3,7 +3,7 @@
 /**
  * Guard for the emitted `dist/` tree's internal resolution.
  *
- * `dist/src` is load-bearing at runtime: the Node entry points are thin
+ * `dist` mirrors `src` one-for-one: the Node entry points are thin
  * re-export shims over it, and each file keeps the source-shaped specifier the
  * author wrote. A specifier that no longer resolves on disk is a runtime
  * `ERR_MODULE_NOT_FOUND` for any consumer, and no other gate walks the emitted
@@ -53,13 +53,13 @@ if (!existsSync(root)) {
  */
 const KNOWN_UNRESOLVED = [
   {
-    file: "src/runtime/module-loader-browser.js",
+    file: "runtime/module-loader-browser.js",
     spec: "./taglib-web.wasm",
     reason:
       "browser-only loader; the wasm sits beside the browser bundle, not in the Node tree",
   },
   {
-    file: "src/runtime/module-loader.js",
+    file: "runtime/module-loader.js",
     spec: "./taglib-web.wasm",
     reason:
       "Deno-compile embed probe (import.meta.url fallback) inside a try/catch; the embedded wasm lands beside the entry module, never in the Node tree",

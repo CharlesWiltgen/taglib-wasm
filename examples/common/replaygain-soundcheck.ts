@@ -18,7 +18,7 @@
  * - MP4: ----:com.apple.iTunes:iTunNORM atom
  */
 
-import { TagLib } from "../../index.ts";
+import { TagLib } from "../../src/index.ts";
 import { METADATA_MAPPINGS } from "../../src/types.ts";
 
 async function demonstrateReplayGainAndSoundCheck() {

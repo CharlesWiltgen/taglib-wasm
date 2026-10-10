@@ -9,8 +9,8 @@ import { describe, expect, it } from "vite-plus/test";
 import { copyFile, rm } from "node:fs/promises";
 import { expectDefined } from "./_assert-helpers.ts";
 import { resolve } from "node:path";
-import { TagLib } from "../index.ts";
-import { applyTagsToFile, readTags } from "../simple.ts";
+import { TagLib } from "../src/index.ts";
+import { applyTagsToFile, readTags } from "../src/simple.ts";
 import { loadWasiHost } from "../src/runtime/wasi-host-loader.ts";
 import {
   readTagsFromWasmPath,

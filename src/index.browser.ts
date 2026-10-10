@@ -23,10 +23,10 @@
 export type {
   AudioFile,
   TypedAudioFile,
-} from "./src/taglib/audio-file-interface.ts";
-export { AudioFileImpl, createTagLib, TagLib } from "./src/taglib.ts";
-export type { MutableTag } from "./src/taglib.ts";
-export { isNamedAudioInput } from "./src/types/audio-formats.ts";
+} from "./taglib/audio-file-interface.ts";
+export { AudioFileImpl, createTagLib, TagLib } from "./taglib.ts";
+export type { MutableTag } from "./taglib.ts";
+export { isNamedAudioInput } from "./types/audio-formats.ts";
 
 // Error types
 export {
@@ -46,8 +46,8 @@ export {
   TagLibError,
   TagLibInitializationError,
   UnsupportedFormatError,
-} from "./src/errors.ts";
-export type { TagLibErrorCode } from "./src/errors.ts";
+} from "./errors.ts";
+export type { TagLibErrorCode } from "./errors.ts";
 
 // Deno compile support. The embedding helpers (initializeForDenoCompile,
 // prepareWasmForEmbedding) resolve Deno.mainModule and file URLs to embed a Wasm
@@ -55,7 +55,7 @@ export type { TagLibErrorCode } from "./src/errors.ts";
 // probe under them: it reads `typeof Deno` and nothing else, so in a browser it
 // answers `false` without touching Deno, and modules that branch on it must be
 // able to import it here.
-export { isDenoCompiled } from "./src/runtime/deno-detect.ts";
+export { isDenoCompiled } from "./runtime/deno-detect.ts";
 
 // Simple API
 export {
@@ -85,13 +85,13 @@ export {
   readTagsBatch,
   replacePictureByType,
   setBufferMode,
-} from "./src/simple/index.ts";
+} from "./simple/index.ts";
 export type {
   ChecksumAlgorithm,
   ChecksumSource,
   MediaChecksum,
   MediaChecksumOptions,
-} from "./src/taglib/audio-file-checksum.ts";
+} from "./taglib/audio-file-checksum.ts";
 
 // Property constants and utilities
 export {
@@ -104,8 +104,8 @@ export {
   PROPERTIES,
   propertyValue,
   propertyValues,
-} from "./src/constants.ts";
-export type { PropertyMetadata } from "./src/constants/property-types.ts";
+} from "./constants.ts";
+export type { PropertyMetadata } from "./constants/property-types.ts";
 
 // File I/O utilities for cover art (copyCoverArt, exportAllPictures,
 // exportCoverArt, exportPictureByType, findCoverArtFiles, importCoverArt,
@@ -121,8 +121,8 @@ export type { PropertyMetadata } from "./src/constants/property-types.ts";
 // server and group client-side, which is why the pure half ships here and not
 // only on the `taglib-wasm/disc-folder` subpath (that subpath remains the right
 // import when you want these without loading the engine at all).
-export { discFolderInfo } from "./src/folder-api/folder-disc.ts";
-export { groupAlbums } from "./src/folder-api/album-grouping.ts";
+export { discFolderInfo } from "./folder-api/folder-disc.ts";
+export { groupAlbums } from "./folder-api/album-grouping.ts";
 export type {
   AlbumDisc,
   AlbumGroup,
@@ -139,7 +139,7 @@ export type {
   FolderScanResult,
   GroupAlbumsOptions,
   ScanForAlbumsOptions,
-} from "./src/folder-api/index.ts";
+} from "./folder-api/index.ts";
 
 // Web browser utilities
 export {
@@ -151,7 +151,7 @@ export {
   imageFileToPicture,
   pictureToDataURL,
   setCoverArtFromCanvas,
-} from "./src/web-utils/index.ts";
+} from "./web-utils/index.ts";
 
 // Core types
 export type {
@@ -173,20 +173,20 @@ export type {
   SetChaptersOptions,
   Tag,
   TagInput,
-} from "./src/types.ts";
+} from "./types.ts";
 export {
   BITRATE_CONTROL_MODE_NAMES,
   BITRATE_CONTROL_MODE_VALUES,
   PICTURE_TYPE_NAMES,
   PICTURE_TYPE_VALUES,
-} from "./src/types.ts";
+} from "./types.ts";
 
-export type { PropertyKey, PropertyValue } from "./src/constants.ts";
+export type { PropertyKey, PropertyValue } from "./constants.ts";
 export type {
   FormatPropertyKey,
   TagFormat,
-} from "./src/types/format-property-keys.ts";
-export type { TypedAudioProperties } from "./src/types/audio-formats.ts";
+} from "./types/format-property-keys.ts";
+export type { TypedAudioProperties } from "./types/audio-formats.ts";
 
 // Complex property TYPES (value exports removed in 2.0.0, taglib-ivq)
 export type {
@@ -194,17 +194,17 @@ export type {
   Rating,
   UnsyncedLyrics,
   VariantMap,
-} from "./src/constants/complex-properties.ts";
+} from "./constants/complex-properties.ts";
 
 // BWF `bext` chunk codec — for working with raw bext bytes without a file
 // handle. Pure: bext.ts imports a type and nothing else at runtime.
-export * as bwf from "./src/bwf/bext.ts";
+export * as bwf from "./bwf/bext.ts";
 
 // Rating conversion utilities
-export { RatingUtils } from "./src/utils/rating.ts";
-export type { NormalizedRating, PopmRating } from "./src/utils/rating.ts";
+export { RatingUtils } from "./utils/rating.ts";
+export type { NormalizedRating, PopmRating } from "./utils/rating.ts";
 
 // Wasm module types and loader
-export type { TagLibModule, WasmModule } from "./src/wasm.ts";
-export type { LoadTagLibOptions } from "./src/runtime/loader-types.ts";
-export { loadTagLibModule } from "./src/runtime/module-loader-browser.ts";
+export type { TagLibModule, WasmModule } from "./wasm.ts";
+export type { LoadTagLibOptions } from "./runtime/loader-types.ts";
+export { loadTagLibModule } from "./runtime/module-loader-browser.ts";
