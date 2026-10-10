@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script to validate NPM package distribution
-# This ensures the packed NPM package works correctly for Node.js and Deno consumers
+# This ensures the packed NPM package works correctly for Node.js consumers
 
 set -e
 
@@ -181,28 +181,21 @@ EOF
 echo "Running ESM test..."
 node test.js
 
-# Test 3: Deno with npm: specifier
-echo -e "\n${YELLOW}📦 Testing Deno npm: import...${NC}"
-DENO_DIR="$TEST_DIR/deno"
-mkdir -p "$DENO_DIR"
+# Test 3: packed-package structure — every path package.json points at, plus the
+# wasm/glue runtime artifacts the loaders fetch by relative URL, must exist once
+# the package is installed.
+echo -e "\n${YELLOW}📦 Validating packed-package structure...${NC}"
+STRUCT_DIR="$TEST_DIR/structure"
+mkdir -p "$STRUCT_DIR"
 
-# For Deno, we need to test with the actual published package name
-# Since we can't use npm: with a local file, we'll test the import resolution
-cd "$DENO_DIR"
+cat > "$STRUCT_DIR/check.mjs" << 'EOF'
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
-# Create Deno test that would work with npm:taglib-wasm (package name)
-cat > "$DENO_DIR/test.ts" << 'EOF'
-// This test validates the package structure for Deno npm: imports
-// In production, this would be: import { readTags } from "npm:taglib-wasm/simple";
-
-// For now, we'll test that the package structure is correct
-import { existsSync } from "https://deno.land/std/fs/mod.ts";
-import { join } from "https://deno.land/std/path/mod.ts";
-
-const nodeModulesPath = Deno.env.get("NODE_MODULES_PATH");
+const nodeModulesPath = process.env.NODE_MODULES_PATH;
 if (!nodeModulesPath) {
   console.error("NODE_MODULES_PATH not set");
-  Deno.exit(1);
+  process.exit(1);
 }
 
 const packagePath = join(nodeModulesPath, "taglib-wasm");
@@ -211,11 +204,9 @@ const packagePath = join(nodeModulesPath, "taglib-wasm");
 // packed package. Derived from the manifest — a hardcoded list silently rotted
 // here (it still checked dist/src/simple.js long after the build moved entry
 // points to dist/ root, so this script failed for a year-old reason).
-const pkg = JSON.parse(
-  Deno.readTextFileSync(join(packagePath, "package.json")),
-);
+const pkg = JSON.parse(readFileSync(join(packagePath, "package.json"), "utf8"));
 const requiredFiles = ["package.json"];
-const collect = (value: unknown): void => {
+const collect = (value) => {
   if (typeof value === "string") {
     // `exports` targets are "./"-prefixed; `main`/`module`/`browser`/`types`
     // are not — record both, or those fields go silently unchecked (the
@@ -224,7 +215,7 @@ const collect = (value: unknown): void => {
     return;
   }
   if (value && typeof value === "object") {
-    for (const item of Object.values(value as Record<string, unknown>)) {
+    for (const item of Object.values(value)) {
       collect(item);
     }
   }
@@ -244,32 +235,25 @@ requiredFiles.push(
   "dist/taglib-wrapper.d.ts",
 );
 
-console.log("Checking package structure for Deno compatibility...");
+console.log("Checking packed-package structure...");
 let allGood = true;
 
 for (const file of requiredFiles) {
-  const fullPath = join(packagePath, file);
-  const exists = existsSync(fullPath);
+  const exists = existsSync(join(packagePath, file));
   console.log(`  ${exists ? "✓" : "✗"} ${file}`);
   if (!exists) allGood = false;
 }
 
-// Check that package.json has correct exports
-const packageJson = JSON.parse(Deno.readTextFileSync(join(packagePath, "package.json")));
-console.log("\nPackage exports:");
-console.log(JSON.stringify(packageJson.exports, null, 2));
-
 if (allGood) {
-  console.log("\n✅ Package structure valid for Deno npm: imports!");
+  console.log("\n✅ Package structure valid");
 } else {
   console.log("\n❌ Package structure issues found!");
-  Deno.exit(1);
+  process.exit(1);
 }
 EOF
 
-# Run the Deno structure test
-echo "Checking package structure for Deno..."
-NODE_MODULES_PATH="$NODE_ESM_DIR/node_modules" deno run --allow-read --allow-env test.ts
+# Run the structure check
+NODE_MODULES_PATH="$NODE_ESM_DIR/node_modules" node "$STRUCT_DIR/check.mjs"
 
 # Test 4: Validate package contents
 echo -e "\n${YELLOW}📦 Validating package contents...${NC}"
@@ -283,5 +267,4 @@ echo -e "\n${GREEN}✨ All tests passed!${NC}"
 echo -e "\nPackage validation complete:"
 echo -e "  ${GREEN}✓${NC} Node.js CommonJS import"
 echo -e "  ${GREEN}✓${NC} Node.js ESM import"
-echo -e "  ${GREEN}✓${NC} Deno npm: compatibility"
 echo -e "  ${GREEN}✓${NC} Package structure validation"
