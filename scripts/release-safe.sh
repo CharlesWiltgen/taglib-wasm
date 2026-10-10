@@ -38,7 +38,11 @@ print_warning() {
 
 # Function to check if we're on main branch
 check_main_branch() {
-    local current_branch=$(git rev-parse --abbrev-ref HEAD)
+    # Split from the assignment: `local x=$(…)` returns local's own status, so a
+    # failing `git rev-parse` used to fall through to the "not on main" prompt with
+    # an empty branch name instead of failing.
+    local current_branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD) || exit 1
     if [[ "$current_branch" != "main" ]]; then
         print_error "Not on main branch. Current branch: $current_branch"
         print_warning "Releases should be created from the main branch."
@@ -64,8 +68,13 @@ check_up_to_date() {
     print_step "Fetching latest changes from remote..."
     git fetch origin main
 
-    local LOCAL=$(git rev-parse HEAD)
-    local REMOTE=$(git rev-parse origin/main)
+    # Both split from their assignments (`local x=$(…)` masks the status), so a
+    # failed `git rev-parse` aborts instead of silently comparing empty strings —
+    # which previously made the two look equal and passed the check.
+    local LOCAL
+    LOCAL=$(git rev-parse HEAD) || exit 1
+    local REMOTE
+    REMOTE=$(git rev-parse origin/main) || exit 1
 
     if [[ "$LOCAL" != "$REMOTE" ]]; then
         print_error "Local branch is not up to date with origin/main"
@@ -216,10 +225,12 @@ run_preflight_checks() {
     fi
     print_success "Type exports check passed"
 
-    # NPM pack dry-run (verify package contents)
+    # NPM pack dry-run (verify package contents). The `if !` form is required:
+    # `local x=$(…)` followed by `[[ $? -ne 0 ]]` reads local's status, which made
+    # this failure branch dead — an npm pack failure could not fail the preflight.
     print_step "Verifying NPM package contents..."
-    local pack_output=$(npm pack --dry-run 2>&1)
-    if [[ $? -ne 0 ]]; then
+    local pack_output
+    if ! pack_output=$(npm pack --dry-run 2>&1); then
         print_error "NPM pack dry-run failed"
         exit 1
     fi
