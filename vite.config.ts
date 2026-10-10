@@ -319,6 +319,12 @@ export default defineConfig({
         "!src/**/*.test.ts",
       ],
       outDir: "dist",
+      // The config default is false, but the retired esbuild build hard-failed
+      // on an unresolvable bare specifier — the resolution gate CI advertises.
+      // With warnings ignored, `vp pack` quietly treats an undeclared import as
+      // an external, so every config sets this. The relative-specifier half is
+      // covered by `node scripts/check-dist-resolution.mjs`.
+      failOnWarn: true,
       unbundle: true,
       treeshake: false,
       sourcemap: false,
@@ -337,6 +343,7 @@ export default defineConfig({
       name: "disc-folder",
       entry: ["disc-folder.ts"],
       outDir: "dist",
+      failOnWarn: true,
       platform: "neutral",
       fixedExtension: false,
       dts: false,
@@ -351,6 +358,7 @@ export default defineConfig({
       name: "browser-index",
       entry: ["index.browser.ts"],
       outDir: "dist",
+      failOnWarn: true,
       platform: "browser",
       fixedExtension: false,
       dts: false,
@@ -363,6 +371,7 @@ export default defineConfig({
       name: "browser-simple",
       entry: ["simple.browser.ts"],
       outDir: "dist",
+      failOnWarn: true,
       platform: "browser",
       fixedExtension: false,
       dts: false,
@@ -375,6 +384,7 @@ export default defineConfig({
       name: "browser-web",
       entry: ["web.browser.ts"],
       outDir: "dist",
+      failOnWarn: true,
       platform: "browser",
       fixedExtension: false,
       dts: false,
