@@ -13,11 +13,16 @@ software together.
 ### Prerequisites
 
 - **Node.js 24+** - Primary development runtime (Active LTS; matches the CI matrix)
-- **npm 11+** - The package manager; run `npm ci` before any `vp` command
-- **Deno 2.x** - Needed for the Deno runtime test leg (`npm run test:deno`; the Deno arm of `tests/cross-runtime/run.sh`) and for the JSR publish/verify legs (`publish-jsr`, `verify-jsr` in `publish-everywhere.yml`); the build and default gates run on `node`/`npx tsx`
+- **pnpm 12+** - The package manager; run `pnpm install` before any `vp` command
+- **Deno 2.x** - Needed for the Deno runtime test leg (`pnpm run test:deno`; the Deno arm of `tests/cross-runtime/run.sh`) and for the JSR publish/verify legs (`publish-jsr`, `verify-jsr` in `publish-everywhere.yml`); the build and default gates run on `node`/`pnpm exec tsx`
 - **Emscripten SDK** - For building the Emscripten Wasm backend
 - **WASI SDK 34** - For building the WASI Wasm backend (optional for TS-only changes)
 - **Git** - With submodule support
+
+pnpm installs and locks the project's dependencies (`pnpm-lock.yaml`); npm
+remains the registry client (`npm pack`, `npm publish`), the installer for
+global CLI tools, and the consumer proxy the verification scripts use when they
+simulate an npm consumer in a scratch directory.
 
 ### Development Setup
 
@@ -45,10 +50,10 @@ software together.
 4. **Build the project**
 
    ```bash
-   npm ci                        # Install dependencies (Node 24+, npm)
-   npm run build:wasm            # Rebuild both Wasm backends
-   npm run build:wasm:emscripten # Rebuild Emscripten Wasm only
-   npm run build:wasm:wasi       # Rebuild WASI Wasm only
+   pnpm install                  # Install dependencies (Node 24+, pnpm)
+   pnpm run build:wasm            # Rebuild both Wasm backends
+   pnpm run build:wasm:emscripten # Rebuild Emscripten Wasm only
+   pnpm run build:wasm:wasi       # Rebuild WASI Wasm only
    ```
 
    > After changing `lib/taglib` or `src/capi/`, rebuild **both** backends and
@@ -59,35 +64,38 @@ software together.
 5. **Run the pre-push gates**
 
    ```bash
-   npm run check:all                         # every gate, in one command
-   npx vp check                              # format + lint gates
-   npx tsc --noEmit -p tsconfig.check.json   # type gate (tests included)
-   npx vp test                               # tests (Vitest)
-   npm run build:ts                          # bundle gate (bundler-resolution check)
+   pnpm run check:all                            # every gate, in one command
+   pnpm exec vp check                            # format + lint gates
+   pnpm exec tsc --noEmit -p tsconfig.check.json # type gate (tests included)
+   pnpm exec vp test                             # tests (Vitest)
+   pnpm run build:ts                             # bundle gate (bundler-resolution check)
    ```
 
-   > `npm run check:all` is the authoritative gate set — it adds ast-grep, docs
+   > `pnpm run check:all` is the authoritative gate set — it adds ast-grep, docs
    > coverage, knip, the emitted-tree guards and the toolchain pins on top of the
-   > five above. `vpr static` is the cached commit-time subset (format + lint).
-   > `npm ci` must run before any `npx vp` command — `vp` loads
-   > `vite.config.ts` strictly and aborts without the `vite-plus`
-   > devDependency. `npx vp test` is a **Vite+ built-in**, not the npm `test`
-   > script (run that one with `vpr test`). Deno is not required for the build or
-   > the default gates: the bundles are produced by `vp pack` (configured in
-   > `vite.config.ts`), `scripts/postbuild.mjs` runs under `node` and the
-   > auxiliary `.ts` scripts under `npx tsx`. Deno is still needed for the Deno
-   > runtime test leg (`npm run test:deno`) and the JSR publish leg.
-   > `npm run build:ts` builds the
-   > shippable bundles and catches bundler-resolution breaks (e.g. an import that
-   > isn't an npm dependency) that pass the tests but break the published package.
+   > five above. `pnpm exec vpr static` is the cached commit-time subset (format
+   >
+   > - lint).
+   >   `pnpm install` must run before any `pnpm exec vp` command — `vp` loads
+   >   `vite.config.ts` strictly and aborts without the `vite-plus`
+   >   devDependency. `pnpm exec vp test` is a **Vite+ built-in**, not the
+   >   project's `test` script (run that one with `pnpm exec vpr test`). Deno is
+   >   not required for the build or the default gates: the bundles are produced
+   >   by `vp pack` (configured in `vite.config.ts`), `scripts/postbuild.mjs`
+   >   runs under `node` and the auxiliary `.ts` scripts under `pnpm exec tsx`.
+   >   Deno is still needed for the Deno runtime test leg
+   >   (`pnpm run test:deno`) and the JSR publish leg.
+   >   `pnpm run build:ts` builds the
+   >   shippable bundles and catches bundler-resolution breaks (e.g. an import that
+   >   isn't an npm dependency) that pass the tests but break the published package.
 
 ## 📝 Development Guidelines
 
 ### Code Style
 
 - **TypeScript**: Strict mode enabled, no `any` types without justification
-- **Formatting**: Use the Vite+ formatter (`npx vp fmt` to fix, `npx vp fmt --check` to verify)
-- **Linting**: Pass `npx vp lint --type-aware`
+- **Formatting**: Use the Vite+ formatter (`pnpm exec vp fmt` to fix, `pnpm exec vp fmt --check` to verify)
+- **Linting**: Pass `pnpm exec vp lint --type-aware`
 - **Comments**: JSDoc for all public APIs
 
 ### Project Structure
@@ -128,18 +136,18 @@ entry base to the repo root and nests everything under `dist/src/`.
 
 ```bash
 # Tests (Vitest): 97 files across tests/ and src/
-npx vp test
+pnpm exec vp test
 
 # Watch mode
-npx vp test --watch
+pnpm exec vp test --watch
 
 # Run a specific test file
-npx vp test tests/basic-tags.test.ts
+pnpm exec vp test tests/basic-tags.test.ts
 
 # The bun:test-registered integration file, the Deno-gated tests and the
 # cross-runtime suite are excluded from the Vitest gate; run them separately:
-npm run test:bun
-npm run test:deno
+pnpm run test:bun
+pnpm run test:deno
 bash tests/cross-runtime/run.sh
 ```
 
@@ -193,18 +201,18 @@ describe("Feature", () => {
 4. **Test your changes**
 
    ```bash
-   npx vp fmt --check                        # format gate (`npx vp fmt` fixes)
-   npx vp lint --type-aware                  # lint gate
-   npx tsc --noEmit -p tsconfig.check.json   # type gate (tests included)
-   npx vp test                               # tests (Vitest)
-   npm run build:ts                          # bundle gate (bundler-resolution check)
+   pnpm exec vp fmt --check                      # format gate (`pnpm exec vp fmt` fixes)
+   pnpm exec vp lint --type-aware                # lint gate
+   pnpm exec tsc --noEmit -p tsconfig.check.json # type gate (tests included)
+   pnpm exec vp test                             # tests (Vitest)
+   pnpm run build:ts                             # bundle gate (bundler-resolution check)
    ```
 
-   > `npx vp test` runs the Vitest suite; `npm run test:bun` runs the
-   > bun:test-registered file, `npm run test:deno` the Deno-gated tests, and
-   > `tests/cross-runtime/run.sh` the cross-runtime suite. `npm ci` must precede
-   > every `npx vp` command
-   > (`vp` loads `vite.config.ts` strictly). `npm run build:ts` builds the
+   > `pnpm exec vp test` runs the Vitest suite; `pnpm run test:bun` runs the
+   > bun:test-registered file, `pnpm run test:deno` the Deno-gated tests, and
+   > `tests/cross-runtime/run.sh` the cross-runtime suite. `pnpm install` must
+   > precede every `pnpm exec vp` command
+   > (`vp` loads `vite.config.ts` strictly). `pnpm run build:ts` builds the
    > shippable bundles and catches bundler-resolution breaks (e.g. an import
    > that isn't an npm dependency) that pass the tests but break the published
    > package.
@@ -255,10 +263,10 @@ chore: update TagLib to v2.1.1
 
 The project has two Wasm backends:
 
-| Backend    | Script                          | Used by           | C++ entry point            |
-| ---------- | ------------------------------- | ----------------- | -------------------------- |
-| Emscripten | `npm run build:wasm:emscripten` | Browsers, Workers | `build/taglib_embind.cpp`  |
-| WASI       | `npm run build:wasm:wasi`       | Deno, Node.js     | `src/capi/taglib_shim.cpp` |
+| Backend    | Script                           | Used by           | C++ entry point            |
+| ---------- | -------------------------------- | ----------------- | -------------------------- |
+| Emscripten | `pnpm run build:wasm:emscripten` | Browsers, Workers | `build/taglib_embind.cpp`  |
+| WASI       | `pnpm run build:wasm:wasi`       | Deno, Node.js     | `src/capi/taglib_shim.cpp` |
 
 After C++ changes, rebuild the affected backend and test thoroughly.
 
@@ -368,9 +376,9 @@ git commit -m "chore: update TagLib to v2.2.1"
 Releases are cut from `main` with one command:
 
 ```bash
-npm run release                 # auto-increment patch version
-npm run release -- 2.4.0        # explicit version (npm needs `--` to pass it through)
-npm run release:quick -- 2.4.0  # same gates and same flow, but do not wait for the result
+pnpm run release                # auto-increment patch version
+pnpm run release -- 2.4.0       # explicit version (pnpm accepts `--` and strips it)
+pnpm run release:quick -- 2.4.0 # same gates and same flow, but do not wait for the result
 ```
 
 `scripts/release-safe.sh` runs the gates, bumps the version, pushes the bump
@@ -391,12 +399,12 @@ registry and reads a real tag on **both** wasm backends (plus the Wasm-free
 `disc-folder` subpath). A stale committed binary, or a tarball whose wrapper
 does not match, fails there — and no tag and no release are created. Run it
 against any released version locally with
-`npm run verify:published -- <version>`.
+`pnpm run verify:published -- <version>`.
 
 A manually created GitHub release still triggers the same workflow
 (`on: release: types: [published]`), which is the escape hatch if you need to
 publish from a release object someone else created. Use
-`npm run release:quick -- <version>` (equivalent to `SKIP_PUBLISH_WATCH=1`) to
+`pnpm run release:quick -- <version>` (equivalent to `SKIP_PUBLISH_WATCH=1`) to
 dispatch without waiting — the gates and the publish flow are identical.
 
 ### npm authentication

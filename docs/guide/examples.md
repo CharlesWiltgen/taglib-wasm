@@ -56,7 +56,7 @@ may need to build the project first:
 
 ```bash
 # Build the project (if running from source)
-npm run build
+pnpm run build
 ```
 
 #### Deno
@@ -69,11 +69,11 @@ deno run --allow-read examples/common/basic-usage.ts
 
 ```bash
 # TypeScript files need to be compiled first
-npm run build:ts
+pnpm run build:ts
 node dist/examples/common/basic-usage.js
 
 # Or use tsx for direct execution
-npx tsx examples/common/basic-usage.ts
+pnpm exec tsx examples/common/basic-usage.ts
 ```
 
 #### Bun

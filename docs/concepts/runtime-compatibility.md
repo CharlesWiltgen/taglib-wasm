@@ -214,13 +214,13 @@ The project includes comprehensive tests that run on all supported runtimes:
 
 ```bash
 # Every installed runtime (Deno, Bun, Node × both wasm backends)
-npm run test:cross-runtime
+pnpm run test:cross-runtime
 
 # Deno-gated tests (requires Deno)
-npm run test:deno
+pnpm run test:deno
 
 # Full Vitest suite (Node)
-npm test
+pnpm test
 
 # Test in browser
 # Open examples/browser/index.html

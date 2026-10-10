@@ -13,6 +13,22 @@
   the publish ships — the 2.3.0 JSR package had leaked `.claude/**`, repo
   dotfiles and `src/**.test.ts`.
 
+### Changed
+
+- **pnpm replaces npm as the package manager.** `package.json` now pins
+  `"packageManager": "pnpm@12.10.1"` and `pnpm-lock.yaml` — imported from the
+  retired `package-lock.json`, so every direct and transitive version is
+  unchanged — with settings in `pnpm-workspace.yaml`; `docs/` keeps its own
+  standalone project and lockfile. CI installs with
+  `pnpm install --frozen-lockfile` (`pnpm/action-setup` reads the version from
+  `packageManager`, so there is no second pin to drift), and the dev scripts and
+  gates run through pnpm (`pnpm run`, `pnpm exec`). npm stays deliberately as the
+  registry client and consumer proxy: `npm pack` / `npm publish` / `npm view`,
+  `npm install -g` for global CLI tools, and the npm-consumer simulations in the
+  package-compat and publish-verification paths. No runtime behavior or public
+  API changes; the published `package.json` gains only the `packageManager`
+  field.
+
 ### Fixed
 
 - **`PROPERTIES` keeps its full type in JSR's declaration output.** Deno's

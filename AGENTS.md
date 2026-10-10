@@ -597,33 +597,45 @@ cd TagLib-Wasm
 
 ### Build & Test
 
-`npm` is the package manager. `vp` is Vite+'s task runner, **not** a package
-manager, so keep using `npm ci` / `npm install` — and run `npm ci` first,
-because `vp` loads `vite.config.ts` strictly and aborts without the `vite-plus`
-devDependency installed.
+`pnpm` is the package manager: `package.json` pins it via the `packageManager`
+field and `pnpm-lock.yaml` is the lockfile — run `pnpm install` first, because
+`vp` loads `vite.config.ts` strictly and aborts without the `vite-plus`
+devDependency installed. `pnpm-workspace.yaml` omits `packages` on purpose: only
+the root project is a workspace member, and `docs/` stays a standalone pnpm
+project with its own lockfile (`docs/pnpm-lock.yaml`).
 
 ```bash
-npm ci                    # Install dependencies (required before any `vp` command)
-npm run check:all         # EVERY gate, in one command (see the note below)
-npx vp check              # Format + lint gates (oxlint, type-aware rules)
-npx vp test               # Tests (Vitest): 97 files across tests/ and src/
-npx tsc --noEmit -p tsconfig.check.json   # Type gate (includes tests/)
-npm run build:ts          # Bundle gate: catches bundler-resolution breaks
-npm run build:wasm        # Rebuild both Wasm backends
-npm run build:wasm:wasi   # Rebuild WASI Wasm only (requires WASI SDK 34)
+pnpm install              # Install dependencies (required before any `vp` command)
+pnpm run check:all        # EVERY gate, in one command (see the note below)
+pnpm exec vp check        # Format + lint gates (oxlint, type-aware rules)
+pnpm exec vp test         # Tests (Vitest): 97 files across tests/ and src/
+pnpm exec tsc --noEmit -p tsconfig.check.json   # Type gate (includes tests/)
+pnpm run build:ts         # Bundle gate: catches bundler-resolution breaks
+pnpm run build:wasm       # Rebuild both Wasm backends
+pnpm run build:wasm:wasi  # Rebuild WASI Wasm only (requires WASI SDK 34)
 ```
 
-`npm run check:all` is the authoritative gate: it runs format, lint, ast-grep,
+**Which tool runs what.** pnpm owns this project's dependency graph, its
+lockfiles, and script/`exec` invocations. npm remains, deliberately, the
+_registry client_ and _consumer proxy_: `npm pack` (`scripts/check-package-files.sh`,
+`scripts/release-safe.sh`), `npm publish` / `npm view` (the release path's OIDC
+trusted publishing is verified against the npm CLI), `npm install -g` for global
+CLI tools (`binaryen`, `ast-grep` — npm's global bin dir is on PATH on every
+runner, pnpm's is not), and `npm install` inside scratch dirs that simulate an
+npm consumer (`scripts/verify-published.mjs`, `scripts/test-npm-package.sh`).
+Don't "fix" those to pnpm.
+
+`pnpm run check:all` is the authoritative gate: it runs format, lint, ast-grep,
 docs coverage, knip, the type check, the tests, the bundle, the emitted-tree
 resolution and Wasm-free guards, and the toolchain pins. The commands above are
 the individual gates for iterating — if you change the gate set, change
-`check:all`, not this list. `vpr static` is the cached commit-time subset
-(format + lint).
+`check:all`, not this list. `pnpm exec vpr static` is the cached commit-time
+subset (format + lint).
 
-`npx vp test` is a **Vite+ built-in**, not the npm `test` script; use `vpr test`
-to run the npm script.
+`pnpm exec vp test` is a **Vite+ built-in**, not the `test` script; use
+`pnpm test` (short for the script) to run the script itself.
 
-`npm run build:ts` builds the shippable bundles. Run it before pushing: it
+`pnpm run build:ts` builds the shippable bundles. Run it before pushing: it
 catches bundler-resolution breaks — e.g. a JSR import that isn't an npm
 dependency — that pass the test suite but break the published package.
 
@@ -642,17 +654,17 @@ runs the artifact probes (both wasm backends under Node, plus path-mode reads an
 the shipped-Wasm resolver under Deno); the Publish workflow runs it on
 `publish-dir` _before_ the PUT and again from the registry afterwards.
 
-**One test suite.** `npx vp test` covers all 97 test files under `tests/` and
-`src/`. The only exclusions are `tests/bun-integration.test.ts` (registered with
-`bun:test`, run via `npm run test:bun`), `tests/cross-runtime/**` (run under
-three runtimes via `tests/cross-runtime/run.sh`) and `tests/deno-*.test.ts`
-(Deno's own runner, via `npm run test:deno`).
+**One test suite.** `pnpm exec vp test` covers all 97 test files under `tests/`
+and `src/`. The only exclusions are `tests/bun-integration.test.ts` (registered
+with `bun:test`, run via `pnpm run test:bun`), `tests/cross-runtime/**` (run
+under three runtimes via `tests/cross-runtime/run.sh`) and `tests/deno-*.test.ts`
+(Deno's own runner, via `pnpm run test:deno`).
 
 **Deno** is no longer the dev toolchain for formatting, linting or type checking,
 and the build pipeline does not require it: the bundles are produced by `vp pack`
 (configured in `vite.config.ts`), `scripts/postbuild.mjs` runs under `node`, and
-the auxiliary `.ts` scripts run under `npx tsx`. Deno is still needed for the
-Deno runtime test leg (`npm run test:deno`; the Deno arm of
+the auxiliary `.ts` scripts run under `pnpm exec tsx`. Deno is still needed for
+the Deno runtime test leg (`pnpm run test:deno`; the Deno arm of
 `tests/cross-runtime/run.sh`) and for the JSR legs of the release workflow
 (`publish-jsr` and `verify-jsr` in `publish-everywhere.yml`, OIDC-authenticated;
 the package manifest is `jsr.json`, and `scripts/check-jsr-package-files.sh`

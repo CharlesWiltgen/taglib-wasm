@@ -711,7 +711,7 @@ under every bundler:
 | ---------------------- | ------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
 | **Node.js**            | Full    | `npm install taglib-wasm` | TypeScript via tsx                                                                                 |
 | **Deno**               | Full    | `npm:taglib-wasm`         | Native TypeScript                                                                                  |
-| **Bun**                | Partial | `bun add taglib-wasm`     | Import + init verified; covered by `npm run test:bun` and the cross-runtime smoke                  |
+| **Bun**                | Partial | `bun add taglib-wasm`     | Import + init verified; covered by `pnpm run test:bun` and the cross-runtime smoke                 |
 | **Browser**            | Full    | Via bundler               | Full API support                                                                                   |
 | **Cloudflare Workers** | Full    | `npm install taglib-wasm` | Buffer-based (Emscripten); no filesystem. See [Workers guide](docs/advanced/cloudflare-workers.md) |
 | **Electron**           | Node.js | `npm install taglib-wasm` | Main process; renderer via IPC                                                                     |

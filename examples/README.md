@@ -13,7 +13,7 @@ in our documentation for detailed instructions and code samples.
 deno run --allow-read examples/common/basic-usage.ts
 
 # Run with Node.js
-npx tsx examples/common/basic-usage.ts
+pnpm exec tsx examples/common/basic-usage.ts
 
 # Run with Bun
 bun examples/common/basic-usage.ts
