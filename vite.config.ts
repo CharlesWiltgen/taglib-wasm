@@ -1,4 +1,50 @@
+import { dirname, join } from "node:path";
 import { defineConfig } from "vite-plus";
+import type { TsdownPlugin } from "vite-plus/pack";
+
+// Verbatim from scripts/build-js.mjs (the browser stubs) — identical error text.
+const PLATFORM_IO_BROWSER_STUB = `
+  export function getPlatformIO() {
+    throw new Error("Filesystem operations are not available in the browser.");
+  }
+  export function _setPlatformIOForTesting() {}
+  export function _resetPlatformIO() {}
+`;
+const NODE_FS_BROWSER_STUB = `
+  export function getNodeFsSync() {
+    return null;
+  }
+`;
+
+/** The rolldown equivalent of browserRedirectPlugin(): same redirects, same stubs. */
+function browserRedirect(): TsdownPlugin {
+  return {
+    name: "taglib-browser-redirect",
+    resolveId(source, importer) {
+      if (
+        source.endsWith("module-loader.ts") &&
+        importer &&
+        !source.includes("module-loader-browser")
+      ) {
+        return join(
+          dirname(importer),
+          source.replace("module-loader.ts", "module-loader-browser.ts"),
+        );
+      }
+      if (source.endsWith("taglib-wrapper.js")) {
+        return { id: "./taglib-wrapper.js", external: true };
+      }
+      if (source.endsWith("platform-io.ts")) return "\0taglib:platform-io-stub";
+      if (source.endsWith("node-fs.ts")) return "\0taglib:node-fs-stub";
+      return null;
+    },
+    load(id) {
+      if (id === "\0taglib:platform-io-stub") return PLATFORM_IO_BROWSER_STUB;
+      if (id === "\0taglib:node-fs-stub") return NODE_FS_BROWSER_STUB;
+      return null;
+    },
+  };
+}
 
 export default defineConfig({
   fmt: {
@@ -259,4 +305,82 @@ export default defineConfig({
       : ["default", "junit"],
     outputFile: { junit: "./junit.xml" },
   },
+  pack: [
+    {
+      name: "js",
+      entry: [
+        "index.ts",
+        "simple.ts",
+        "folder.ts",
+        "web.ts",
+        "rating.ts",
+        "src/**/*.ts",
+        "!src/**/*.test.ts",
+      ],
+      outDir: "dist",
+      unbundle: true,
+      treeshake: false,
+      sourcemap: false,
+      // Defaults to `platform === "node"`, i.e. true here; `.mjs` otherwise.
+      fixedExtension: false,
+      dts: false,
+      platform: "node",
+      // `build:clean` + `build:copy-wasm` own clearing/populating `dist`; a
+      // pack-time clean would delete the copied wasm/glue.
+      clean: false,
+      // The glue is a copied, separately-loaded artifact: tsdown must not
+      // re-emit a copy of it. `external` is deprecated in favour of this key.
+      deps: { neverBundle: [/taglib-wrapper\.js$/] },
+    },
+    {
+      name: "disc-folder",
+      entry: ["disc-folder.ts"],
+      outDir: "dist",
+      platform: "neutral",
+      fixedExtension: false,
+      dts: false,
+      clean: false,
+    },
+    // THREE single-entry configs, not one 3-entry config:
+    // `outputOptions: { codeSplitting: false }` is rejected with multiple
+    // inputs ("[INVALID_OPTION] … multiple inputs are not supported when
+    // «output.codeSplitting» is false"), and rolldown's default splitting
+    // emits hash-named sibling chunks. One entry per config ⇒ one file each.
+    {
+      name: "browser-index",
+      entry: ["index.browser.ts"],
+      outDir: "dist",
+      platform: "browser",
+      fixedExtension: false,
+      dts: false,
+      clean: false,
+      deps: { neverBundle: [/taglib-wrapper\.js$/] },
+      outputOptions: { codeSplitting: false },
+      plugins: [browserRedirect()],
+    },
+    {
+      name: "browser-simple",
+      entry: ["simple.browser.ts"],
+      outDir: "dist",
+      platform: "browser",
+      fixedExtension: false,
+      dts: false,
+      clean: false,
+      deps: { neverBundle: [/taglib-wrapper\.js$/] },
+      outputOptions: { codeSplitting: false },
+      plugins: [browserRedirect()],
+    },
+    {
+      name: "browser-web",
+      entry: ["web.browser.ts"],
+      outDir: "dist",
+      platform: "browser",
+      fixedExtension: false,
+      dts: false,
+      clean: false,
+      deps: { neverBundle: [/taglib-wrapper\.js$/] },
+      outputOptions: { codeSplitting: false },
+      plugins: [browserRedirect()],
+    },
+  ],
 });
