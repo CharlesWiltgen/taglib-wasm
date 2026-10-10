@@ -71,6 +71,16 @@ const arg = process.argv[2];
 const localArtifact =
   arg !== undefined && existsSync(arg) ? resolve(arg) : null;
 const expectedVersion = process.argv[3] ?? null;
+// An empty argument is almost always an unset shell variable at the call site
+// (a workflow step without the version in its env, say). Report that as an
+// environment problem instead of failing the artifact for a version it cannot
+// be compared against.
+if (expectedVersion !== null && expectedVersion.trim() === "") {
+  console.error(
+    "Empty expected version — is the caller's VERSION variable unset?",
+  );
+  process.exit(2);
+}
 const version = localArtifact ? repoPkg.version : (arg ?? repoPkg.version);
 
 if (!localArtifact && !/^\d+\.\d+\.\d+/.test(version)) {

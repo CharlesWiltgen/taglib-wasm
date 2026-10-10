@@ -318,6 +318,8 @@ jobs:
         # packs publish-dir itself (applying its `files`), asserts the installed
         # tree carries every file the registry must receive and exactly the
         # version this run publishes, then runs the Node and Deno probes.
+        env:
+          VERSION: ${{ needs.prepare-and-build.outputs.version }}
         run: node scripts/verify-published.mjs publish-dir "$VERSION"
 
       - name: Publish to NPM with retry
