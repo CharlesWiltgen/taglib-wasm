@@ -42,11 +42,15 @@ deno compile --allow-read --include taglib-web.wasm myapp.ts
 
 **How it works:**
 
-1. Detects compiled binary via `Deno.mainModule` containing `deno-compile://`
+1. Detects a compiled binary by checking `Deno.mainModule` for the
+   `deno-compile://` scheme (see [Detection of Compiled
+   Binaries](#1-detection-of-compiled-binaries) for the caveat on Deno 2.9)
 2. Automatically sets `forceWasmType: "emscripten"` (Emscripten, not WASI)
 3. Tries to load embedded Wasm using the multi-strategy fallback (see
    [Path Resolution](#3-path-resolution))
-4. Warns and falls back gracefully if embedded Wasm not found
+4. Falls back to the Wasm resolved from the package when the embedded file is
+   not found — present when running from a checkout, absent inside a compiled
+   binary
 
 ## Method 2: CDN Loading
 
@@ -145,8 +149,12 @@ For full control over the loading strategy:
 import { TagLib } from "npm:taglib-wasm";
 
 async function initializeTagLib(): Promise<TagLib> {
-  // Detect if running as compiled binary
-  const isCompiled = Deno.mainModule.includes("deno-compile://");
+  // Detection is best-effort: a Deno 2.9.6 binary reports a file:// URL under
+  // a deno-compile-<name> path, not the deno-compile:// scheme older releases
+  // used, so check both — or pass an explicit embedded path and skip detection.
+  const isCompiled =
+    Deno.mainModule.includes("deno-compile://") ||
+    Deno.mainModule.includes("/deno-compile-");
 
   if (isCompiled) {
     // Try multiple resolution strategies
@@ -264,6 +272,17 @@ import { isDenoCompiled } from "npm:taglib-wasm";
 const isCompiled = isDenoCompiled();
 ```
 
+**Caveat, measured on Deno 2.9.6:** a compiled binary reports
+`Deno.mainModule` as a `file://` URL under a `deno-compile-<name>` temporary
+directory, not a `deno-compile://` URL, so `isDenoCompiled()` returns `false`
+inside such a binary and the automatic embedded-Wasm search does not run. The
+binary still reads audio while the package's `dist/taglib-web.wasm` is reachable
+beside it; for a standalone binary, pass the embedded file's path explicitly:
+
+```typescript
+const taglib = await initializeForDenoCompile("./taglib-web.wasm");
+```
+
 ### 2. Embedding WASM Files
 
 Use the `--include` flag when compiling:
@@ -315,10 +334,12 @@ Method 4 reimplements the same strategies by hand.
    `--include taglib-web.wasm`, or run `prepareWasmForEmbedding()` in a build
    step. Without an embedded Wasm a compiled binary has no file to load; use
    Method 2 (`wasmUrl`) if it should fetch the Wasm at runtime instead.
-2. **Resolve the embedded file through `deno-compile://`** — inside a compiled
-   binary `Deno.mainModule` is a `deno-compile://` URL, so resolve the Wasm
-   relative to it (see [Path Resolution](#3-path-resolution)) rather than to your
-   source tree.
+2. **Resolve the embedded file relative to `Deno.mainModule`** — inside a
+   compiled binary that URL points into the binary's filesystem (on Deno 2.9.6 a
+   `file://` path under `deno-compile-<name>`), so resolve the Wasm relative to
+   it (see [Path Resolution](#3-path-resolution)) rather than to your source
+   tree — and pass that path explicitly, since `isDenoCompiled()` does not
+   detect Deno 2.9.6 binaries.
 3. **Expect a missing embedded Wasm** — `initializeForDenoCompile()` falls back
    to the Wasm resolved from this package, which is present when running from
    source and absent inside a compiled binary; a build that forgot `--include`
