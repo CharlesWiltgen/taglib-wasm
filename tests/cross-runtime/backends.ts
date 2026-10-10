@@ -6,7 +6,7 @@
  * library's promise is one API across runtimes AND two wasm backends; this is
  * the cheap end-to-end proof of both, on the runtime that is actually running.
  *
- * Runs UNCHANGED on Deno, Bun and Node (via `tsx`): `node:` builtins and
+ * Runs UNCHANGED on Bun and Node (via `tsx`): `node:` builtins and
  * relative imports only, fixtures resolved from `import.meta.url`.
  */
 

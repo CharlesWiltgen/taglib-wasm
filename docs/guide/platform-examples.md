@@ -5,15 +5,15 @@ everywhere — the only meaningful difference is how your platform accesses file
 
 ## Filesystem vs. Buffer Platforms
 
-| Platform               | File paths               | Buffers | Install                                                            |
-| ---------------------- | ------------------------ | ------- | ------------------------------------------------------------------ |
-| **Deno**               | Yes                      | Yes     | `import from "@charlesw/taglib-wasm"` (JSR) or `"npm:taglib-wasm"` |
-| **Node.js**            | Yes                      | Yes     | `npm install taglib-wasm`                                          |
-| **Bun**                | Yes                      | Yes     | `bun add taglib-wasm`                                              |
-| **Browser**            | No                       | Yes     | Use a bundler (Vite, Webpack, Parcel)                              |
-| **Web Workers**        | No                       | Yes     | Use a bundler (Vite, Webpack, Parcel)                              |
-| **Cloudflare Workers** | No                       | Yes     | `npm install taglib-wasm`                                          |
-| **Electron**           | Main: Yes / Renderer: No | Yes     | `npm install taglib-wasm`                                          |
+| Platform               | File paths               | Buffers | Install                               |
+| ---------------------- | ------------------------ | ------- | ------------------------------------- |
+| **Deno**               | Yes                      | Yes     | `import from "npm:taglib-wasm"`       |
+| **Node.js**            | Yes                      | Yes     | `npm install taglib-wasm`             |
+| **Bun**                | Yes                      | Yes     | `bun add taglib-wasm`                 |
+| **Browser**            | No                       | Yes     | Use a bundler (Vite, Webpack, Parcel) |
+| **Web Workers**        | No                       | Yes     | Use a bundler (Vite, Webpack, Parcel) |
+| **Cloudflare Workers** | No                       | Yes     | `npm install taglib-wasm`             |
+| **Electron**           | Main: Yes / Renderer: No | Yes     | `npm install taglib-wasm`             |
 
 **Filesystem platforms** (Deno, Node.js, Bun) can pass file paths directly.
 Changes save to disk without extra steps:
@@ -58,7 +58,7 @@ in-memory data on Node.js/Deno/Bun without touching disk.
 ## Deno
 
 ```typescript
-import { applyTagsToFile, readTags } from "@charlesw/taglib-wasm/simple";
+import { applyTagsToFile, readTags } from "npm:taglib-wasm/simple";
 
 // Read tags from file path
 const tags = await readTags("song.mp3");
@@ -71,11 +71,6 @@ Run with: `deno run --allow-read --allow-write script.ts`
 
 Deno requires explicit permissions: `--allow-read` for reading files,
 `--allow-write` for `applyTagsToFile` or any operation that saves to disk.
-
-### Deno Compile
-
-TagLib-Wasm supports `deno compile` for building standalone executables. See
-[Deno Compile](./deno-compile.md) for details on embedding the Wasm binary.
 
 ## Node.js
 

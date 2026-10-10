@@ -291,9 +291,9 @@ describe("TagLib.initialize", () => {
     expect(
       /^\d+\.\d+\.\d+\S* \(TagLib \d+\.\d+\.\d+\)$/.test(version),
     ).toBeTruthy();
-    const denoJson = JSON.parse(
-      readFileSync(new URL("../deno.json", import.meta.url), "utf8"),
+    const packageJson = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
     ) as { version: string };
-    expect(version.startsWith(denoJson.version)).toBeTruthy();
+    expect(version.startsWith(packageJson.version)).toBeTruthy();
   });
 });

@@ -40,7 +40,6 @@ export default defineConfig({
       { text: "API Reference", link: "/api/" },
       { text: "Examples", link: "/guide/examples" },
       { text: "NPM", link: "https://www.npmjs.com/package/taglib-wasm" },
-      { text: "JSR", link: "https://jsr.io/@charlesw/taglib-wasm" },
     ],
 
     sidebar: {
@@ -52,7 +51,6 @@ export default defineConfig({
             { text: "Installation", link: "/guide/installation" },
             { text: "Quick Start", link: "/guide/quick-start" },
             { text: "Platform Guide", link: "/guide/platform-examples" },
-            { text: "Deno Compile", link: "/guide/deno-compile" },
           ],
         },
         {

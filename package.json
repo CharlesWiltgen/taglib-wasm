@@ -1,6 +1,6 @@
 {
   "name": "taglib-wasm",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "description": "TagLib-Wasm is the universal tagging library for TypeScript/JavaScript platforms: Browsers, Node.js, Bun, Cloudflare Workers, and Electron apps",
   "keywords": [
     "acoustid",
@@ -125,11 +125,26 @@
     "build:wasm": "npm run build:wasm:emscripten && npm run build:wasm:wasi",
     "build:wasm:emscripten": "./build/build-wasm.sh",
     "build:wasm:wasi": "./build/build-wasi.sh",
-    "build:ts": "tsc && deno run --allow-read --allow-write --allow-run --allow-env scripts/build-js.mjs",
-    "postbuild": "deno run --allow-read --allow-write --allow-run --allow-env scripts/postbuild.mjs",
+    "build:ts": "tsc && node scripts/build-js.mjs",
+    "postbuild": "node scripts/postbuild.mjs",
     "build:copy-wasm": "mkdir -p dist && cp build/taglib-web.wasm build/taglib-wasi.wasm build/taglib-wrapper.js build/taglib-wrapper.d.ts dist/",
     "build:clean": "mkdir -p dist && find dist -mindepth 1 -maxdepth 1 ! -name wasi -exec rm -rf {} +",
     "build": "npm run build:clean && npm run build:wasm:emscripten && npm run build:copy-wasm && npm run build:ts && npm run postbuild",
+    "build:js": "node scripts/build-js.mjs",
+    "build:release": "npm run build:js && npm run build:wasm",
+    "docs:coverage": "npx tsx scripts/docs-coverage.ts",
+    "knip": "npx --no-install knip --no-progress --no-config-hints",
+    "smoke:emscripten": "npx tsx scripts/smoke-emscripten.ts",
+    "smoke:wasi": "npx tsx scripts/smoke-wasi.ts",
+    "bench": "npx tsx tests/wasi-vs-emscripten.bench.ts",
+    "version:patch": "npx tsx scripts/sync-version.ts patch",
+    "version:minor": "npx tsx scripts/sync-version.ts minor",
+    "version:major": "npx tsx scripts/sync-version.ts major",
+    "version:set": "npx tsx scripts/sync-version.ts set",
+    "version:check": "npx tsx scripts/sync-version.ts check",
+    "lint:ast": "bash -c 'command -v ast-grep >/dev/null 2>&1 || { echo \"ast-grep not installed — skipping structural rules\"; exit 0; }; ast-grep test && ast-grep scan'",
+    "test:sonar": "SONAR_REPORT=1 vp test --coverage",
+    "check:all": "npx vp fmt --check && npx vp lint --type-aware && npm run lint:ast && npm run docs:coverage && npm run knip && npx tsc --noEmit -p tsconfig.check.json && npx vp test && npm run build:js && bash scripts/check-toolchain-pins.sh",
     "test": "vp test",
     "test:core": "vp test tests/taglib.test.ts",
     "test:pictures": "vp test tests/picture-api.test.ts",
@@ -165,7 +180,8 @@
     "knip": "^6.36.0",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
-    "vite-plus": "1.1.0"
+    "vite-plus": "1.1.0",
+    "vitest-sonar-reporter": "^3.0.0"
   },
   "peerDependencies": {
     "typescript": ">=4.5.0"

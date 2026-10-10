@@ -42,10 +42,12 @@ jobs:
         # tests/ and src/ both contain test files; the local gate runs both, so
         # the coverage feed must too. Coverage should go UP (cheap, dense unit
         # tests); verified on branch before merge. --expose-gc comes from
-        # vite.config.ts `test.execArgv`. Vitest's v8/lcov reporter writes
+        # vite.config.ts `test.execArgv`. `test:sonar` sets SONAR_REPORT=1,
+        # which adds vitest-sonar-reporter (the test-count feed) on top of the
+        # reporters every other run uses. Vitest's v8/lcov reporter writes
         # coverage/lcov.info directly — no report conversion step is needed,
         # and the paths in it are already repository-relative.
-        run: npx vp test --coverage
+        run: npm run test:sonar
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
@@ -53,11 +55,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          # No -Dsonar.testExecutionReportPaths: that property requires Sonar's
-          # Generic Test Data shape (<testExecutions><file>…), which Vitest's
-          # JUnit reporter does not emit, so pointing it at junit.xml would feed
-          # the parser a document it rejects ("expected testExecutions but got
-          # testsuites"). Coverage still flows via lcov below.
+          # Test-cost metrics come from vitest-sonar-reporter's Generic Test
+          # Data report (root <testExecutions>, one <file> per test file, one
+          # <testCase> per test). Vitest's own JUnit reporter emits
+          # <testsuites>, which this property rejects, which is why the report
+          # is produced by a separate reporter rather than by junit.xml.
+          # Coverage continues to flow via lcov below.
           args: >
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.testExecutionReportPaths=sonar-report.xml

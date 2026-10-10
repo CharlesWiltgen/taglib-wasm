@@ -23,14 +23,9 @@
     "dist",
     "lib",
     "build",
-    "examples",
-    // Deno-only files: tests/wasi-vs-emscripten.bench.ts and
-    // tests/test-files/_gen/make-bwf-fixtures.ts use the `Deno` namespace
-    // and/or JSR (`@std/*`) specifiers, which tsc cannot resolve. After the
-    // Deno test gate was retired they are on no gate at all; they stay listed
-    // here until phase 3 deletes deno.json. Listing them is not a way to hide
-    // a type error in code that Node executes.
-    "tests/wasi-vs-emscripten.bench.ts",
-    "tests/test-files/_gen/make-bwf-fixtures.ts"
+    "examples"
+    // tests/test-files/_gen/make-bwf-fixtures.ts and
+    // tests/wasi-vs-emscripten.bench.ts run on Node and type-check under this
+    // config, so neither is excluded here.
   ]
 }

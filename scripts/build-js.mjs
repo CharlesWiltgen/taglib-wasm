@@ -191,5 +191,5 @@ try {
   console.log("✨ JavaScript build complete!");
 } catch (error) {
   console.error("❌ Build failed:", error.message);
-  Deno.exit(1);
+  process.exit(1);
 }

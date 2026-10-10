@@ -18,7 +18,7 @@
     "scripts/**/*.{ts,mjs,js}",
     "*.ts"
   ],
-  "ignoreDependencies": ["@std/.*", "npm", "tsx"],
+  "ignoreDependencies": ["npm", "vitest-sonar-reporter"],
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
     "src/file-utils/index.ts": ["exports", "types"],

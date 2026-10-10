@@ -6,8 +6,6 @@
 .vscode/
 .gitignore
 .gitattributes
-deno.json
-deno.lock
 mise.toml
 tsconfig.json
 CLAUDE.md

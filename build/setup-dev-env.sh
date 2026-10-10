@@ -72,11 +72,10 @@ check_command npm "Comes with Node.js installation" || MISSING_TOOLS=true
 # Optional but recommended
 echo ""
 echo "Optional tools:"
-check_command deno "Install from https://deno.land" || true
 check_command bun "Install from https://bun.sh" || true
 # binaryen is pinned at the same version as emsdk 6.0.9's vendored Binaryen
 # so dev builds are byte-identical to CI's (taglib-peml byte-compare gate).
-# Local toolchains (deno, node, binaryen) also come from mise.toml, which
+# Local toolchains (node, binaryen) also come from mise.toml, which
 # pins the same versions for this repo.
 check_command wasm-opt "npm install -g binaryen@132.0.0" || true
 
@@ -266,7 +265,7 @@ echo "  │   └── taglib/     # TagLib built with wasi-sdk"
 echo "  └── wasi-sdk/       # WASI SDK installation"
 echo ""
 echo "  dist/"
-echo "  └── wasi/           # WASI output (Deno/Workers)"
+echo "  └── wasi/           # WASI output (Node/Workers)"
 
 # Make build scripts executable
 echo ""
@@ -316,8 +315,7 @@ echo -e "   ${CYAN}source ./build/wasi-env.sh${NC}"
 echo -e "   ${CYAN}./build/build-wasi.sh${NC}"
 echo ""
 echo "3. Run tests:"
-echo -e "   ${CYAN}deno task test${NC}"
-echo -e "   ${CYAN}deno task test${NC}    # Deno tests"
+echo -e "   ${CYAN}npx vp test${NC}       # Vitest (Node)"
 echo -e "   ${CYAN}bun test${NC}          # Bun tests"
 echo ""
 echo "For more information, see docs/phase1-setup.md"

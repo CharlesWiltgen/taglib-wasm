@@ -15,7 +15,7 @@ surface (`src/taglib/audio-file-interface.ts`). It is a point-in-time audit
 
 **Any `AudioFile` feature with format-specific or backend-specific behavior MUST
 have at least one parity test** that runs the same scenario on both backends.
-The default Deno backend is WASI, so a test without `forceWasmType` exercises
+The default Node backend is WASI, so a test without `forceWasmType` exercises
 WASI only — that is NOT parity coverage. Acceptable patterns:
 `for (const backend of ["wasi", "emscripten"])` with
 `TagLib.initialize({ forceWasmType: backend })`; `forEachBackend()` /

@@ -59,8 +59,11 @@ npm install taglib-wasm
 
 ### Deno
 
+Deno installs from npm (Deno's `npm:` specifiers), not from JSR — the JSR
+package `@charlesw/taglib-wasm` is deprecated as of 3.0.0.
+
 ```typescript
-import { TagLib } from "@charlesw/taglib-wasm";
+import { TagLib } from "npm:taglib-wasm";
 ```
 
 ### Bun
@@ -86,54 +89,10 @@ import { TagLib } from "taglib-wasm";
 See [Platform Examples](docs/guide/platform-examples.md#electron) for full IPC
 setup.
 
-### Deno Compiled Binaries (Offline Support)
-
-For Deno compiled binaries that need to work offline, you can embed the WASM
-file:
-
-```typescript
-// 1. Prepare your build by copying the WASM file
-import { prepareWasmForEmbedding } from "@charlesw/taglib-wasm";
-await prepareWasmForEmbedding("./taglib-web.wasm");
-
-// 2. In your application, use the helper for automatic handling
-import { initializeForDenoCompile } from "@charlesw/taglib-wasm";
-const taglib = await initializeForDenoCompile();
-
-// 3. Compile with the embedded WASM
-// deno compile --allow-read --include taglib-web.wasm myapp.ts
-```
-
-See the
-[complete Deno compile guide](https://charleswiltgen.github.io/TagLib-Wasm/guide/deno-compile.html)
-for more options including CDN loading.
-
-`prepareWasmForEmbedding` and `initializeForDenoCompile` resolve a Deno main
-module and file paths, so they belong to the Node/Deno entry: they are absent
-from the `browser` condition, and a browser-targeted build reports them as
-missing exports — the section below, "Bundle Size and Tree-Shaking", shows how
-to get that as a TypeScript error instead of a bundler error. `isDenoCompiled`,
-the `typeof Deno` probe under them, is exported by both: in a browser it answers
-`false`.
-
-For manual control:
-
-```typescript
-// Load embedded WASM in compiled binaries
-const wasmBinary = await Deno.readFile(
-  new URL("./taglib-web.wasm", import.meta.url),
-);
-const taglib = await TagLib.initialize({ wasmBinary });
-```
-
-Supplying `wasmBinary` selects the Emscripten backend (the bytes above are
-`taglib-web.wasm`, its artifact). The WASI backend loads from a filesystem
-path or URL instead — use `wasmUrl` with it.
-
 ## Quick Start
 
-> **Import paths:** Deno uses `@charlesw/taglib-wasm`, npm uses `taglib-wasm`.
-> Examples below use npm paths — substitute accordingly.
+> **Import paths:** all runtimes use the npm package `taglib-wasm` (Deno via
+> `npm:taglib-wasm`); the old JSR package `@charlesw/taglib-wasm` is deprecated.
 
 ### Simple API
 
@@ -455,7 +414,6 @@ Supported formats:
 - [Album Processing Guide](https://charleswiltgen.github.io/TagLib-Wasm/guide/album-processing.html)
 - [Folder Operations](https://charleswiltgen.github.io/TagLib-Wasm/guide/folder-operations.html)
 - [Codec Detection](https://charleswiltgen.github.io/TagLib-Wasm/guide/codec-detection.html)
-- [Deno Compile](https://charleswiltgen.github.io/TagLib-Wasm/guide/deno-compile.html)
 - [Platform Examples](https://charleswiltgen.github.io/TagLib-Wasm/guide/platform-examples.html)
 - [Working with Cover Art](https://charleswiltgen.github.io/TagLib-Wasm/guide/cover-art.html)
 - [Track Ratings](https://charleswiltgen.github.io/TagLib-Wasm/guide/ratings.html)

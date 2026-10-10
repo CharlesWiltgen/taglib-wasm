@@ -229,7 +229,16 @@ export default defineConfig({
     testTimeout: 120_000,
     hookTimeout: 120_000,
     coverage: { provider: "v8", reporter: ["lcov", "text"] },
-    reporters: ["default", "junit"],
+    // The Sonar run adds a Generic Test Data reporter (root <testExecutions>);
+    // every other run keeps the default + junit reporters unchanged. Enable it
+    // with SONAR_REPORT=1 (npm run test:sonar).
+    reporters: process.env.SONAR_REPORT
+      ? [
+          "default",
+          "junit",
+          ["vitest-sonar-reporter", { outputFile: "sonar-report.xml" }],
+        ]
+      : ["default", "junit"],
     outputFile: { junit: "./junit.xml" },
   },
 });

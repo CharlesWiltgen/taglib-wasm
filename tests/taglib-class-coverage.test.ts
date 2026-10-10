@@ -170,14 +170,14 @@ describe("TagLib.version()", () => {
     ).toBeTruthy();
   });
 
-  it("should use deno.json version as package version", async () => {
-    const denoJson = JSON.parse(
-      await readFile(new URL("../deno.json", import.meta.url), "utf8"),
-    );
+  it("should use package.json version as package version", async () => {
+    const packageJson = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { version: string };
     const version = taglib.version();
     expect(
-      version.startsWith(denoJson.version),
-      `Version should start with deno.json version '${denoJson.version}', got: ${version}`,
+      version.startsWith(packageJson.version),
+      `Version should start with package.json version '${packageJson.version}', got: ${version}`,
     ).toBeTruthy();
   });
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-env
+#!/usr/bin/env -S npx tsx
 /**
  * Hard smoke test for the Emscripten backend.
  *
@@ -8,9 +8,10 @@
  * and reads a fixture. It guards against shipping a wasm/glue mismatch like the
  * 1.4.1 `./a` regression. Run in CI right after `build:wasm`.
  */
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 
-const wasmBinary = await Deno.readFile(
+const wasmBinary = await readFile(
   new URL("../build/taglib-web.wasm", import.meta.url),
 );
 
@@ -21,7 +22,7 @@ try {
     wasmBinary,
     forceWasmType: "emscripten",
   });
-  const audio = await Deno.readFile(
+  const audio = await readFile(
     new URL("../tests/test-files/mp3/kiss-snippet.mp3", import.meta.url),
   );
   const file = await taglib.open(audio);
@@ -34,14 +35,14 @@ try {
       "   This usually means a wasm/glue import mismatch (e.g. a skewed wasm-opt).\n" +
       `   ${err instanceof Error ? err.message : err}`,
   );
-  Deno.exit(1);
+  process.exit(1);
 }
 
 if (bitrate <= 0) {
   console.error(
     `❌ Emscripten smoke test: instantiated but audioProperties().bitrate=${bitrate}`,
   );
-  Deno.exit(1);
+  process.exit(1);
 }
 
 console.log(

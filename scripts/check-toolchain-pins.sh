@@ -5,7 +5,7 @@
 # reds CI with a confusing "binary is stale" error — this has happened twice
 # (6.0.3->6.0.6 and 6.0.6->6.0.7 both left publish-everywhere.yml and/or
 # setup-dev-env.sh behind). This guard makes drift fail fast at the pins
-# themselves. Runs in CI (lint job) and locally (deno task check:all).
+# themselves. Runs in CI (lint job) and locally (npm run check:all).
 #
 # Covered pins:
 #   emsdk    — .github/workflows/{ci,publish-everywhere}.yml
@@ -16,8 +16,6 @@
 #              (WASI_VERSION), build/setup-wasi-sdk.sh (WASI_SDK_VERSION_FULL)
 #   binaryen — .github/workflows/ci.yml, build/setup-dev-env.sh (binaryen@),
 #              and mise.toml (npm:binaryen) when that local file exists
-#   deno     — .github/workflows/{ci,publish-everywhere,sonarcloud}.yml
-#              (deno-version:) and mise.toml when present
 
 set -euo pipefail
 
@@ -91,16 +89,12 @@ $wasi_local"
 if [ -f mise.toml ]; then
   bin_mise="$(grep -oE '"npm:binaryen" = "[0-9]+\.[0-9]+\.[0-9]+"' mise.toml \
     | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
-  deno_mise="$(grep -oE '^deno = "[0-9]+\.[0-9]+\.[0-9]+"' mise.toml \
-    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
-  # The file exists, so its pins must be found: without this a renamed or
+  # The file exists, so its pin must be found: without this a renamed or
   # reformatted line would empty the value and the filter below would drop it
   # silently — the vanish-class this guard exists to close.
   require_pin "binaryen (mise.toml)" "$bin_mise"
-  require_pin "deno (mise.toml)" "$deno_mise"
 else
   bin_mise=""
-  deno_mise=""
 fi
 
 bin_ci="$(grep -oE 'binaryen@[0-9]+\.[0-9]+\.[0-9]+' .github/workflows/ci.yml | sed 's/.*@//' || true)"
@@ -108,10 +102,5 @@ bin_dev="$(grep -oE 'binaryen@[0-9]+\.[0-9]+\.[0-9]+' build/setup-dev-env.sh | s
 require_pin "binaryen (.github/workflows/ci.yml)" "$bin_ci"
 require_pin "binaryen (build/setup-dev-env.sh)" "$bin_dev"
 check_family "binaryen" "$(printf '%s\n' "$bin_ci" "$bin_dev" "$bin_mise" | grep .)"
-
-deno_wf="$(grep -hoE 'deno-version: "[0-9]+\.[0-9]+\.[0-9]+"' "${WF_FILES[@]}" \
-  | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
-require_pin "deno (workflows)" "$deno_wf"
-check_family "deno" "$(printf '%s\n' "$deno_wf" "$deno_mise" | grep .)"
 
 echo "All toolchain pins agree."

@@ -182,7 +182,6 @@ export function detectRuntime(): RuntimeDetectionResult {
   };
 }
 
-// deno-fmt-ignore
 const EXNREF_PROBE = new Uint8Array([
   0x00,
   0x61,

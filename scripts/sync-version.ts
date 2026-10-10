@@ -1,28 +1,27 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write
+#!/usr/bin/env -S npx tsx
 
 /**
- * @fileoverview Synchronize version numbers between deno.json and package.json
+ * @fileoverview Synchronize the package version across the repo.
+ *
+ * Propagates a version to package.json, src/version.ts and
+ * sonar-project.properties, and checks that all three agree.
  *
  * Usage:
- *   deno run --allow-read --allow-write scripts/sync-version.ts patch
- *   deno run --allow-read --allow-write scripts/sync-version.ts minor
- *   deno run --allow-read --allow-write scripts/sync-version.ts major
- *   deno run --allow-read --allow-write scripts/sync-version.ts set 1.2.3
- *   deno run --allow-read --allow-write scripts/sync-version.ts check
+ *   npx tsx scripts/sync-version.ts patch
+ *   npx tsx scripts/sync-version.ts minor
+ *   npx tsx scripts/sync-version.ts major
+ *   npx tsx scripts/sync-version.ts set 1.2.3
+ *   npx tsx scripts/sync-version.ts check
  */
+
+import { readFile, writeFile } from "node:fs/promises";
 
 interface PackageJson {
   version: string;
   [key: string]: unknown;
 }
 
-interface DenoJson {
-  version: string;
-  [key: string]: unknown;
-}
-
 const PACKAGE_JSON_PATH = "./package.json";
-const DENO_JSON_PATH = "./deno.json";
 const SONAR_PROPERTIES_PATH = "./sonar-project.properties";
 const VERSION_TS_PATH = "./src/version.ts";
 
@@ -30,7 +29,7 @@ const VERSION_TS_PATH = "./src/version.ts";
  * Read and parse JSON file
  */
 async function readJsonFile<T>(path: string): Promise<T> {
-  const content = await Deno.readTextFile(path);
+  const content = await readFile(path, "utf8");
   return JSON.parse(content);
 }
 
@@ -39,7 +38,7 @@ async function readJsonFile<T>(path: string): Promise<T> {
  */
 async function writeJsonFile(path: string, data: unknown): Promise<void> {
   const content = JSON.stringify(data, null, 2) + "\n";
-  await Deno.writeTextFile(path, content);
+  await writeFile(path, content);
 }
 
 /**
@@ -91,13 +90,12 @@ function incrementVersion(
  */
 async function checkVersions(): Promise<boolean> {
   const packageJson = await readJsonFile<PackageJson>(PACKAGE_JSON_PATH);
-  const denoJson = await readJsonFile<DenoJson>(DENO_JSON_PATH);
 
   const versionTsVersion = await readVersionTs();
 
   let sonarVersion: string | null = null;
   try {
-    const content = await Deno.readTextFile(SONAR_PROPERTIES_PATH);
+    const content = await readFile(SONAR_PROPERTIES_PATH, "utf8");
     const match = content.match(/^sonar\.projectVersion=(.+)$/m);
     if (match) sonarVersion = match[1];
   } catch {
@@ -105,12 +103,10 @@ async function checkVersions(): Promise<boolean> {
   }
 
   const allMatch =
-    packageJson.version === denoJson.version &&
     (!versionTsVersion || versionTsVersion === packageJson.version) &&
     (!sonarVersion || sonarVersion === packageJson.version);
 
   console.log(`package.json version:           ${packageJson.version}`);
-  console.log(`deno.json version:              ${denoJson.version}`);
   if (versionTsVersion) {
     console.log(`src/version.ts:                 ${versionTsVersion}`);
   }
@@ -126,12 +122,12 @@ async function checkVersions(): Promise<boolean> {
 
 async function updateVersionTs(newVersion: string): Promise<void> {
   const content = `export const VERSION = "${newVersion}";\n`;
-  await Deno.writeTextFile(VERSION_TS_PATH, content);
+  await writeFile(VERSION_TS_PATH, content);
 }
 
 async function readVersionTs(): Promise<string | null> {
   try {
-    const content = await Deno.readTextFile(VERSION_TS_PATH);
+    const content = await readFile(VERSION_TS_PATH, "utf8");
     const match = content.match(/^export const VERSION = "(.+)";$/m);
     return match ? match[1] : null;
   } catch {
@@ -141,13 +137,13 @@ async function readVersionTs(): Promise<string | null> {
 
 async function updateSonarProperties(newVersion: string): Promise<boolean> {
   try {
-    const content = await Deno.readTextFile(SONAR_PROPERTIES_PATH);
+    const content = await readFile(SONAR_PROPERTIES_PATH, "utf8");
     const updated = content.replace(
       /^sonar\.projectVersion=.+$/m,
       `sonar.projectVersion=${newVersion}`,
     );
     if (updated !== content) {
-      await Deno.writeTextFile(SONAR_PROPERTIES_PATH, updated);
+      await writeFile(SONAR_PROPERTIES_PATH, updated);
       return true;
     }
     return false;
@@ -163,19 +159,16 @@ async function updateVersion(newVersion: string): Promise<void> {
   // Validate version format
   parseVersion(newVersion);
 
-  // Read both files
+  // Read the package manifest for the current version
   const packageJson = await readJsonFile<PackageJson>(PACKAGE_JSON_PATH);
-  const denoJson = await readJsonFile<DenoJson>(DENO_JSON_PATH);
 
   const oldVersion = packageJson.version;
 
   // Update versions
   packageJson.version = newVersion;
-  denoJson.version = newVersion;
 
   // Write JSON files
   await writeJsonFile(PACKAGE_JSON_PATH, packageJson);
-  await writeJsonFile(DENO_JSON_PATH, denoJson);
 
   // Update src/version.ts
   await updateVersionTs(newVersion);
@@ -185,7 +178,6 @@ async function updateVersion(newVersion: string): Promise<void> {
 
   console.log(`✅ Updated version: ${oldVersion} → ${newVersion}`);
   console.log(`   Updated: package.json`);
-  console.log(`   Updated: deno.json`);
   console.log(`   Updated: src/version.ts`);
   if (updatedSonar) console.log(`   Updated: sonar-project.properties`);
 }
@@ -194,7 +186,7 @@ async function updateVersion(newVersion: string): Promise<void> {
  * Main function
  */
 async function main() {
-  const [command, arg] = Deno.args;
+  const [command, arg] = process.argv.slice(2);
 
   if (!command) {
     console.error("Usage: sync-version.ts <command> [argument]");
@@ -204,14 +196,14 @@ async function main() {
     console.error("  major     - Increment major version (x.0.0)");
     console.error("  set <ver> - Set specific version");
     console.error("  check     - Check if versions match");
-    Deno.exit(1);
+    process.exit(1);
   }
 
   try {
     switch (command) {
       case "check": {
         const match = await checkVersions();
-        Deno.exit(match ? 0 : 1);
+        process.exit(match ? 0 : 1);
         break;
       }
 
@@ -228,7 +220,7 @@ async function main() {
         if (!arg) {
           console.error("Error: Version number required for 'set' command");
           console.error("Usage: sync-version.ts set <version>");
-          Deno.exit(1);
+          process.exit(1);
         }
         await updateVersion(arg);
         break;
@@ -236,14 +228,12 @@ async function main() {
 
       default:
         console.error(`Unknown command: ${command}`);
-        Deno.exit(1);
+        process.exit(1);
     }
   } catch (error) {
     console.error(`Error: ${error.message}`);
-    Deno.exit(1);
+    process.exit(1);
   }
 }
 
-if (import.meta.main) {
-  await main();
-}
+await main();

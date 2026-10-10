@@ -167,8 +167,8 @@ import { TagLib } from "taglib-wasm";
 ```
 
 ```typescript
-// Deno (JSR — preferred)
-import { TagLib } from "jsr:@charlesw/taglib-wasm";
+// Deno (npm specifier)
+import { TagLib } from "npm:taglib-wasm";
 ```
 
 ## Next Steps

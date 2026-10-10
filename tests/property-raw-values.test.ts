@@ -927,7 +927,7 @@ describe("an empty value survives a save and is visible on both backends (taglib
   // instead of guessing intent, so an unchanged empty value is a no-op.
   //
   // NOTE the loop varies the SEED backend only: readTags/applyTags are the
-  // simple API, which always uses the default backend (WASI on Deno). Neither
+  // simple API, which always uses the default backend (WASI on Node). Neither
   // instance is an Emscripten baseline — both exercise the WASI round trip, one
   // on a file Emscripten wrote. Both fail against the defect.
   for (const backend of BACKENDS) {

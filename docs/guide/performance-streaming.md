@@ -65,7 +65,6 @@ const ownCdnTaglib = await TagLib.initialize({
 
 > **Production:** pin an exact version (`taglib-wasm@2.2.3`) rather than
 > `@latest`, so a new release can't swap the Wasm under a running deployment.
-> See [Deno Compile → Tips for Production](./deno-compile.md#tips-for-production).
 
 ### 2. Ensure Proper Server Headers
 

@@ -4,13 +4,13 @@ set -euo pipefail
 # Safe Release Script for TagLib-Wasm
 # Runs the gates, bumps and pushes the version, waits for CI on that commit, and
 # then dispatches the publish workflow. The tag and the GitHub release are
-# created by that workflow's finalize job, only after JSR, npm, and GitHub
+# created by that workflow's finalize job, only after npm and GitHub
 # Packages all carry the version (taglib-rkx0).
 #
 # Usage:
-#   deno task release                    # Auto-increment patch version (0.0.1)
-#   deno task release 2.3.4              # Set specific version
-#   SKIP_PUBLISH_WATCH=1 deno task release   # Do not wait for the publish result
+#   npm run release                       # Auto-increment patch version (0.0.1)
+#   npm run release -- 2.3.4              # Set specific version
+#   SKIP_PUBLISH_WATCH=1 npm run release  # Do not wait for the publish result
 
 # Colors for output
 RED='\033[0;31m'
@@ -38,7 +38,11 @@ print_warning() {
 
 # Function to check if we're on main branch
 check_main_branch() {
-    local current_branch=$(git rev-parse --abbrev-ref HEAD)
+    # Split from the assignment: `local x=$(…)` returns local's own status, so a
+    # failing `git rev-parse` used to fall through to the "not on main" prompt with
+    # an empty branch name instead of failing.
+    local current_branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD) || exit 1
     if [[ "$current_branch" != "main" ]]; then
         print_error "Not on main branch. Current branch: $current_branch"
         print_warning "Releases should be created from the main branch."
@@ -64,8 +68,13 @@ check_up_to_date() {
     print_step "Fetching latest changes from remote..."
     git fetch origin main
 
-    local LOCAL=$(git rev-parse HEAD)
-    local REMOTE=$(git rev-parse origin/main)
+    # Both split from their assignments (`local x=$(…)` masks the status), so a
+    # failed `git rev-parse` aborts instead of silently comparing empty strings —
+    # which previously made the two look equal and passed the check.
+    local LOCAL
+    LOCAL=$(git rev-parse HEAD) || exit 1
+    local REMOTE
+    REMOTE=$(git rev-parse origin/main) || exit 1
 
     if [[ "$LOCAL" != "$REMOTE" ]]; then
         print_error "Local branch is not up to date with origin/main"
@@ -80,16 +89,16 @@ run_tests() {
 
     # Run format check
     print_step "Checking code formatting..."
-    if ! deno fmt --check > /dev/null 2>&1; then
+    if ! npx vp fmt --check > /dev/null 2>&1; then
         print_error "Code formatting check failed"
-        print_warning "Run 'deno task fmt' to fix formatting"
+        print_warning "Run 'npx vp fmt' to fix formatting"
         exit 1
     fi
     print_success "Code formatting check passed"
 
     # Run lint
     print_step "Running linter..."
-    if ! deno lint > /dev/null 2>&1; then
+    if ! npx vp lint --type-aware > /dev/null 2>&1; then
         print_error "Linting failed"
         print_warning "Fix linting errors before releasing"
         exit 1
@@ -98,7 +107,7 @@ run_tests() {
 
     # Run type check
     print_step "Running type check..."
-    if ! deno check ./src ./tests > /dev/null 2>&1; then
+    if ! npx tsc --noEmit -p tsconfig.check.json > /dev/null 2>&1; then
         print_error "Type checking failed"
         exit 1
     fi
@@ -106,7 +115,7 @@ run_tests() {
 
     # Run tests
     print_step "Running test suite..."
-    if ! deno task test; then
+    if ! npx vp test; then
         print_error "Tests failed"
         exit 1
     fi
@@ -114,7 +123,7 @@ run_tests() {
 
     # Check if build works
     print_step "Verifying build process..."
-    if ! deno task build > /dev/null 2>&1; then
+    if ! npm run build:release > /dev/null 2>&1; then
         print_error "Build failed"
         exit 1
     fi
@@ -135,7 +144,7 @@ verify_wasm_freshness() {
     fi
     print_success "build/taglib-web.wasm matches fresh build"
 
-    # Same check for the WASI binary. `deno task build` now rebuilds both
+    # Same check for the WASI binary. `npm run build:release` now rebuilds both
     # backends, so a stale committed binary shows up as a dirty working tree.
     #
     # This replaces an older cmp against dist/wasi/taglib-wasi.wasm, which
@@ -145,7 +154,7 @@ verify_wasm_freshness() {
     # WASI binary built from an older lib/taglib passed silently (taglib-mpw).
     if [ ! -f build/taglib-wasi.wasm ]; then
         print_error "build/taglib-wasi.wasm is missing!"
-        print_warning "Run: deno task build:wasm:wasi"
+        print_warning "Run: npm run build:wasm:wasi"
         exit 1
     fi
     # The WASI reference binary is the CI/Linux build: wasi-sdk's clang emits
@@ -172,22 +181,23 @@ verify_wasm_freshness() {
 run_preflight_checks() {
     print_step "Running package publishing preflight checks..."
 
-    # JSR publish dry-run (catches module exclusion issues)
-    print_step "Checking JSR publish compatibility..."
-    if ! deno publish --dry-run --allow-dirty > /dev/null 2>&1; then
-        print_error "JSR publish dry-run failed"
-        print_warning "Run 'deno publish --dry-run' to see details"
+    # The npm distribution guard (replaces the retired JSR publish guard):
+    # asserts the package.json `files` allowlist and the packed tarball.
+    print_step "Verifying npm package contents guard..."
+    if ! bash scripts/check-package-files.sh > /dev/null 2>&1; then
+        print_error "Package files guard failed"
+        print_warning "Run 'bash scripts/check-package-files.sh' to see details"
         exit 1
     fi
-    print_success "JSR publish check passed"
+    print_success "Package files guard passed"
 
     # The npm checks below lint the packed npm tarball, so dist/ must hold a
-    # complete package first. `deno task build` above does not produce one:
-    # its build:ts is scripts/build-js.mjs, which emits .js only — the .d.ts
+    # complete package first. `npm run build:release` above does not produce one:
+    # its build:js is scripts/build-js.mjs, which emits .js only — the .d.ts
     # files come from tsc, which lives in the npm build:ts. Without this step
     # the checks lint whatever stale dist/ happened to be lying around (and
     # fail outright once it is cleaned). The wasm is copied rather than
-    # rebuilt; `deno task build` already produced fresh binaries.
+    # rebuilt; `npm run build:release` already produced fresh binaries.
     print_step "Building npm package artifacts..."
     if ! (npm run build:clean && npm run build:copy-wasm && npm run build:ts \
         && npm run postbuild) > /dev/null 2>&1; then
@@ -215,10 +225,12 @@ run_preflight_checks() {
     fi
     print_success "Type exports check passed"
 
-    # NPM pack dry-run (verify package contents)
+    # NPM pack dry-run (verify package contents). The `if !` form is required:
+    # `local x=$(…)` followed by `[[ $? -ne 0 ]]` reads local's status, which made
+    # this failure branch dead — an npm pack failure could not fail the preflight.
     print_step "Verifying NPM package contents..."
-    local pack_output=$(npm pack --dry-run 2>&1)
-    if [[ $? -ne 0 ]]; then
+    local pack_output
+    if ! pack_output=$(npm pack --dry-run 2>&1); then
         print_error "NPM pack dry-run failed"
         exit 1
     fi
@@ -234,28 +246,31 @@ run_preflight_checks() {
     print_success "NPM package contents verified"
 }
 
-# Function to check version sync (delegates to sync-version.ts for all 4 files)
+# Function to check version sync (delegates to sync-version.ts for the version files).
+# Human-facing lines go to stderr and the bare version to stdout, so the caller can
+# capture the version while the release log still shows the gate ran and passed.
 check_version_sync() {
-    print_step "Checking version synchronization..."
+    print_step "Checking version synchronization..." >&2
 
-    if ! deno task version:check; then
-        print_error "Version mismatch detected!"
-        print_warning "Run 'deno task version:set <version>' to synchronize all version references"
+    if ! npx tsx scripts/sync-version.ts check >&2; then
+        print_error "Version mismatch detected!" >&2
+        print_warning "Run 'npx tsx scripts/sync-version.ts set <version>' to synchronize all version references" >&2
         exit 1
     fi
 
-    local pkg_version=$(node -p "require('./package.json').version")
-    print_success "Versions are synchronized: $pkg_version"
+    local pkg_version
+    pkg_version=$(node -p "require('./package.json').version")
+    print_success "Versions are synchronized: $pkg_version" >&2
     echo "$pkg_version"
 }
 
-# Function to update versions (delegates to sync-version.ts for all 4 files)
+# Function to update versions (delegates to sync-version.ts for the version files)
 update_versions() {
     local new_version=$1
 
     print_step "Updating version to $new_version..."
 
-    if ! deno task version:set "$new_version"; then
+    if ! npx tsx scripts/sync-version.ts set "$new_version"; then
         print_error "Failed to update versions"
         exit 1
     fi
@@ -342,7 +357,7 @@ publish_release() {
     fi
 
     # Commit version changes (skip if already at target version)
-    git add package.json deno.json sonar-project.properties src/version.ts
+    git add package.json sonar-project.properties src/version.ts
     if git diff --cached --quiet; then
         print_warning "Version already at $version, skipping commit"
     else
@@ -409,7 +424,7 @@ publish_release() {
     fi
 
     print_success "Publish run queued: https://github.com/CharlesWiltgen/TagLib-Wasm/actions/runs/$run_id"
-    print_warning "The workflow tags and releases v$version only after JSR, npm, and GitHub Packages all have it."
+    print_warning "The workflow tags and releases v$version only after npm and GitHub Packages have it."
     announce_approval_gate "$run_id" "$gate_rules"
 
     if [ "${SKIP_PUBLISH_WATCH:-}" = "1" ]; then
@@ -426,7 +441,7 @@ publish_release() {
         print_error "Publish workflow failed — no release was created"
         print_warning "The run's step summary says which legs published. Note the two cases it covers:"
         print_warning "  • a post-publish verification failure blocks the tag while a version may already"
-        print_warning "    be live on JSR and/or npm (nothing can un-publish those)"
+        print_warning "    be live on npm (unpublish is restricted to a short window)"
         print_warning "  • a tag conflict means a v$version tag already exists at another commit, so the"
         print_warning "    registries may carry the version with no release to show for it"
         print_warning "Read the summary, then either: gh run rerun $run_id --failed — or, for a tag"
@@ -439,7 +454,7 @@ publish_release() {
     # skipped job does not fail a run. Verify the release object itself.
     if gh release view "v$version" >/dev/null 2>&1; then
         echo
-        print_success "🎉 v$version published to JSR, npm, and GitHub Packages; tag and GitHub release created"
+        print_success "🎉 v$version published to npm and GitHub Packages; tag and GitHub release created"
     else
         print_error "The run finished green but no GitHub release exists for v$version"
         print_warning "That is what a fully skipped run looks like: the version is already on npm, so"
@@ -457,22 +472,42 @@ main() {
     echo "=================================="
     echo
 
-    # --skip-watch: dispatch the publish workflow without waiting for the result.
-    # Exposed as `deno task release:quick`; every gate still runs (the old
-    # release:quick skipped them and then tagged before publishing, which is the
-    # 2.2.3 failure shape this script exists to prevent — review finding SEC-06).
-    if [[ "${1:-}" == "--skip-watch" ]]; then
-        SKIP_PUBLISH_WATCH=1
+    # Flags, in any order, before the optional version argument.
+    while [[ "${1:-}" == --* ]]; do
+        case "$1" in
+            --skip-watch)
+                # Dispatch the publish workflow without waiting for the result.
+                # Exposed as `npm run release:quick`; every gate still runs (the
+                # old release:quick skipped them and then tagged before
+                # publishing, which is the 2.2.3 failure shape this script exists
+                # to prevent — review finding SEC-06).
+                SKIP_PUBLISH_WATCH=1
+                ;;
+            --dry-run)
+                # Run every gate with the real commands, then stop before any
+                # version bump, commit, push, CI wait or dispatch. Skips exactly:
+                # check_main_branch, check_clean_working_tree, check_up_to_date,
+                # the version prompt, update_versions, the post-update test
+                # re-run, and publish_release.
+                DRY_RUN=1
+                ;;
+            *)
+                print_error "Unknown flag: $1"
+                print_warning "Supported flags: --dry-run, --skip-watch"
+                exit 1
+                ;;
+        esac
         shift
-    fi
+    done
 
     # Get version argument or auto-increment
     local new_version=""
-    
+
     if [[ $# -eq 0 ]]; then
         # No version specified, auto-increment patch version
-        local current_version=$(node -p "require('./package.json').version")
-        
+        local current_version
+        current_version=$(node -p "require('./package.json').version")
+
         # Parse version components
         IFS='.' read -ra VERSION_PARTS <<< "$current_version"
         local major="${VERSION_PARTS[0]}"
@@ -495,15 +530,31 @@ main() {
         fi
     fi
 
-    # Pre-release checks
-    print_step "Running pre-release checks..."
-    check_main_branch
-    check_clean_working_tree
-    check_up_to_date
+    # Pre-release checks. A dry run runs no commit, push or CI wait, so branch
+    # and remote state cannot affect its outcome — and requiring main + a clean
+    # tree would make it unusable on the feature branch it is verified from.
+    if [[ "${DRY_RUN:-}" != "1" ]]; then
+        print_step "Running pre-release checks..."
+        check_main_branch
+        check_clean_working_tree
+        check_up_to_date
+    fi
 
-    # Check current version synchronization
-    local current_version=$(check_version_sync)
-    
+    # Check current version synchronization. The declaration is split from the
+    # assignment deliberately: `local x=$(cmd)` returns local's own status, which
+    # would mask a failing gate and let the release continue (this repo's "check
+    # that cannot fail" class — taglib review C14).
+    local current_version
+    current_version=$(check_version_sync) || exit 1
+
+    if [[ "${DRY_RUN:-}" == "1" ]]; then
+        run_tests
+        verify_wasm_freshness
+        run_preflight_checks
+        print_success "Dry run complete — all release gates passed (no commit, push or dispatch)."
+        exit 0
+    fi
+
     # Show version change
     echo
     print_step "Version change: $current_version → $new_version"
