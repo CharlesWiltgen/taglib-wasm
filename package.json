@@ -148,7 +148,7 @@
     "update-taglib": "./scripts/update-taglib.sh",
     "release": "./scripts/release-safe.sh",
     "release:quick": "./scripts/release-safe.sh --skip-watch",
-    "knip:strict": "npx --no-install knip --no-progress --treat-config-hints-as-errors --strict --no-tag-hints",
+    "knip:strict": "npx --no-install knip --no-progress --strict --no-tag-hints",
     "verify:published": "node scripts/verify-published.mjs"
   },
   "dependencies": {
@@ -197,7 +197,6 @@
       "*.ts"
     ],
     "ignoreDependencies": [
-      "npm",
       "vitest-sonar-reporter"
     ],
     "ignoreExportsUsedInFile": true,

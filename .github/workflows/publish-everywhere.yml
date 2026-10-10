@@ -562,6 +562,16 @@ jobs:
           # tag-less.)
           fetch-depth: 0
 
+      - name: Setup Node
+        # The artifact verification below instantiates the published package,
+        # which enforces Node >= 22.6 at runtime (engines: >=24). The runner's
+        # default `node` is older, so relying on it would fail the step for an
+        # environment reason and block a legitimate release. Every other job in
+        # this repo pins the version the same way.
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
       - name: Check publication status
         id: status
         env:
@@ -664,17 +674,46 @@ jobs:
             echo "No tag or GitHub release was created for this version."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Setup Deno
+        # The verification below has a Deno leg (the published package's Deno
+        # surface is a distinct code path). Same pin as the CI job, quoted so
+        # YAML keeps it a string.
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: "2.9.6"
+
       - name: Verify the published artifact
         # The registry copies are the deliverable, and nothing else here
         # exercises them: the npm leg's own check is an HTTP 200 on the version
         # URL, which proves the version exists, not that it works. This installs
-        # the version from the registry and reads a real tag on BOTH wasm
-        # backends, so a stale committed binary or a wrapper the tarball does
-        # not match fails BEFORE the tag and the release exist.
+        # the version from the registry and runs a probe from inside the temp app
+        # that installed it, so its imports resolve through the package's
+        # `exports` map and it reads real tags on BOTH wasm backends — then
+        # repeats it under Deno, which reaches the Deno filesystem provider and
+        # the shipped-Wasm resolver no Node-side check can see. A failure means
+        # no tag and no release.
         if: steps.status.outputs.success == 'true'
         env:
           VERSION: ${{ needs.prepare-and-build.outputs.version }}
-        run: node scripts/verify-published.mjs "$VERSION"
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if node scripts/verify-published.mjs "$VERSION"; then
+            exit 0
+          fi
+          # The failure summary above is gated on the publication status, which
+          # was already computed — this path needs its own, or the run fails with
+          # no diagnosis and no rollback guidance.
+          {
+            echo "### ❌ Published taglib-wasm@${VERSION} failed verification"
+            echo ""
+            echo "Every registry carries ${VERSION}, but the installed package did not work, so no tag and no GitHub release were created."
+            echo ""
+            echo "1. The step log above names the failing check (a subpath import, a wasm backend, a read, or the Deno leg)."
+            echo "2. ${VERSION} is live on npm and unpublishing is restricted — a code fix ships as a new patch version."
+            echo "3. If the failure was environmental (a lagging packument, a network error), re-run this run:"
+            echo "   gh run rerun ${RUN_ID} --failed"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
       - name: Create and push release tag
         # The tag is created HERE, not by scripts/release-safe.sh, and only once

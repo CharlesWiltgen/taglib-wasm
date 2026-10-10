@@ -115,8 +115,11 @@ jobs:
         # Local-only gate made mandatory: dead exports and orphaned deps rot
         # silently otherwise. knip is pinned in devDependencies and the npm
         # script uses --no-install, so the analyzed version is deterministic
-        # rather than whatever npx would fetch.
-        run: npm run knip
+        # rather than whatever npx would fetch. The strict (production-mode)
+        # pass is the only one that reports a devDependency imported from
+        # src/ - the class that ships as a missing runtime dependency - so it
+        # runs here too rather than only in a local check:all.
+        run: npm run knip && npm run knip:strict
 
       - name: Verify toolchain pins agree across files
         # The wasm freshness gates byte-compare fresh builds against the

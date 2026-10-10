@@ -12,12 +12,20 @@
  * was an HTTP 200 on the version URL — proof the version exists, not that it
  * works.
  *
- * This installs the version from the registry into a temp directory and then
- * exercises the INSTALLED package the way a consumer would: the Simple API, the
- * Full API on both wasm backends with real tag values, and the Wasm-free
- * subpath. A stale committed binary, a wrapper the tarball does not match, an
- * unresolved relative import, or a consumer-facing API break all fail here and
- * nowhere else.
+ * This installs the version from the registry into a temp directory and runs
+ * scripts/verify-published-probe.mjs FROM THAT DIRECTORY, so every import in it
+ * is bare and resolves through the installed package's `exports` map — the
+ * public contract, not a file path. The probe reads a real fixture and asserts
+ * real values on both wasm backends. A stale committed binary, a wrapper the
+ * tarball does not match, a broken `exports` target, or a consumer-facing API
+ * break fails here and nowhere else.
+ *
+ * scripts/verify-published-probe-deno.ts then does the same under Deno, which
+ * reaches code Node never does (Deno's own filesystem provider) and resolves
+ * the shipped Wasm from the emitted layout — a path an installed package could
+ * not satisfy for `prepareWasmForEmbedding()` until the entry barrels moved, a
+ * break no Node-side check could see. Deno is required rather than skipped:
+ * a skipped leg cannot fail.
  *
  * Usage:
  *   node scripts/verify-published.mjs            # version from package.json
@@ -28,6 +36,7 @@
 
 import { execFileSync } from "node:child_process";
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -36,7 +45,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const repoRoot = new URL("..", import.meta.url);
 const version =
@@ -48,134 +57,138 @@ if (!/^\d+\.\d+\.\d+/.test(version)) {
   process.exit(2);
 }
 
-// A real fixture beats a synthetic one: it carries actual tag values and audio
-// properties, so "the wasm loaded" is checked by asserting what it READ, not
-// just that it did not throw. The workflow checks the repo out; a caller
-// without it still gets a structural check from the inline WAV below.
+// The input must be a real file: the probe asserts values it reads from it, and
+// a silently weaker fallback is the "gate that cannot fail" this repo hunts.
 const FIXTURE = fileURLToPath(
   new URL("tests/test-files/mp3/kiss-snippet.mp3", repoRoot),
 );
-const EXPECTED = { format: "MP3", title: "Kiss", codec: "MP3" };
+if (!existsSync(FIXTURE)) {
+  console.error(`Fixture missing: ${FIXTURE}`);
+  console.error("This script must run from a full checkout of the repository.");
+  process.exit(2);
+}
+const EXPECT = JSON.stringify({ format: "MP3", title: "Kiss", codec: "MP3" });
 
-// Minimal, structurally valid 44-byte PCM WAV — no audio, so it only proves the
-// backend instantiated and parsed a container.
-const TEST_WAV = new Uint8Array([
-  0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66,
-  0x6d, 0x74, 0x20, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xac,
-  0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x02, 0x00, 0x10, 0x00, 0x64, 0x61, 0x74,
-  0x61, 0x00, 0x00, 0x00, 0x00,
-]);
-
-const dir = mkdtempSync(join(tmpdir(), "verify-published-"));
-mkdirSync(join(dir, "app"), { recursive: true });
+const PROBE_SRC = fileURLToPath(
+  new URL("verify-published-probe.mjs", import.meta.url),
+);
+const app = join(mkdtempSync(join(tmpdir(), "verify-published-")), "app");
+mkdirSync(app, { recursive: true });
 writeFileSync(
-  join(dir, "app", "package.json"),
+  join(app, "package.json"),
   `{ "name": "verify-published", "private": true }\n`,
 );
+// Copied, not run in place: a bare specifier resolves relative to the importing
+// FILE, so the probe has to live inside the app that installed the package.
+copyFileSync(PROBE_SRC, join(app, "probe.mjs"));
 
+// Retry the install: `npm install pkg@ver` resolves through the packument, which
+// is CDN-cached and can serve a pre-publish document for minutes after a publish
+// (measured on 2.2.3 — the reason this workflow's own npm check polls the
+// immutable version endpoint instead). Without a budget, a lagging packument
+// would fail a release that is perfectly fine.
+const MAX_ATTEMPTS = 10;
+const RETRY_WAIT_S = 10;
 console.log(`Installing taglib-wasm@${version} from the registry...`);
+for (let attempt = 1; ; attempt++) {
+  try {
+    execFileSync(
+      "npm",
+      [
+        "install",
+        `taglib-wasm@${version}`,
+        "--no-save",
+        "--no-audit",
+        "--no-fund",
+        "--loglevel=error",
+      ],
+      { cwd: app, stdio: ["ignore", "ignore", "inherit"] },
+    );
+    break;
+  } catch (error) {
+    if (attempt >= MAX_ATTEMPTS) {
+      console.error(
+        `\n✗ npm could not install taglib-wasm@${version} after ${MAX_ATTEMPTS} attempts.`,
+      );
+      console.error(
+        "  If the version is definitely on the registry, this is most likely the CDN",
+      );
+      console.error(
+        "  packument lagging a fresh publish — re-run the workflow rather than changing code.",
+      );
+      console.error(`  (${error.message})`);
+      process.exit(1);
+    }
+    console.log(`  attempt ${attempt} failed; retrying in ${RETRY_WAIT_S}s...`);
+    execFileSync("sleep", [String(RETRY_WAIT_S)]);
+  }
+}
+
+console.log(`Probing the installed package from ${app}:\n`);
 try {
-  execFileSync(
-    "npm",
-    [
-      "install",
-      `taglib-wasm@${version}`,
-      "--no-save",
-      "--no-audit",
-      "--no-fund",
-      "--loglevel=error",
-    ],
-    { cwd: join(dir, "app"), stdio: ["ignore", "ignore", "inherit"] },
-  );
-} catch (error) {
-  console.error(
-    `\n✗ npm could not install taglib-wasm@${version}: ${error.message}`,
-  );
+  execFileSync(process.execPath, ["probe.mjs"], {
+    cwd: app,
+    stdio: "inherit",
+    env: { ...process.env, TAGLIB_FIXTURE: FIXTURE, TAGLIB_EXPECT: EXPECT },
+  });
+} catch {
+  console.error(`\n✗ Published taglib-wasm@${version} FAILED verification.`);
+  console.error(`  (installed at ${join(app, "node_modules", "taglib-wasm")})`);
   process.exit(1);
 }
 
-const pkg = join(dir, "app", "node_modules", "taglib-wasm");
-const input = existsSync(FIXTURE) ? readFileSync(FIXTURE) : TEST_WAV;
-const real = existsSync(FIXTURE);
 console.log(
-  real
-    ? `Fixture: ${FIXTURE}`
-    : "Fixture: inline minimal WAV (repo fixture not found)",
+  `\n✅ taglib-wasm@${version} verifies under Node: both wasm backends read real tags through the published exports`,
 );
 
-const failures = [];
-const step = (name, ok, detail) => {
-  console.log(`  ${ok ? "✓" : "✗"} ${name}${detail ? ` — ${detail}` : ""}`);
-  if (!ok) failures.push(name);
-};
-
-// 1. The Simple API: the shortest path a consumer takes.
+// The Deno leg. Deno reaches code Node never does (its own WASI filesystem
+// provider) and resolves the shipped Wasm from the emitted layout — where
+// `prepareWasmForEmbedding()` stopped working for an installed package once the
+// entry barrels moved, a break invisible to every Node-side check. Deno is
+// REQUIRED rather than skipped, because a skipped leg cannot fail.
+const DENO_MAJOR = "2";
+const DENO_PROBE_SRC = fileURLToPath(
+  new URL("verify-published-probe-deno.ts", import.meta.url),
+);
+let denoVersion;
 try {
-  const { readFormat, readTags } = await import(
-    pathToFileURL(join(pkg, "dist", "simple.js")).href
-  );
-  const format = await readFormat(input);
-  const tags = await readTags(input);
-  const ok = real
-    ? format === EXPECTED.format && tags.title?.[0] === EXPECTED.title
-    : format === "WAV";
-  step(
-    "Simple API (dist/simple.js)",
-    ok,
-    `readFormat -> ${format}, title -> ${JSON.stringify(tags.title?.[0])}`,
-  );
-} catch (error) {
-  step("Simple API (dist/simple.js)", false, error.message);
-}
-
-// 2. The Full API on BOTH wasm backends — the pair the JSR-era job checked.
-try {
-  const { TagLib } = await import(
-    pathToFileURL(join(pkg, "dist", "index.js")).href
-  );
-  for (const backend of ["wasi", "emscripten"]) {
-    try {
-      const taglib = await TagLib.initialize({ forceWasmType: backend });
-      const file = await taglib.open(input);
-      const props = file.audioProperties();
-      const title = file.tag().title;
-      file.dispose();
-      const ok = real
-        ? props?.codec === EXPECTED.codec && title === EXPECTED.title
-        : props != null;
-      step(
-        `Full API, forceWasmType: "${backend}"`,
-        ok,
-        `codec=${props?.codec} title=${JSON.stringify(title)}`,
-      );
-    } catch (error) {
-      step(`Full API, forceWasmType: "${backend}"`, false, error.message);
-    }
-  }
-} catch (error) {
-  step("Full API (dist/index.js)", false, error.message);
-}
-
-// 3. The Wasm-free subpath — the one entry whose graph must never load TagLib.
-try {
-  const { discFolderInfo } = await import(
-    pathToFileURL(join(pkg, "dist", "disc-folder.js")).href
-  );
-  step(
-    "Wasm-free subpath (dist/disc-folder.js)",
-    discFolderInfo("CD1")?.number === 1,
-  );
-} catch (error) {
-  step("Wasm-free subpath (dist/disc-folder.js)", false, error.message);
-}
-
-if (failures.length > 0) {
+  denoVersion = execFileSync("deno", ["--version"], { encoding: "utf8" }).split(
+    "\n",
+  )[0];
+} catch {
   console.error(
-    `\n✗ Published taglib-wasm@${version} FAILED verification: ${failures.join(", ")}`,
+    `\n✗ Deno (v${DENO_MAJOR}) is required for the Deno leg and was not found.`,
   );
-  console.error(`  (installed at ${pkg})`);
+  console.error(
+    "  Install: https://deno.land/ — CI installs the pinned version.",
+  );
+  process.exit(2);
+}
+if (!denoVersion.startsWith(`deno ${DENO_MAJOR}.`)) {
+  console.error(`\n✗ Expected Deno v${DENO_MAJOR}.x, found: ${denoVersion}`);
+  process.exit(2);
+}
+
+copyFileSync(DENO_PROBE_SRC, join(app, "probe-deno.ts"));
+console.log(`\nProbing under ${denoVersion}:\n`);
+try {
+  execFileSync(
+    "deno",
+    ["run", "--allow-read", "--allow-write", "--allow-env", "probe-deno.ts"],
+    {
+      cwd: app,
+      stdio: "inherit",
+      env: { ...process.env, TAGLIB_FIXTURE: FIXTURE, TAGLIB_EXPECT: EXPECT },
+    },
+  );
+} catch {
+  console.error(
+    `\n✗ Published taglib-wasm@${version} FAILED verification under Deno.`,
+  );
+  console.error(`  (installed at ${join(app, "node_modules", "taglib-wasm")})`);
   process.exit(1);
 }
+
 console.log(
-  `\n✅ taglib-wasm@${version} verifies: both wasm backends read real tags from the registry copy`,
+  `\n✅ taglib-wasm@${version} verifies under Deno: path-mode reads and the Wasm resolver work from the installed package`,
 );

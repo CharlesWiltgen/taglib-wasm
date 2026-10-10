@@ -628,9 +628,9 @@ dependency — that pass the test suite but break the published package.
 
 **One test suite.** `npx vp test` covers all 97 test files under `tests/` and
 `src/`. The only exclusions are `tests/bun-integration.test.ts` (registered with
-`bun:test`, run via `npm run test:bun`) and `tests/cross-runtime/**` (run under
-three runtimes via `tests/cross-runtime/run.sh`). No Deno-gated test file
-remains.
+`bun:test`, run via `npm run test:bun`), `tests/cross-runtime/**` (run under
+three runtimes via `tests/cross-runtime/run.sh`) and `tests/deno-*.test.ts`
+(Deno's own runner, via `npm run test:deno`).
 
 **Deno** is no longer the dev toolchain for formatting, linting or type checking,
 and the build pipeline does not require it: the bundles are produced by `vp pack`
