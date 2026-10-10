@@ -124,7 +124,7 @@
     "build:js": "vp pack",
     "build:release": "npm run build:js && npm run build:wasm",
     "docs:coverage": "npx tsx scripts/docs-coverage.ts",
-    "knip": "npx --no-install knip --no-progress --no-config-hints",
+    "knip": "npx --no-install knip --no-progress --treat-config-hints-as-errors",
     "smoke:emscripten": "npx tsx scripts/smoke-emscripten.ts",
     "smoke:wasi": "npx tsx scripts/smoke-wasi.ts",
     "bench": "npx tsx tests/wasi-vs-emscripten.bench.ts",
