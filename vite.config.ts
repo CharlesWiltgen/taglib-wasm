@@ -382,6 +382,14 @@ export default defineConfig({
     // inputs ("[INVALID_OPTION] … multiple inputs are not supported when
     // «output.codeSplitting» is false"), and rolldown's default splitting
     // emits hash-named sibling chunks. One entry per config ⇒ one file each.
+    //
+    // `comments: false` because rolldown keeps every JSDoc block and adds
+    // `//#region` banners where the retired esbuild build dropped both:
+    // emitting them cost 22 KB on index.browser.js (151 KB → 173 KB) and
+    // 39 KB of *gzip*, while the emitted code itself got 2 KB smaller.
+    // With them dropped, all three entries are smaller than their 2.3.0
+    // files (raw and gzipped); nothing name-dependent depends on the
+    // comments, and the bundles carry no license text to preserve.
     {
       name: "browser-index",
       entry: ["src/index.browser.ts"],
@@ -393,7 +401,7 @@ export default defineConfig({
       dts: false,
       clean: false,
       deps: { neverBundle: [/taglib-wrapper\.js$/] },
-      outputOptions: { codeSplitting: false },
+      outputOptions: { codeSplitting: false, comments: false },
       plugins: [browserRedirect()],
     },
     {
@@ -407,7 +415,7 @@ export default defineConfig({
       dts: false,
       clean: false,
       deps: { neverBundle: [/taglib-wrapper\.js$/] },
-      outputOptions: { codeSplitting: false },
+      outputOptions: { codeSplitting: false, comments: false },
       plugins: [browserRedirect()],
     },
     {
@@ -421,7 +429,7 @@ export default defineConfig({
       dts: false,
       clean: false,
       deps: { neverBundle: [/taglib-wrapper\.js$/] },
-      outputOptions: { codeSplitting: false },
+      outputOptions: { codeSplitting: false, comments: false },
       plugins: [browserRedirect()],
     },
   ],

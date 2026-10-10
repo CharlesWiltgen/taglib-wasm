@@ -16,6 +16,13 @@
   runtime resolution of `taglib-wrapper.js` are unchanged, and the
   `./disc-folder` subpath remains a single self-contained Wasm-free file. (The
   entry barrels moved into `src/`, which changes the emitted depth — see Fixed.)
+  The browser entries end up 15-17% smaller than 2.3.0's, raw and 11-13%
+  smaller gzipped: the new bundler emits every JSDoc block and adds `//#region`
+  banners where esbuild dropped both, and this build suppresses that emission
+  (`outputOptions.comments: false`) while its emitted code is itself ~2 KB
+  smaller. A consumer's own bundler sees the same direction — minified app
+  bundles are ~2% smaller. The published tarball is 2% larger (785 KB → 803 KB),
+  the cost of the extra helper modules the ES2020 lowering emits.
 
 ### Removed
 
@@ -26,6 +33,12 @@
 
 ### Fixed
 
+- **Browser bundles no longer mangle error class names** — the previous build
+  renamed every error class in `dist/*.browser.js`, so `TagLibError` and friends
+  reported `_FileOperationError` from `err.constructor.name` and in stack
+  traces, while the Node bundles were clean. The names are now identical in
+  every entry: `name`, `code`, `message`, `instanceof` and the type guards were
+  already the same and are unchanged.
 - **`prepareWasmForEmbedding()` now works from an installed package** — every
   path it probes for the shipped Wasm is relative to its own emitted file, and
   those paths were one directory too deep for the layout an installed package
@@ -49,7 +62,11 @@
   unchanged — matching Deno's `seekSync`, which the Deno path already used.
   Deno and the Emscripten backend are unaffected; Node and Bun reading a file
   through the WASI backend could previously see the host error surface as an
-  open failure.
+  open failure. On Bun a path read of such a file still fails, now reporting
+  `EnvironmentError` ("does not support partial file reading") instead of the
+  leaked `RangeError` — the Bun filesystem provider implements no partial read,
+  a separate and pre-existing gap; buffer reads and `setBufferMode(true)` work
+  there.
 
 ## 2.3.0
 
