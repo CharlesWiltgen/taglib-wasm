@@ -17,7 +17,7 @@ const NODE_FS_BROWSER_STUB = `
   }
 `;
 
-/** The rolldown equivalent of browserRedirectPlugin(): same redirects, same stubs. */
+/** The rolldown equivalent of the retired esbuild browser-redirect plugin: same redirects, same stubs. */
 function browserRedirect(): TsdownPlugin {
   return {
     name: "taglib-browser-redirect",
