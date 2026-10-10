@@ -53,29 +53,48 @@ setup_pinned_toolchain() {
     local root emsdk pin active node_bin python_bin
     root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
     emsdk="$root/build/emsdk"
-    # The pin's single source of truth for developers is the installer.
+
+    # The pin's single source of truth for developers is the installer. An
+    # unreadable pin is its own error: nothing can be asserted without it, and a
+    # bare assignment would abort here with no output at all under
+    # `set -euo pipefail` (pipefail makes the grep's no-match failure the
+    # assignment's).
     pin=$(grep -oE 'emsdk install [0-9]+\.[0-9]+\.[0-9]+' "$root/build/setup-dev-env.sh" 2>/dev/null |
-        head -1 | awk '{print $3}')
+        head -1 | awk '{print $3}' || true)
+    if [ -z "$pin" ]; then
+        print_error "Could not read the emsdk pin from build/setup-dev-env.sh"
+        print_warning "Expected a line like: ./emsdk install <version>"
+        exit 1
+    fi
 
     if [ ! -x "$emsdk/upstream/emscripten/emcc" ]; then
         print_error "The pinned Emscripten SDK is not installed and activated at build/emsdk"
-        print_warning "Install and activate it: (cd build/emsdk && ./emsdk install ${pin:-<version>} && ./emsdk activate ${pin:-<version>})"
+        print_warning "Install and activate it: (cd build/emsdk && ./emsdk install $pin && ./emsdk activate $pin)"
         print_warning "Do not source emsdk_env.sh for this: it puts the emsdk root on PATH (see above)."
         exit 1
     fi
 
-    node_bin=$(ls -d "$emsdk"/node/*/bin 2>/dev/null | tail -1)
-    python_bin=$(ls -d "$emsdk"/python/*/bin 2>/dev/null | tail -1)
-    PATH="$emsdk/upstream/emscripten${node_bin:+:$node_bin}${python_bin:+:$python_bin}:$PATH"
+    # python first: emcc is python-driven and requires >= 3.10 (the system python
+    # is often older). The bundled node goes last, never first — prepending it
+    # would shadow the developer's node/npm/npx for the entire release, hook
+    # included, which is not this function's business.
+    node_bin=$(ls -d "$emsdk"/node/*/bin 2>/dev/null | tail -1 || true)
+    python_bin=$(ls -d "$emsdk"/python/*/bin 2>/dev/null | tail -1 || true)
+    PATH="$emsdk/upstream/emscripten${python_bin:+:$python_bin}:$PATH${node_bin:+:$node_bin}"
     export PATH
 
-    active=$(emcc --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-    if [ -n "$pin" ] && [ "$active" != "$pin" ]; then
-        print_error "Active emcc is ${active:-unknown}, but this repository pins $pin"
+    active=$(emcc --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+    if [ -z "$active" ]; then
+        print_error "emcc exists at $emsdk but did not report a version — the SDK looks half-installed"
+        print_warning "Activate it — (cd build/emsdk && ./emsdk activate $pin) — then re-run."
+        exit 1
+    fi
+    if [ "$active" != "$pin" ]; then
+        print_error "Active emcc is $active, but this repository pins $pin"
         print_warning "Activate the pin — (cd build/emsdk && ./emsdk activate $pin) — then re-run."
         exit 1
     fi
-    print_success "Emscripten ${active:-unknown} active from build/emsdk${pin:+ (pin $pin)}"
+    print_success "Emscripten $active active from build/emsdk (pin $pin)"
 }
 
 # Function to check if we're on main branch
