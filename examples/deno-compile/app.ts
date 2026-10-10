@@ -92,7 +92,7 @@ async function processAudioFile(data: Uint8Array): Promise<void> {
 
     if ("audioProperties" in tags && tags.audioProperties) {
       console.log("\n🎵 Audio Properties:");
-      console.log("  Duration:", tags.audioProperties.length, "seconds");
+      console.log("  Duration:", tags.audioProperties.duration, "seconds");
       console.log("  Bitrate:", tags.audioProperties.bitrate, "kbps");
       console.log("  Sample Rate:", tags.audioProperties.sampleRate, "Hz");
     }

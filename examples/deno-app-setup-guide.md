@@ -29,7 +29,7 @@ entry are involved, and `@charlesw/taglib-wasm` on JSR is deprecated.
   },
   "tasks": {
     "dev": "deno run --allow-read --allow-net main.ts",
-    "compile": "deno compile --allow-read --allow-net --include taglib.wasm main.ts",
+    "compile": "deno compile --allow-read --allow-net --include taglib-web.wasm main.ts",
     "prepare-offline": "deno run --allow-read --allow-write prepare-offline.ts"
   }
 }
@@ -210,10 +210,10 @@ import { prepareWasmForEmbedding } from "npm:taglib-wasm";
 console.log("📦 Preparing WASM for offline support...");
 
 try {
-  await prepareWasmForEmbedding("./taglib.wasm");
+  await prepareWasmForEmbedding("./taglib-web.wasm");
   console.log("✅ WASM file ready for embedding");
   console.log("\nNext step: Compile with:");
-  console.log("  deno compile --allow-read --include taglib.wasm main.ts");
+  console.log("  deno compile --allow-read --include taglib-web.wasm main.ts");
 } catch (error) {
   console.error("❌ Failed to prepare WASM:", error);
   Deno.exit(1);

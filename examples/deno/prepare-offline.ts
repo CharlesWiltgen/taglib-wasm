@@ -12,9 +12,11 @@ import { prepareWasmForEmbedding } from "npm:taglib-wasm";
 console.log("Preparing WASM file for offline usage...");
 
 try {
-  await prepareWasmForEmbedding("./taglib.wasm");
+  await prepareWasmForEmbedding("./taglib-web.wasm");
   console.log("\nSuccess! Now compile your app with:");
-  console.log("deno compile --allow-read --include taglib.wasm your-app.ts");
+  console.log(
+    "deno compile --allow-read --include taglib-web.wasm your-app.ts",
+  );
 } catch (error) {
   console.error("Error:", error.message);
   Deno.exit(1);

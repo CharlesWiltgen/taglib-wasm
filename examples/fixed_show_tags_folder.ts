@@ -18,7 +18,7 @@ function formatMetadataForDisplay(
 ): Record<string, any> {
   const metadata: Record<string, any> = {
     ...file.tags,
-    duration: file.properties?.length,
+    duration: file.properties?.duration,
     bitrate: file.properties?.bitrate,
     sampleRate: file.properties?.sampleRate,
   };

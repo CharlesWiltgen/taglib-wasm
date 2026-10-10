@@ -313,15 +313,16 @@ Method 4 reimplements the same strategies by hand.
 
 1. **Embed the Wasm for offline support** — compile with
    `--include taglib-web.wasm`, or run `prepareWasmForEmbedding()` in a build
-   step. Without an embedded Wasm, a compiled binary falls back to a CDN fetch
-   and fails with no network.
+   step. Without an embedded Wasm a compiled binary has no file to load; use
+   Method 2 (`wasmUrl`) if it should fetch the Wasm at runtime instead.
 2. **Resolve the embedded file through `deno-compile://`** — inside a compiled
    binary `Deno.mainModule` is a `deno-compile://` URL, so resolve the Wasm
    relative to it (see [Path Resolution](#3-path-resolution)) rather than to your
    source tree.
-3. **Expect a missing embedded Wasm** — `TagLib.initialize()` warns and falls
-   back to the CDN when it can't resolve the file. A build that forgot
-   `--include` still runs, but only online.
+3. **Expect a missing embedded Wasm** — `initializeForDenoCompile()` falls back
+   to the Wasm resolved from this package, which is present when running from
+   source and absent inside a compiled binary; a build that forgot `--include`
+   therefore fails at initialization, not at first use.
 4. **Handle an unreachable CDN** — a CDN-only binary that runs offline fails at
    initialization. Surface that error; the library stays uninitialized.
 

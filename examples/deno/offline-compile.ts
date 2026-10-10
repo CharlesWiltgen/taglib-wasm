@@ -7,7 +7,7 @@
  *
  * To prepare and compile:
  * 1. First, copy the WASM file: deno run --allow-read --allow-write prepare-offline.ts
- * 2. Compile with embedded WASM: deno compile --allow-read --include taglib.wasm offline-compile.ts
+ * 2. Compile with embedded WASM: deno compile --allow-read --include taglib-web.wasm offline-compile.ts
  * 3. Run the compiled binary: ./offline-compile song.mp3
  */
 
@@ -48,7 +48,7 @@ async function main() {
     const props = file.audioProperties();
 
     console.log("\nAudio Properties:");
-    console.log("Duration:", props.length, "seconds");
+    console.log("Duration:", props.duration, "seconds");
     console.log("Bitrate:", props.bitrate, "kbps");
     console.log("Sample Rate:", props.sampleRate, "Hz");
     console.log("Channels:", props.channels);

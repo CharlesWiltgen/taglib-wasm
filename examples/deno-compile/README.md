@@ -40,7 +40,7 @@ attempts to embed the WASM. Note that this approach:
 See `simple-app.ts` for a clean example that uses CDN loading:
 
 ```typescript
-import { readTags, TagLib } from "../../index.ts";
+import { readTags, TagLib } from "../../src/index.ts";
 
 // Initialize with CDN URL (uses streaming compilation)
 const taglib = await TagLib.initialize({

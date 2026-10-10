@@ -49,7 +49,7 @@ async function demonstrateBunUsage() {
         if (props) {
           console.log("\n🎵 Audio Properties:");
           console.log(`  Format: ${props.format}`);
-          console.log(`  Duration: ${props.length}s`);
+          console.log(`  Duration: ${props.duration}s`);
           console.log(`  Bitrate: ${props.bitrate} kbps`);
           console.log(`  Sample Rate: ${props.sampleRate} Hz`);
           console.log(`  Channels: ${props.channels}`);

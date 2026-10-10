@@ -88,7 +88,11 @@ async function main() {
           console.log("  Year:", tags.year || "(none)");
 
           if ("audioProperties" in tags && tags.audioProperties) {
-            console.log("  Duration:", tags.audioProperties.length, "seconds");
+            console.log(
+              "  Duration:",
+              tags.audioProperties.duration,
+              "seconds",
+            );
             console.log("  Bitrate:", tags.audioProperties.bitrate, "kbps");
           }
           console.log();

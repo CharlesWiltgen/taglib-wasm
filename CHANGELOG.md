@@ -13,9 +13,9 @@
 - The published `dist/*.js` files are built by the Vite+ bundler (`vp pack`)
   instead of esbuild; `scripts/build-js.mjs` and the `esbuild` devDependency are
   removed. Output filenames, the `exports` and `browser` conditions, and the
-  runtime resolution of `taglib-wrapper.js` and `taglib-*.wasm` are unchanged,
-  and the `./disc-folder` subpath remains a single self-contained Wasm-free
-  file.
+  runtime resolution of `taglib-wrapper.js` are unchanged, and the
+  `./disc-folder` subpath remains a single self-contained Wasm-free file. (The
+  entry barrels moved into `src/`, which changes the emitted depth — see Fixed.)
 
 ### Removed
 
@@ -26,6 +26,18 @@
 
 ### Fixed
 
+- **`prepareWasmForEmbedding()` now works from an installed package** — every
+  path it probes for the shipped Wasm is relative to its own emitted file, and
+  those paths were one directory too deep for the layout an installed package
+  actually has, so the call threw `FileOperationError` ("Could not find
+  taglib-web.wasm in expected locations") for every consumer; it only
+  succeeded when run from a development checkout, where `build/taglib-web.wasm`
+  happens to sit at the first candidate. The emitted depth now matches, so the
+  resolver finds `dist/taglib-web.wasm` in the published tarball.
+  `initializeForDenoCompile()` is unaffected: it resolves the Wasm relative to
+  the user's entry point (where `--include` embeds it), not to a path inside
+  this package. Pinned by the Deno leg of the published-artifact verification,
+  which fails on 2.3.0 for exactly this reason.
 - **A WASI host seek that fails no longer corrupts the next read on Node and
   Bun** (taglib-tl17.1) — the Node/Bun filesystem provider for the WASI host
   stored the computed offset before validating it, so a seek to a negative

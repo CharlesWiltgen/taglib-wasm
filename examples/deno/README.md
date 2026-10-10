@@ -29,7 +29,7 @@ require network access.
 2. Compile your application with the embedded WASM:
 
    ```bash
-   deno compile --allow-read --include taglib.wasm offline-compile.ts
+   deno compile --allow-read --include taglib-web.wasm offline-compile.ts
    ```
 
 3. Run the compiled binary:

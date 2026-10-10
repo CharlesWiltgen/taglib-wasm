@@ -27,7 +27,7 @@ try {
 
   // Audio properties are also available
   const props = file.audioProperties();
-  console.log("Duration:", props?.length, "seconds");
+  console.log("Duration:", props?.duration, "seconds");
   console.log("Bitrate:", props?.bitrate, "kbps");
 
   file.dispose();

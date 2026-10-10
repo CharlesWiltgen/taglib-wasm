@@ -42,7 +42,7 @@ async function demonstrateSimpleAPI() {
   // Example 3: Read audio properties
   console.log("\n🎧 Example 3: Reading audio properties");
   const props = await readProperties(testFile);
-  console.log(`Duration: ${props.length} seconds`);
+  console.log(`Duration: ${props.duration} seconds`);
   console.log(`Bitrate: ${props.bitrate} kbps`);
   console.log(`Sample rate: ${props.sampleRate} Hz`);
   console.log(`Channels: ${props.channels}`);
@@ -107,7 +107,7 @@ async function demonstrateBatchProcessing() {
 
       console.log(`\n📁 ${file}`);
       console.log(`  Format: ${format}`);
-      console.log(`  Duration: ${props.length}s`);
+      console.log(`  Duration: ${props.duration}s`);
       console.log(`  Bitrate: ${props.bitrate} kbps`);
       console.log(`  Title: "${tags.title || "(none)"}""`);
       console.log(`  Artist: "${tags.artist || "(none)"}""`);
@@ -161,7 +161,7 @@ async function demonstrateRealWorldUsage() {
 
     return {
       metadata: tags,
-      duration: props.length,
+      duration: props.duration,
       quality: props.bitrate >= 256 ? "high" : "standard",
     };
   }
