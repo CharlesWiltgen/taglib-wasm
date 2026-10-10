@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.3.3
+## Unreleased
 
 ### Fixed
 
@@ -39,7 +39,7 @@
   access failed to typecheck — 38 `TS2339` errors in one downstream consumer
   alone. The const now carries an explicit intersection annotation
   (taglib-c76n); `tsc` output for npm is unchanged in meaning.
-- _Known issue, fixed in 2.3.3:_ the committed Emscripten glue shipped without
+- _Known issue, fixed in the next release:_ the committed Emscripten glue shipped without
   its Deno patches, so the JSR copy could not instantiate the Emscripten
   backend (`createRequire` rejects an `https://` URL). npm consumers were
   unaffected — loading the same glue from disk works either way.
