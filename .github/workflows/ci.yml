@@ -34,21 +34,11 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup Deno
-        # Deno stays in this job: the docs-coverage and knip gates still run as
-        # deno tasks (`deno task docs:coverage`, `deno task knip`) until a later
-        # phase retires them. fmt/lint/check no longer need Deno.
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: "2.9.6"
-
       - name: Cache dependencies
         uses: actions/cache@v6
         with:
           # Cache only the npm download cache, not node_modules itself:
-          # node_modules contains Deno-managed junctions (nodeModulesDir: auto),
-          # and restoring a stale tree on Windows breaks `deno test` with
-          # "failed to create junction ... (os error 183)".
+          # restoring a stale tree can mask what `npm ci` would install.
           path: ~/.npm
           key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
@@ -65,8 +55,8 @@ jobs:
 
       - name: Type check
         # tsconfig.check.json is tests-inclusive: tsconfig.json excludes tests
-        # (it is the npm build config), and `deno check ./src ./tests` used to
-        # provide that coverage.
+        # (it is the npm build config), so this config is what type-checks
+        # tests/ and src/ together.
         run: npx tsc --noEmit -p tsconfig.check.json
 
       - name: Install ast-grep
@@ -76,7 +66,7 @@ jobs:
         # Local-only gate made mandatory: flags a shipped export that no doc
         # mentions (name-mention check, not accuracy). A guard that does not
         # run in CI is decoration — the same rule as the ast-grep step above.
-        run: deno task docs:coverage
+        run: npm run docs:coverage
 
       - name: Lint GitHub Actions workflows
         # The release path lives entirely in .github/workflows/*, and nothing
@@ -103,10 +93,10 @@ jobs:
 
       - name: Verify no unused exports or dependencies (knip)
         # Local-only gate made mandatory: dead exports and orphaned deps rot
-        # silently otherwise. knip is pinned in devDependencies and the task
-        # uses --no-install, so the analyzed version is deterministic rather
-        # than whatever npx would fetch.
-        run: deno task knip
+        # silently otherwise. knip is pinned in devDependencies and the npm
+        # script uses --no-install, so the analyzed version is deterministic
+        # rather than whatever npx would fetch.
+        run: npm run knip
 
       - name: Verify toolchain pins agree across files
         # The wasm freshness gates byte-compare fresh builds against the
@@ -127,13 +117,6 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup Deno
-        # Deno stays in this job: `deno task build:ts` and the
-        # `deno publish --dry-run` guard below still run under Deno.
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: "2.9.6"
-
       - name: Cache dependencies
         uses: actions/cache@v6
         with:
@@ -146,15 +129,15 @@ jobs:
         run: npm ci
 
       # Bundle the TS entry points with esbuild (~3s, no Emscripten/WASI). Use
-      # the Deno task (deno run scripts/build-js.mjs), NOT `npm run build:ts`:
-      # the npm script also runs `tsc`, which fails in a fresh checkout because
+      # `npm run build:js` (node scripts/build-js.mjs), NOT `npm run build:ts`:
+      # build:ts also runs `tsc`, which fails in a fresh checkout because
       # dist/taglib-wrapper.js (a wasm-build artifact) is absent. esbuild
       # externalizes that wrapper and hard-fails on any unresolvable bare
       # specifier in the browser entries, so this still catches
-      # bundler-resolution regressions (e.g. a JSR import that isn't an npm dep)
-      # without the multi-minute build-embind job. See taglib-uo1.
+      # bundler-resolution regressions (a bare specifier that is not a declared
+      # dependency) without the multi-minute build-embind job. See taglib-uo1.
       - name: Build TypeScript bundles
-        run: deno task build:ts
+        run: npm run build:js
 
       - name: Verify disc-folder entry stays Wasm-free
         # taglib-cd7b: the disc-folder subpath is DECLARED dependency-free so
@@ -185,39 +168,12 @@ jobs:
           fi
           echo ":: disc-folder entry Wasm-free: $(jq -r '.inputs | length' /tmp/disc-folder-meta.json) modules, matches dist/"
 
-      - name: Verify JSR publish ships no stray C++/CMake
-        # taglib-asy: deno.json publish.exclude statically blocks CMakeLists.txt
-        # / *.cmake / taglib/ / bindings/, but nothing proved it on every PR —
-        # the taglib-qrp subtree island shipped ~88 C++/CMake files to JSR
-        # because the list was incomplete. This step dry-runs the publish and
-        # fails on any .cpp/.cmake outside the legit src/capi/ C shim, or any
-        # CMakeLists.txt / *.cmake / taglib/ / bindings/ entry at all.
-        # The dry-run lists files on stderr as `   file://<abs> (size)` and
-        # ABORTS on uncommitted changes — fail closed on that abort instead of
-        # silently passing on an empty list.
-        run: |
-          set -euo pipefail
-          ROOT="${GITHUB_WORKSPACE:-$(pwd)}"
-          DRYRUN="$(deno publish --dry-run 2>&1 || true)"
-          if printf '%s\n' "$DRYRUN" | grep -q '^error:'; then
-            echo "::error::deno publish --dry-run failed (uncommitted changes or config):"
-            printf '%s\n' "$DRYRUN" | tail -5
-            exit 1
-          fi
-          STRAY="$(
-            printf '%s\n' "$DRYRUN" \
-              | sed -n 's|^   file://||p' \
-              | sed 's/ ([0-9.]*[KMG]*B)$//' \
-              | sed "s|^$ROOT/||" \
-              | grep -v '^src/capi/' \
-              | grep -E '(\.cpp|\.cmake(\.in)?|CMakeLists\.txt)$|^(taglib/|bindings/)' \
-              || true
-          )"
-          if [ -n "$STRAY" ]; then
-            echo "::error::JSR publish would ship stray C++/CMake files (fix deno.json publish.exclude):"
-            printf '%s\n' "$STRAY"
-            exit 1
-          fi
+      - name: Verify npm package ships no stray C++/CMake
+        # taglib-asy / taglib-qrp: a subtree once shipped ~88 C++/CMake files
+        # to a registry. package.json `files` is an allowlist, so `npm pack`
+        # cannot reproduce that check — this asserts the allowlist itself and
+        # the packed tarball contents.
+        run: bash scripts/check-package-files.sh
 
   test-capi-cpp:
     name: Test (C API C++ unit tests)
@@ -242,21 +198,11 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup Deno
-        # Deno stays in this job: the two smoke tests below run under `deno run`
-        # (they use Deno.readFile/Deno.exit), and `npm run build:ts` /
-        # `postbuild` still shell out to Deno.
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: "2.9.6"
-
       - name: Cache dependencies
         uses: actions/cache@v6
         with:
           # Cache only the npm download cache, not node_modules itself:
-          # node_modules contains Deno-managed junctions (nodeModulesDir: auto),
-          # and restoring a stale tree on Windows breaks `deno test` with
-          # "failed to create junction ... (os error 183)".
+          # restoring a stale tree can mask what `npm ci` would install.
           path: ~/.npm
           key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
@@ -290,15 +236,15 @@ jobs:
           fi
           echo "build/taglib-web.wasm and build/taglib-wrapper.js match the fresh build"
 
-      # Hard gate: the Emscripten wasm must actually instantiate on Deno. The
+      # Hard gate: the Emscripten wasm must actually instantiate on Node. The
       # unit suite skips the Emscripten backend on load-failure (so a broken
       # wasm stays green); this fails the build instead. Catches wasm/glue
       # import-module mismatches (the 1.4.1 "./a" regression) before publish.
-      - name: Emscripten smoke test (must instantiate on Deno)
-        run: deno run --allow-read --allow-env scripts/smoke-emscripten.ts
+      - name: Emscripten smoke test (must instantiate on Node)
+        run: npx tsx scripts/smoke-emscripten.ts
 
-      - name: WASI smoke test (must instantiate on Deno)
-        run: deno run --allow-read --allow-env scripts/smoke-wasi.ts
+      - name: WASI smoke test (must instantiate on Node)
+        run: npx tsx scripts/smoke-wasi.ts
 
       - name: Copy WASM files to dist
         run: |
@@ -432,7 +378,7 @@ jobs:
         run: |
           if ! git diff --quiet -- build/taglib-wasi.wasm; then
             echo "::error::build/taglib-wasi.wasm is stale — the fresh build differs from the committed binary."
-            echo "Rebuild with 'deno task build:wasm' (both backends) or 'deno task build:wasm:wasi',"
+            echo "Rebuild with 'npm run build:wasm' (both backends) or 'npm run build:wasm:wasi',"
             echo "then commit the updated binary."
             echo "For the CI/Linux reference build: download the 'wasi-fresh-reference' artifact"
             echo "from this run and commit dist/wasi/taglib-wasi.wasm as build/taglib-wasi.wasm."
@@ -538,8 +484,7 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        # Vitest is an npm devDependency, so this job needs the Node toolchain;
-        # it previously installed only Deno and ran `deno test`.
+        # Vitest is an npm devDependency, so this job needs the Node toolchain.
         run: npm ci
 
       - name: Download WASI artifacts
@@ -587,14 +532,6 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup Deno
-        # Deno stays in this job: the cross-runtime smoke run below drives it as
-        # one of its three runtimes, and the JSR `deno doc --lint` step invokes
-        # it directly.
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: "2.9.6"
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -611,8 +548,8 @@ jobs:
           name: embind-build
           path: .
 
-      - name: Cross-runtime smoke (Deno, Bun, Node × both backends)
-        # tests/cross-runtime/*.ts run unmodified under all three runtimes and
+      - name: Cross-runtime smoke (Bun, Node × both backends)
+        # tests/cross-runtime/*.ts run unmodified under both runtimes and
         # assert real values for both wasm backends. A backend a runtime cannot
         # load is reported with its reason and fails the run — never a silent
         # skip — and any failed check exits non-zero. A run that executes
@@ -626,12 +563,6 @@ jobs:
         run: |
           npx @arethetypeswrong/cli --pack --profile esm-only
           echo "Note: Using esm-only profile (CJS dynamic import warnings are expected)"
-
-      - name: JSR - deno doc lint
-        run: |
-          # Check for missing documentation (warnings only, don't fail)
-          deno doc --lint index.ts 2>&1 | head -50 || true
-          echo ":: JSR documentation check complete"
 
       - name: Bun - import test
         run: |
@@ -774,7 +705,7 @@ jobs:
             echo ""
             echo "### Target Environments"
             echo "- **Emscripten**: Browser, Node.js, Web Workers"
-            echo "- **WASI SDK**: Deno, Node.js (WASI), Cloudflare Workers"
+            echo "- **WASI SDK**: Node.js (WASI), Cloudflare Workers"
           } >> "$GITHUB_STEP_SUMMARY"
 
   summary:

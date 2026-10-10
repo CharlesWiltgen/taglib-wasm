@@ -26,6 +26,7 @@ test-files-backup.zip
 # SonarQube reports
 eslint-report.json
 sonarcloud-report-*.*
+sonar-report.xml
 
 # Deno coverage
 cov_profile/
