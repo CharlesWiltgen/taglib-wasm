@@ -573,6 +573,11 @@ jobs:
         # nothing also fails. Local entry point: npm run test:cross-runtime.
         run: bash tests/cross-runtime/run.sh
 
+      - name: Deno - run the Deno-gated tests
+        # tests/deno-*.test.ts use Deno's built-in test runner (Vitest excludes
+        # them), so nothing else in this workflow would notice them rotting.
+        run: npm run test:deno
+
       - name: NPM - publint
         run: npx publint
 
