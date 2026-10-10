@@ -101,10 +101,10 @@ export default defineConfig({
     //   * deno lint's `recommended` set (87 rules, `deno lint` ran it at
     //     `error` over `src/` AND `tests/`). Its TS/ESLint rules that oxlint
     //     does not default-enable are enabled here, except `no-redeclare`:
-    //     oxlint only ships the JS form (the file it came from,
-    //     `src/global.d.ts`, was deleted with the Deno runtime in 3.0.0; the
-    //     rule stays off because oxlint's JS form has no TS-aware variant).
-    //     Its rules that oxlint does not ship at
+    //     oxlint only ships the JS form, which reads `declare global {
+    //     namespace Deno }` in src/global.d.ts as a redeclaration — legal TS
+    //     that tsc checks, and the same reason typescript-eslint switches the
+    //     core rule off for `.ts` files. Its rules that oxlint does not ship at
     //     all (`ban-untagged-ignore`, `no-sloppy-imports`, `no-window*`, the
     //     `jsx-*` set — this repo has no JSX, …) cannot be restored;
     //     `ban-types` / `no-empty-interface` are covered by their

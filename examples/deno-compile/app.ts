@@ -10,7 +10,12 @@
  * - With or without network access
  */
 
-import { type ExtendedTag, readTags, TagLib } from "../../index.ts";
+import {
+  type ExtendedTag,
+  isDenoCompiled,
+  readTags,
+  TagLib,
+} from "../../index.ts";
 
 // Configuration from environment
 const USE_EMBEDDED = Deno.env.get("USE_EMBEDDED_WASM") === "true";
@@ -24,10 +29,11 @@ const WASM_URL =
 async function initializeTagLib(): Promise<TagLib> {
   console.log("🎵 Initializing TagLib-Wasm...");
 
-  // Strategy 1: Check if running as compiled binary with included WASM
-  const isCompiled =
-    import.meta.url.startsWith("file:///") &&
-    import.meta.url.includes("/deno-compile-");
+  // Strategy 1: Check if running as compiled binary with included WASM.
+  // Use the library's own predicate — a hand-rolled `import.meta.url` test
+  // disagrees with it (src/runtime/deno-detect.ts keys off Deno.mainModule's
+  // `deno-compile://` scheme).
+  const isCompiled = isDenoCompiled();
 
   if (isCompiled) {
     try {

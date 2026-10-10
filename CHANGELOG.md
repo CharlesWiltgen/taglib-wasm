@@ -2,24 +2,27 @@
 
 ## Unreleased
 
-### Removed (BREAKING)
-
-- Deno runtime support. The `initializeForDenoCompile`, `isDenoCompiled` and
-  `prepareWasmForEmbedding` exports are gone; Deno is no longer a supported
-  runtime (Node, Bun, browsers, Cloudflare Workers and Electron remain).
-  Deno support is removed entirely.
-- JSR distribution. The `@charlesw/taglib-wasm` JSR package is deprecated;
-  Deno installs from npm via `npm:taglib-wasm`. The `publish-jsr`
-  and `verify-jsr` CI jobs and the `deno.json`/`deno.lock` manifests are gone.
-
 ### Changed
 
+- **Deno remains a supported runtime; its _development_ toolchain is not.**
+  The Deno runtime, its public API (`initializeForDenoCompile`,
+  `isDenoCompiled`, `prepareWasmForEmbedding`), its examples, its docs and its
+  Deno-gated tests are all unchanged. What was retired is the Deno _dev_
+  toolchain and the JSR _distribution_ channel (below); the project now builds
+  and gates on Node + Vite+ (`vp`).
 - The published `dist/*.js` files are built by the Vite+ bundler (`vp pack`)
   instead of esbuild; `scripts/build-js.mjs` and the `esbuild` devDependency are
   removed. Output filenames, the `exports` and `browser` conditions, and the
   runtime resolution of `taglib-wrapper.js` and `taglib-*.wasm` are unchanged,
   and the `./disc-folder` subpath remains a single self-contained Wasm-free
   file.
+
+### Removed
+
+- JSR distribution. The `@charlesw/taglib-wasm` JSR package is deprecated;
+  Deno installs from npm via `npm:taglib-wasm`. The `publish-jsr` and
+  `verify-jsr` CI jobs and the `deno.json`/`deno.lock` manifests are gone.
+  Deno _runtime_ support is unaffected — see Changed above.
 
 ### Fixed
 

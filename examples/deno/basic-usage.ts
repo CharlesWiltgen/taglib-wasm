@@ -5,8 +5,8 @@
 // For local development:
 import { TagLib } from "../../index.ts";
 
-// When using the published package from JSR:
-// import { TagLib } from "@charlesw/taglib-wasm";
+// When using the published package:
+// import { TagLib } from "npm:taglib-wasm";
 
 async function main() {
   console.log("🎵 TagLib-Wasm Deno Example");

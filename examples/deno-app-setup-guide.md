@@ -2,9 +2,9 @@
 
 This guide shows the recommended way to set up a Deno application that uses TagLib-Wasm with both Folder API and compiled binary support.
 
-## ✅ Use Only JSR Package
+## ✅ Use the npm package
 
-The JSR package (`@charlesw/taglib-wasm`) includes everything you need:
+The npm package `taglib-wasm` includes everything you need:
 
 - Folder API (scanFolder, findDuplicates, etc.)
 - Deno compile utilities (isDenoCompiled, initializeForDenoCompile)
@@ -12,7 +12,8 @@ The JSR package (`@charlesw/taglib-wasm`) includes everything you need:
 - Full API (TagLib class)
 - All TypeScript types
 
-**You do NOT need the NPM package for Deno applications.**
+Import it with Deno's `npm:` specifier — no JSR package and no import-map
+entry are involved, and `@charlesw/taglib-wasm` on JSR is deprecated.
 
 ## Project Setup
 
@@ -23,7 +24,6 @@ The JSR package (`@charlesw/taglib-wasm`) includes everything you need:
   "name": "my-audio-app",
   "version": "1.0.0",
   "imports": {
-    "@charlesw/taglib-wasm": "jsr:@charlesw/taglib-wasm@^0.4.2",
     "@cliffy/table": "jsr:@cliffy/table@^1.0.0-rc.7",
     "@std/path": "jsr:@std/path@^1.0.0"
   },
@@ -52,7 +52,7 @@ import {
   scanFolder,
   // Error types
   TagLibError,
-} from "@charlesw/taglib-wasm";
+} from "npm:taglib-wasm";
 
 import { dirname } from "@std/path";
 
@@ -205,7 +205,7 @@ if (import.meta.main) {
 ### 3. Prepare for Offline Support (`prepare-offline.ts`)
 
 ```typescript
-import { prepareWasmForEmbedding } from "@charlesw/taglib-wasm";
+import { prepareWasmForEmbedding } from "npm:taglib-wasm";
 
 console.log("📦 Preparing WASM for offline support...");
 
@@ -228,7 +228,7 @@ import {
   initializeForDenoCompile,
   scanFolder,
   TagLib,
-} from "@charlesw/taglib-wasm";
+} from "npm:taglib-wasm";
 
 async function getExtendedMetadata(files: AudioFileMetadata[]) {
   const taglib = await TagLib.initialize();
@@ -306,13 +306,14 @@ deno compile --allow-read --allow-net main.ts
 ./my-audio-app ./music
 ```
 
-## Key Advantages of JSR-Only Setup
+## Key Advantages of the npm Setup
 
-1. **Single Source of Truth** - All imports from one package
+1. **Single Source of Truth** - All imports from one package, the same one every
+   other runtime uses
 2. **Better Type Safety** - TypeScript types work automatically
-3. **No npm: Overhead** - Faster imports and better performance
-4. **Cleaner Project** - No package.json or node_modules needed
-5. **Deno-First Design** - Built specifically for Deno's module system
+3. **Deno-First Consumption** - `npm:taglib-wasm` needs no import-map entry
+4. **No JSR Drift** - the deprecated `@charlesw/taglib-wasm` JSR package stops
+   at 0.4.x, so the npm specifier is the only way to get current releases
 
 ## Common Patterns
 
@@ -339,17 +340,17 @@ const wasmBinary = await Deno.readFile("./taglib.wasm");
 const taglib = await TagLib.initialize({ wasmBinary });
 ```
 
-## Migration from NPM
+## Migrating off the deprecated JSR package
 
-If you were using NPM imports, simply change:
+If you were importing from JSR, change:
 
 ```typescript
-// ❌ Old way (mixing JSR and NPM)
-import { isDenoCompiled } from "@charlesw/taglib-wasm";
-import { scanFolder } from "npm:taglib-wasm";
-
-// ✅ New way (JSR only)
+// ❌ Old way (deprecated JSR package, stops at 0.4.x)
 import { isDenoCompiled, scanFolder } from "@charlesw/taglib-wasm";
+
+// ✅ Current way (npm, all supported versions)
+import { isDenoCompiled, scanFolder } from "npm:taglib-wasm";
 ```
 
-That's it! Everything is available from the JSR package.
+That's it — everything is available from the npm package, and no import-map
+entry is needed.

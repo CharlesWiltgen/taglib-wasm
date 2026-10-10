@@ -7,7 +7,7 @@
  * to a location where it can be included in the compiled binary.
  */
 
-import { prepareWasmForEmbedding } from "@charlesw/taglib-wasm";
+import { prepareWasmForEmbedding } from "npm:taglib-wasm";
 
 console.log("Preparing WASM file for offline usage...");
 

@@ -6,7 +6,7 @@ This checklist ensures a smooth and safe release process.
 
 ### 1. Code Quality
 
-- [ ] All tests pass (`npx vp test`, plus `npm run test:bun` and `bash tests/cross-runtime/run.sh`)
+- [ ] All tests pass (`npx vp test`, plus `npm run test:bun`, `npm run test:deno` and `bash tests/cross-runtime/run.sh`)
 - [ ] Code is properly formatted (`npx vp fmt --check`)
 - [ ] No linting errors (`npx vp lint --type-aware`)
 - [ ] Type checking passes (`npx tsc --noEmit -p tsconfig.check.json`)
@@ -38,15 +38,15 @@ This checklist ensures a smooth and safe release process.
 Use the safe release script that enforces all checks:
 
 ```bash
-# Auto-increment patch version (e.g., 3.0.0 → 3.0.1)
+# Auto-increment patch version (e.g., 2.3.0 → 2.3.1)
 npm run release
 
 # Set a specific version (npm drops positional args unless passed after `--`)
-npm run release -- 3.1.0
+npm run release -- 2.4.0
 
 # Or directly:
 ./scripts/release-safe.sh         # Auto-increment
-./scripts/release-safe.sh 3.1.0   # Specific version
+./scripts/release-safe.sh 2.4.0   # Specific version
 ```
 
 This script will:

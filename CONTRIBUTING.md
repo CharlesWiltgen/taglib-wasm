@@ -127,9 +127,10 @@ npx vp test --watch
 # Run a specific test file
 npx vp test tests/basic-tags.test.ts
 
-# The bun:test-registered integration file and the cross-runtime suite are
-# excluded from the Vitest gate; run them separately:
+# The bun:test-registered integration file, the Deno-gated tests and the
+# cross-runtime suite are excluded from the Vitest gate; run them separately:
 npm run test:bun
+npm run test:deno
 bash tests/cross-runtime/run.sh
 ```
 
@@ -191,8 +192,9 @@ describe("Feature", () => {
    ```
 
    > `npx vp test` runs the Vitest suite; `npm run test:bun` runs the
-   > bun:test-registered file and `tests/cross-runtime/run.sh` runs the
-   > cross-runtime suite. `npm ci` must precede every `npx vp` command
+   > bun:test-registered file, `npm run test:deno` the Deno-gated tests, and
+   > `tests/cross-runtime/run.sh` the cross-runtime suite. `npm ci` must precede
+   > every `npx vp` command
    > (`vp` loads `vite.config.ts` strictly). `npm run build:ts` builds the
    > shippable bundles and catches bundler-resolution breaks (e.g. an import
    > that isn't an npm dependency) that pass the tests but break the published
