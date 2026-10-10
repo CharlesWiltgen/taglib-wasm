@@ -1,6 +1,6 @@
 {
   "name": "taglib-wasm",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "description": "TagLib-Wasm is the universal tagging library for TypeScript/JavaScript platforms: Browsers, Node.js, Bun, Cloudflare Workers, and Electron apps",
   "keywords": [
     "acoustid",

@@ -7,7 +7,7 @@ Works in Node.js, Bun, browsers, and Cloudflare Workers.
 
 ```text
 npm install taglib-wasm           # Node.js / Bun
-import ... from "jsr:@charlesw/taglib-wasm"  # Deno (preferred)
+import ... from "npm:taglib-wasm"  # Deno (npm specifier)
 ```
 
 ## Quick Start
@@ -393,12 +393,9 @@ corroboration, so real album titles like "Tape 4" are not misread as discs.
 ## Import Patterns
 
 ```typescript
-// Deno (JSR — preferred)
-import { TagLib } from "jsr:@charlesw/taglib-wasm";
-import { readTags } from "jsr:@charlesw/taglib-wasm/simple";
-
-// Deno (NPM)
+// Deno (npm specifier)
 import { TagLib } from "npm:taglib-wasm";
+import { readTags } from "npm:taglib-wasm/simple";
 
 // Node.js / Bun
 import { TagLib } from "taglib-wasm";
@@ -626,8 +623,8 @@ remains.
 
 **Deno** is no longer the dev toolchain for tests, formatting, linting or type
 checking. It remains required only for the TypeScript bundle scripts
-(`scripts/build-js.mjs`, `scripts/postbuild.mjs`), the auxiliary scripts, and
-JSR publishing (`deno publish`) until phase 3 retires it.
+(`scripts/build-js.mjs`, `scripts/postbuild.mjs`) and the auxiliary scripts.
+The JSR distribution channel (`deno publish`) was retired in 3.0.0.
 
 ### Architecture
 

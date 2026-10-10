@@ -111,13 +111,12 @@ If you must release manually:
 ### 1. Verify GitHub Actions
 
 - [ ] Check the [Actions page](https://github.com/CharlesWiltgen/TagLib-Wasm/actions)
-- [ ] Ensure "Publish to JSR/NPM/GitHub" workflow triggered
+- [ ] Ensure "Publish to NPM/GitHub" workflow triggered
 - [ ] Verify all publish jobs succeeded
 
 ### 2. Verify Package Availability
 
 - [ ] Check [NPM](https://www.npmjs.com/package/taglib-wasm)
-- [ ] Check [JSR](https://jsr.io/@charlesw/taglib-wasm)
 - [ ] Check GitHub Packages
 
 ### 3. Test Installation
@@ -125,9 +124,6 @@ If you must release manually:
 ```bash
 # Test NPM
 npm install taglib-wasm@latest
-
-# Test JSR
-deno add @charlesw/taglib-wasm
 ```
 
 ### 4. Create GitHub Release
@@ -163,7 +159,6 @@ If not done automatically:
 
 - Check the workflow logs for specific errors
 - Common issues:
-  - Missing OIDC permissions (JSR)
   - Invalid NPM token
   - Network issues
 
