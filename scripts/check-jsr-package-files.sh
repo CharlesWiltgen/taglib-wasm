@@ -10,7 +10,7 @@
 # (and in jsr.json), or it fails.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
 
 # Same flags as the publish workflow's `deno publish`. --allow-dirty because
@@ -58,9 +58,17 @@ MISSING=""
 for f in \
   src/index.ts src/simple.ts src/folder.ts src/disc-folder.ts src/web.ts src/rating.ts \
   build/taglib-web.wasm build/taglib-wasi.wasm build/taglib-wrapper.js build/taglib-wrapper.d.ts \
-  dist/taglib-wrapper.js README.md LICENSE; do
+  README.md LICENSE; do
   printf '%s\n' "$FILES" | grep -qxF "$f" || MISSING="$MISSING $f"
 done
+# dist/taglib-wrapper.js is a build output (gitignored): a bare checkout has no
+# dist/, while the publish job stages one via its build artifact. The rule is
+# that it ships when the tree has it — running this guard on a clean tree must
+# not demand a file the checkout cannot have.
+if [ -f dist/taglib-wrapper.js ] &&
+  ! printf '%s\n' "$FILES" | grep -qxF "dist/taglib-wrapper.js"; then
+  MISSING="$MISSING dist/taglib-wrapper.js"
+fi
 if [ -n "$MISSING" ]; then
   echo "::error::JSR publish would omit required files:${MISSING}"
   exit 1
