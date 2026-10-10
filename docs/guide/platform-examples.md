@@ -72,6 +72,11 @@ Run with: `deno run --allow-read --allow-write script.ts`
 Deno requires explicit permissions: `--allow-read` for reading files,
 `--allow-write` for `applyTagsToFile` or any operation that saves to disk.
 
+### Deno Compile
+
+TagLib-Wasm supports `deno compile` for building standalone executables. See
+[Deno Compile](./deno-compile.md) for details on embedding the Wasm binary.
+
 ## Node.js
 
 ```typescript

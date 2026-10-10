@@ -14,7 +14,7 @@ software together.
 
 - **Node.js 24+** - Primary development runtime (Active LTS; matches the CI matrix)
 - **npm 11+** - The package manager; run `npm ci` before any `vp` command
-- **No Deno required** - The bundle scripts run under `node` and the auxiliary `.ts` scripts under `npx tsx`; the JSR distribution channel was retired
+- **Deno 2.x** - Needed for the Deno runtime test leg (`npm run test:deno`; the Deno arm of `tests/cross-runtime/run.sh`); the build and default gates run on `node`/`npx tsx`, and the JSR distribution channel was retired
 - **Emscripten SDK** - For building the Emscripten Wasm backend
 - **WASI SDK 34** - For building the WASI Wasm backend (optional for TS-only changes)
 - **Git** - With submodule support
@@ -69,10 +69,12 @@ software together.
    > `npm ci` must run before any `npx vp` command — `vp` loads
    > `vite.config.ts` strictly and aborts without the `vite-plus`
    > devDependency. `npx vp test` is a **Vite+ built-in**, not the npm `test`
-   > script (run that one with `vpr test`). Deno is no longer required anywhere:
-   > the bundles are produced by `vp pack` (configured in `vite.config.ts`),
-   > `scripts/postbuild.mjs` runs under `node` and the auxiliary `.ts` scripts
-   > under `npx tsx`; the JSR channel was retired. `npm run build:ts` builds the
+   > script (run that one with `vpr test`). Deno is not required for the build or
+   > the default gates: the bundles are produced by `vp pack` (configured in
+   > `vite.config.ts`), `scripts/postbuild.mjs` runs under `node` and the
+   > auxiliary `.ts` scripts under `npx tsx`; the JSR channel was retired. Deno
+   > is still needed for the Deno runtime test leg (`npm run test:deno`).
+   > `npm run build:ts` builds the
    > shippable bundles and catches bundler-resolution breaks (e.g. an import that
    > isn't an npm dependency) that pass the tests but break the published package.
 
@@ -245,7 +247,7 @@ The project has two Wasm backends:
 | Backend    | Script                          | Used by           | C++ entry point            |
 | ---------- | ------------------------------- | ----------------- | -------------------------- |
 | Emscripten | `npm run build:wasm:emscripten` | Browsers, Workers | `build/taglib_embind.cpp`  |
-| WASI       | `npm run build:wasm:wasi`       | Node.js           | `src/capi/taglib_shim.cpp` |
+| WASI       | `npm run build:wasm:wasi`       | Deno, Node.js     | `src/capi/taglib_shim.cpp` |
 
 After C++ changes, rebuild the affected backend and test thoroughly.
 
@@ -296,7 +298,7 @@ Update documentation when you:
 **Environment**
 
 - taglib-wasm version:
-- Runtime: [Node.js/Bun/Browser]
+- Runtime: [Deno/Node.js/Bun/Browser]
 - OS:
 
 **Additional Context** Error messages, logs, etc.
@@ -328,7 +330,7 @@ Brief description of changes
 
 - [ ] All tests pass
 - [ ] Added new tests
-- [ ] Tested on [Node.js/Bun/Browser]
+- [ ] Tested on [Deno/Node.js/Bun/Browser]
 
 ## Checklist
 

@@ -13,13 +13,14 @@ For advanced use cases, explicit helpers are also available:
 
 - `initializeForDenoCompile()` - Explicit initialization with custom Wasm path
 - `prepareWasmForEmbedding()` - Copies WASM file for embedding
+- `isDenoCompiled()` - Reports whether the process is a compiled Deno binary
 
 ## Method 1: Auto-Detection (Recommended)
 
 `TagLib.initialize()` transparently handles compiled binaries:
 
 ```typescript
-import { TagLib } from "@charlesw/taglib-wasm";
+import { TagLib } from "npm:taglib-wasm";
 
 // Works in development, Deno compile, browsers — everywhere
 const taglib = await TagLib.initialize();
@@ -33,7 +34,7 @@ For offline support, embed the Wasm file at compile time:
 ```bash
 # Prepare WASM file
 deno run --allow-read --allow-write -e \
-  "import { prepareWasmForEmbedding } from '@charlesw/taglib-wasm'; await prepareWasmForEmbedding();"
+  "import { prepareWasmForEmbedding } from 'npm:taglib-wasm'; await prepareWasmForEmbedding();"
 
 # Compile with embedded WASM
 deno compile --allow-read --include taglib-web.wasm myapp.ts
@@ -52,7 +53,7 @@ deno compile --allow-read --include taglib-web.wasm myapp.ts
 For online-only tools, use a CDN URL:
 
 ```typescript
-import { TagLib } from "@charlesw/taglib-wasm";
+import { TagLib } from "npm:taglib-wasm";
 
 const taglib = await TagLib.initialize({
   wasmUrl:
@@ -83,8 +84,8 @@ deno compile --allow-read --allow-net myapp.ts
 Use `initializeForDenoCompile()` when you need a custom embedded Wasm path:
 
 ```typescript
-import { initializeForDenoCompile } from "@charlesw/taglib-wasm";
-import { readTags } from "@charlesw/taglib-wasm/simple";
+import { initializeForDenoCompile } from "npm:taglib-wasm";
+import { readTags } from "npm:taglib-wasm/simple";
 
 async function main() {
   // Custom embedded path
@@ -107,7 +108,7 @@ if (import.meta.main) {
 
 ```typescript
 // prepare-offline.ts
-import { prepareWasmForEmbedding } from "@charlesw/taglib-wasm";
+import { prepareWasmForEmbedding } from "npm:taglib-wasm";
 
 await prepareWasmForEmbedding("./taglib-web.wasm");
 ```
@@ -141,7 +142,7 @@ The `initializeForDenoCompile()` function:
 For full control over the loading strategy:
 
 ```typescript
-import { TagLib } from "@charlesw/taglib-wasm";
+import { TagLib } from "npm:taglib-wasm";
 
 async function initializeTagLib(): Promise<TagLib> {
   // Detect if running as compiled binary
@@ -188,8 +189,8 @@ Here's a production-ready implementation with error handling:
 ```typescript
 #!/usr/bin/env -S deno run --allow-read --allow-net
 
-import { initializeForDenoCompile } from "@charlesw/taglib-wasm";
-import { applyTagsToFile, readTags } from "@charlesw/taglib-wasm/simple";
+import { initializeForDenoCompile } from "npm:taglib-wasm";
+import { applyTagsToFile, readTags } from "npm:taglib-wasm/simple";
 
 async function processAudioFile(filePath: string) {
   try {
@@ -254,8 +255,13 @@ if (import.meta.main) {
 
 ### 1. Detection of Compiled Binaries
 
+The `isDenoCompiled()` helper checks `Deno.mainModule` for the
+`deno-compile://` scheme:
+
 ```typescript
-const isCompiled = Deno.mainModule.includes("deno-compile://");
+import { isDenoCompiled } from "npm:taglib-wasm";
+
+const isCompiled = isDenoCompiled();
 ```
 
 ### 2. Embedding WASM Files
