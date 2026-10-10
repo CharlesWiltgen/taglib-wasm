@@ -716,8 +716,6 @@ written against one silently misbehaves on the other.
    make both backends agree. Most parity bugs are an unexamined answer here.
 5. Update `tests/PARITY-COVERAGE.md`, the per-method × backend matrix.
 
-See `.claude/rules/testing-patterns.md` for the testing requirement itself.
-
 #### Regression tests must be observed failing
 
 Two traps from the 1.6.1 cycle, each of which produced tests that could never

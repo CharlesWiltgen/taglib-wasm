@@ -115,7 +115,7 @@ In rough priority order:
 ### A. Status quo — keep two protocols, document the divergence
 
 Accept the dual protocol permanently. Write a definitive
-`.claude/rules/dual-backend-state-model.md` (tracked in `taglib-li1`) covering
+`AGENTS.md` section, "The dual-backend state model", covering
 the standard workarounds (optimistic cache updates, OR-merge composition,
 location-vs-pointer guards, TagUnion propagation awareness). Mandate
 cross-backend parity tests for every feature (tracked in `taglib-7ek`).
@@ -219,11 +219,10 @@ Option A is in force:
   with format-specific behavior costs ~2× to implement (an Embind binding plus
   the WASI `count_X / encode_X / apply_X_from_msgpack` triple); budget
   accordingly through the Mutagen-parity backlog.
-- `taglib-li1` is now **essential.** Its deliverable is a
-  contributor/agent-facing state-model rule
-  (`.claude/rules/dual-backend-state-model.md`) plus an `AGENTS.md` paragraph
-  that links back to this ADR. This ADR records the _decision and rationale_;
-  the rule records the _how-to-not-break-parity_ working guidance (optimistic
+- `taglib-li1` is now **essential.** Its deliverable is the
+  contributor/agent-facing `AGENTS.md` section, "The dual-backend state model",
+  which links back to this ADR. This ADR records the _decision and rationale_;
+  that section records the _how-to-not-break-parity_ working guidance (optimistic
   cache updates, OR-merge composition, location-vs-pointer guards,
   TagUnion-propagation awareness).
 - `taglib-7ek` (parity audit) is **essential** — a cross-backend parity test is

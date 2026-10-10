@@ -50,9 +50,11 @@ Key components:
 ### EH-Enabled Sysroot
 
 TagLib uses `dynamic_cast`/RTTI which requires exception handling support.
-The WASI binary is built with an EH-enabled sysroot (libc++, libc++abi,
-libunwind rebuilt with `-fwasm-exceptions`). See
-`.claude/rules/wasm-exception-handling.md` for details.
+The WASI binary is built with an EH-enabled sysroot — the pinned WASI SDK's
+stock `eh/` multilib provides libc++/libc++abi/libunwind compiled with
+exceptions, selected automatically by `-fwasm-exceptions`. Every translation
+unit must use the same EH model: mixing `-fwasm-exceptions` with `-fexceptions`
+fails to link with undefined `__cxa_*` symbols.
 
 ### Build Flags
 

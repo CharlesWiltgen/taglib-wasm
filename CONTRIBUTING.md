@@ -254,7 +254,7 @@ After C++ changes, rebuild the affected backend and test thoroughly.
 - All C++ files **must** use `-fwasm-exceptions` (not `-fexceptions`) for consistent EH
 - The WASI boundary layer (`taglib_boundary.c`) is pure C — keep it that way
 - Validate all inputs from JavaScript/TypeScript side
-- See `.claude/rules/wasm-exception-handling.md` for detailed EH constraints
+- C++ stdlib constructs (`std::string`, `thread_local`, `std::vector`) generate Itanium EH symbols (`__cxa_*`) even under `-fwasm-exceptions` — keep boundary code to C types
 
 ## 📚 Documentation
 
