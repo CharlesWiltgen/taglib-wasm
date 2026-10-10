@@ -8,9 +8,9 @@ set -euo pipefail
 # Packages all carry the version (taglib-rkx0).
 #
 # Usage:
-#   npm run release                    # Auto-increment patch version (0.0.1)
-#   npm run release 2.3.4              # Set specific version
-#   SKIP_PUBLISH_WATCH=1 npm run release   # Do not wait for the publish result
+#   npm run release                       # Auto-increment patch version (0.0.1)
+#   npm run release -- 2.3.4              # Set specific version
+#   SKIP_PUBLISH_WATCH=1 npm run release  # Do not wait for the publish result
 
 # Colors for output
 RED='\033[0;31m'
@@ -235,18 +235,21 @@ run_preflight_checks() {
     print_success "NPM package contents verified"
 }
 
-# Function to check version sync (delegates to sync-version.ts for the version files)
+# Function to check version sync (delegates to sync-version.ts for the version files).
+# Human-facing lines go to stderr and the bare version to stdout, so the caller can
+# capture the version while the release log still shows the gate ran and passed.
 check_version_sync() {
-    print_step "Checking version synchronization..."
+    print_step "Checking version synchronization..." >&2
 
-    if ! npx tsx scripts/sync-version.ts check; then
-        print_error "Version mismatch detected!"
-        print_warning "Run 'npx tsx scripts/sync-version.ts set <version>' to synchronize all version references"
+    if ! npx tsx scripts/sync-version.ts check >&2; then
+        print_error "Version mismatch detected!" >&2
+        print_warning "Run 'npx tsx scripts/sync-version.ts set <version>' to synchronize all version references" >&2
         exit 1
     fi
 
-    local pkg_version=$(node -p "require('./package.json').version")
-    print_success "Versions are synchronized: $pkg_version"
+    local pkg_version
+    pkg_version=$(node -p "require('./package.json').version")
+    print_success "Versions are synchronized: $pkg_version" >&2
     echo "$pkg_version"
 }
 
@@ -458,31 +461,42 @@ main() {
     echo "=================================="
     echo
 
-    # --skip-watch: dispatch the publish workflow without waiting for the result.
-    # Exposed as `npm run release:quick`; every gate still runs (the old
-    # release:quick skipped them and then tagged before publishing, which is the
-    # 2.2.3 failure shape this script exists to prevent — review finding SEC-06).
-    if [[ "${1:-}" == "--skip-watch" ]]; then
-        SKIP_PUBLISH_WATCH=1
+    # Flags, in any order, before the optional version argument.
+    while [[ "${1:-}" == --* ]]; do
+        case "$1" in
+            --skip-watch)
+                # Dispatch the publish workflow without waiting for the result.
+                # Exposed as `npm run release:quick`; every gate still runs (the
+                # old release:quick skipped them and then tagged before
+                # publishing, which is the 2.2.3 failure shape this script exists
+                # to prevent — review finding SEC-06).
+                SKIP_PUBLISH_WATCH=1
+                ;;
+            --dry-run)
+                # Run every gate with the real commands, then stop before any
+                # version bump, commit, push, CI wait or dispatch. Skips exactly:
+                # check_main_branch, check_clean_working_tree, check_up_to_date,
+                # the version prompt, update_versions, the post-update test
+                # re-run, and publish_release.
+                DRY_RUN=1
+                ;;
+            *)
+                print_error "Unknown flag: $1"
+                print_warning "Supported flags: --dry-run, --skip-watch"
+                exit 1
+                ;;
+        esac
         shift
-    fi
-
-    # --dry-run: run every gate with the real commands, then stop before any
-    # version bump, commit, push, CI wait or dispatch. Skips exactly:
-    # check_main_branch, check_clean_working_tree, check_up_to_date, the version
-    # prompt, update_versions, the post-update test re-run, and publish_release.
-    if [[ "${1:-}" == "--dry-run" ]]; then
-        DRY_RUN=1
-        shift
-    fi
+    done
 
     # Get version argument or auto-increment
     local new_version=""
-    
+
     if [[ $# -eq 0 ]]; then
         # No version specified, auto-increment patch version
-        local current_version=$(node -p "require('./package.json').version")
-        
+        local current_version
+        current_version=$(node -p "require('./package.json').version")
+
         # Parse version components
         IFS='.' read -ra VERSION_PARTS <<< "$current_version"
         local major="${VERSION_PARTS[0]}"
@@ -515,8 +529,12 @@ main() {
         check_up_to_date
     fi
 
-    # Check current version synchronization
-    local current_version=$(check_version_sync)
+    # Check current version synchronization. The declaration is split from the
+    # assignment deliberately: `local x=$(cmd)` returns local's own status, which
+    # would mask a failing gate and let the release continue (this repo's "check
+    # that cannot fail" class — taglib review C14).
+    local current_version
+    current_version=$(check_version_sync) || exit 1
 
     if [[ "${DRY_RUN:-}" == "1" ]]; then
         run_tests
