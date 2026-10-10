@@ -383,13 +383,15 @@ export default defineConfig({
     // «output.codeSplitting» is false"), and rolldown's default splitting
     // emits hash-named sibling chunks. One entry per config ⇒ one file each.
     //
-    // `comments: false` because rolldown keeps every JSDoc block and adds
-    // `//#region` banners where the retired esbuild build dropped both:
-    // emitting them cost 22 KB on index.browser.js (151 KB → 173 KB) and
-    // 39 KB of *gzip*, while the emitted code itself got 2 KB smaller.
-    // With them dropped, all three entries are smaller than their 2.3.0
-    // files (raw and gzipped); nothing name-dependent depends on the
-    // comments, and the bundles carry no license text to preserve.
+    // `outputOptions.comments: false` drops the JSDoc blocks rolldown keeps
+    // and the retired esbuild build discarded: carrying them cost 22 KB on
+    // index.browser.js (151 KB → 173 KB) and 39 KB of *gzip*. rolldown's
+    // `//#region` banners survive the option — nothing removes them — so they
+    // are part of what remains; the rest of the difference is whitespace, the
+    // two builds' emitted code being within ~2 KB of the same size. All three
+    // entries are now smaller than their 2.3.0 files, raw and gzipped;
+    // nothing name-dependent depends on the comments, and the bundles carry
+    // no license text to preserve.
     {
       name: "browser-index",
       entry: ["src/index.browser.ts"],

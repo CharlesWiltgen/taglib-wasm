@@ -79,7 +79,7 @@ async function main() {
       console.error("❌ TagLib Error:", error.message);
       if (isDenoCompiled()) {
         console.error(
-          "💡 Tip: Make sure taglib.wasm is included in the binary",
+          "💡 Tip: Make sure taglib-web.wasm is included in the binary",
         );
       }
     } else {
@@ -336,7 +336,7 @@ const taglib = await TagLib.initialize({
 ### Pattern 3: Force Offline
 
 ```typescript
-const wasmBinary = await Deno.readFile("./taglib.wasm");
+const wasmBinary = await Deno.readFile("./taglib-web.wasm");
 const taglib = await TagLib.initialize({ wasmBinary });
 ```
 

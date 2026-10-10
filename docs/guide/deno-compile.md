@@ -5,9 +5,13 @@ binaries, with multiple approaches for different use cases.
 
 ## Overview
 
-`TagLib.initialize()` **auto-detects Deno compile mode**. When running inside a
-compiled binary, it automatically switches to Emscripten buffer mode and
-attempts to load embedded Wasm — no special API needed.
+`TagLib.initialize()` **auto-detects Deno compile mode** on Deno releases that
+mark a compiled binary with the `deno-compile://` scheme in `Deno.mainModule`
+(through Deno 2.8). On Deno 2.9.x that URL is instead a `file://` path under
+`deno-compile-<name>`, so detection returns false there — pass the embedded Wasm
+path explicitly (`initializeForDenoCompile("./taglib-web.wasm")`, Method 3). When
+detection does fire, initialization switches to Emscripten buffer mode and
+attempts to load the embedded Wasm.
 
 For advanced use cases, explicit helpers are also available:
 
@@ -137,9 +141,13 @@ deno compile --allow-read --include taglib-web.wasm myapp.ts
 
 The `initializeForDenoCompile()` function:
 
-1. Detects if running as compiled binary using `Deno.mainModule`
+1. Detects if running as a compiled binary using `Deno.mainModule` (see the
+   Overview for the Deno 2.9 caveat)
 2. Attempts to load embedded WASM from `./taglib-web.wasm`
-3. Falls back to network fetch if not found (for development)
+3. Falls back to the Wasm shipped in this package (`dist/taglib-web.wasm`,
+   resolved relative to the module) — present when running from source, absent
+   inside a compiled binary, so a build without `--include` fails at
+   initialization; use Method 2 (`wasmUrl`) if a runtime fetch is wanted
 
 ## Method 4: Manual Control (Advanced)
 
@@ -317,16 +325,18 @@ const WASM_URL =
 
 One row per method, in the order they appear above:
 
-| Method                                            | Offline Support  | Binary Size | Complexity | Best For                     |
-| ------------------------------------------------- | ---------------- | ----------- | ---------- | ---------------------------- |
-| 1. Auto-Detection (`TagLib.initialize()`)         | ✅ when embedded | +500KB      | Simple     | Most compiled binaries       |
-| 2. CDN Loading (`wasmUrl`)                        | ❌               | Small       | Simple     | Online tools, web services   |
-| 3. Explicit Helper (`initializeForDenoCompile()`) | ✅ when embedded | +500KB      | Medium     | A custom embedded Wasm path  |
-| 4. Manual Control (`wasmBinary`)                  | ✅ when embedded | +500KB      | Complex    | A custom resolution strategy |
+| Method                                            | Offline Support  | Binary Size | Complexity | Best For                        |
+| ------------------------------------------------- | ---------------- | ----------- | ---------- | ------------------------------- |
+| 1. Auto-Detection (`TagLib.initialize()`)         | ✅ when embedded | +500KB      | Simple     | Deno ≤ 2.8 binaries (see below) |
+| 2. CDN Loading (`wasmUrl`)                        | ❌               | Small       | Simple     | Online tools, web services      |
+| 3. Explicit Helper (`initializeForDenoCompile()`) | ✅ when embedded | +500KB      | Medium     | A custom embedded Wasm path     |
+| 4. Manual Control (`wasmBinary`)                  | ✅ when embedded | +500KB      | Complex    | A custom resolution strategy    |
 
 Methods 1 and 3 both load an embedded Wasm — they differ only in whether you
 call `TagLib.initialize()` or `initializeForDenoCompile()` with your own path.
-Method 4 reimplements the same strategies by hand.
+On Deno 2.9.x only Method 3 does: Method 1's detection does not fire, because
+`Deno.mainModule` no longer carries the `deno-compile://` scheme. Method 4
+reimplements the same strategies by hand.
 
 ## Best Practices
 

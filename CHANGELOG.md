@@ -5,24 +5,28 @@
 ### Changed
 
 - **Deno remains a supported runtime; its _development_ toolchain is not.**
-  The Deno runtime, its public API (`initializeForDenoCompile`,
-  `isDenoCompiled`, `prepareWasmForEmbedding`), its examples, its docs and its
-  Deno-gated tests are all unchanged. What was retired is the Deno _dev_
-  toolchain and the JSR _distribution_ channel (below); the project now builds
-  and gates on Node + Vite+ (`vp`).
+  The Deno runtime and its public API (`initializeForDenoCompile`,
+  `isDenoCompiled`, `prepareWasmForEmbedding`) are unchanged. What was retired
+  is the Deno _dev_ toolchain and the JSR _distribution_ channel (below); the
+  project now builds and gates on Node + Vite+ (`vp`). Its examples and docs
+  were corrected in this release, not withdrawn — those fixes are under Fixed.
 - The published `dist/*.js` files are built by the Vite+ bundler (`vp pack`)
   instead of esbuild; `scripts/build-js.mjs` and the `esbuild` devDependency are
-  removed. Output filenames, the `exports` and `browser` conditions, and the
-  runtime resolution of `taglib-wrapper.js` are unchanged, and the
-  `./disc-folder` subpath remains a single self-contained Wasm-free file. (The
-  entry barrels moved into `src/`, which changes the emitted depth — see Fixed.)
-  The browser entries end up 15-17% smaller than 2.3.0's, raw and 11-13%
-  smaller gzipped: the new bundler emits every JSDoc block and adds `//#region`
-  banners where esbuild dropped both, and this build suppresses that emission
-  (`outputOptions.comments: false`) while its emitted code is itself ~2 KB
-  smaller. A consumer's own bundler sees the same direction — minified app
-  bundles are ~2% smaller. The published tarball is 2% larger (785 KB → 803 KB),
-  the cost of the extra helper modules the ES2020 lowering emits.
+  removed. Output filenames, the `exports` and `browser` conditions are
+  unchanged, and the `./disc-folder` subpath remains a single self-contained
+  Wasm-free file. (The entry barrels moved into `src/`, which changes the
+  emitted depth — see Fixed.) The Emscripten glue now imports its Node builtin
+  as `node:module` rather than `module`, so a bundler that externalizes that
+  dynamic import must match the new specifier. The browser entries end up 15-17%
+  smaller than 2.3.0's, raw and 11-13% smaller gzipped: rolldown emits every
+  JSDoc block where esbuild dropped nearly all of them, and
+  `outputOptions.comments: false` now drops those (rolldown's `//#region`
+  banners remain — no option removes them — but they carry no code). The
+  remainder of the difference is whitespace: the two builds' emitted code is
+  within ~2 KB of the same size. A consumer's own bundler sees the same
+  direction — minified app bundles are ~2% smaller. The published tarball is 2%
+  larger (785 KB → 803 KB), the cost of the extra code the ES2020 lowering
+  emits, inlined per module rather than only in its `dist/_virtual/` helpers.
 
 ### Removed
 
