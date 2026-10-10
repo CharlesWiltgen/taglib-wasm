@@ -4,8 +4,8 @@
 // native resource (Wasm C++ object on Emscripten, file buffers on WASI) — the
 // exact pattern tuneup's engine worker hit in its write path.
 //
-// GC contract: this file requires --v8-flags=--expose-gc (wired into
-// vite.config.ts/ci.yml and sonarcloud.yml). The test fails loudly without
+// GC contract: this file requires --expose-gc (wired into vite.config.ts,
+// ci.yml and sonarcloud.yml). The test fails loudly without
 // the flag rather than skipping, so a config regression cannot turn this
 // guard into decoration.
 import { expect, it } from "vite-plus/test";

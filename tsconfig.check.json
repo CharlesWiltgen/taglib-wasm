@@ -24,8 +24,8 @@
     "lib",
     "build",
     "examples"
-    // tests/test-files/_gen/make-bwf-fixtures.ts now runs on Node and is
-    // type-checked here. The bench left this list only if it type-checks;
-    // otherwise restore it with the exact TS error in a comment.
+    // tests/test-files/_gen/make-bwf-fixtures.ts and
+    // tests/wasi-vs-emscripten.bench.ts run on Node and type-check under this
+    // config, so neither is excluded here.
   ]
 }
