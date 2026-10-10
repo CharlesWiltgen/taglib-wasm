@@ -25,7 +25,7 @@
  *     builtin, no package dependency that is not declared, and none of the
  *     WASI/unified-loader/filesystem modules. This is what makes (1) a
  *     classification rather than an assertion: the walker follows the same
- *     edges `scripts/build-js.mjs`'s browserRedirectPlugin rewrites.
+ *     edges the browser build's redirect plugin rewrites.
  */
 
 import { readFile, stat } from "node:fs/promises";

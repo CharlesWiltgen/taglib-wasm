@@ -2,7 +2,8 @@ import { dirname, join } from "node:path";
 import { defineConfig } from "vite-plus";
 import type { TsdownPlugin } from "vite-plus/pack";
 
-// Verbatim from scripts/build-js.mjs (the browser stubs) — identical error text.
+// Copied from the retired esbuild browser build's redirect plugin — the stub
+// bodies (and their error text) must stay identical.
 const PLATFORM_IO_BROWSER_STUB = `
   export function getPlatformIO() {
     throw new Error("Filesystem operations are not available in the browser.");

@@ -622,9 +622,9 @@ three runtimes via `tests/cross-runtime/run.sh`). No Deno-gated test file
 remains.
 
 **Deno** is no longer the dev toolchain for tests, formatting, linting or type
-checking, and nothing requires it: the TypeScript bundle scripts
-(`scripts/build-js.mjs`, `scripts/postbuild.mjs`) run under `node` and the
-auxiliary `.ts` scripts run under `npx tsx`. The JSR distribution channel
+checking, and nothing requires it: the bundles are produced by `vp pack`
+(configured in `vite.config.ts`), `scripts/postbuild.mjs` runs under `node`, and
+the auxiliary `.ts` scripts run under `npx tsx`. The JSR distribution channel
 (`deno publish`) was retired with the JSR channel.
 
 ### Architecture
