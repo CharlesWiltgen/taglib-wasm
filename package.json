@@ -35,7 +35,6 @@
   },
   "files": [
     "dist/**/*",
-    "!dist/poc",
     "index.ts",
     "index.browser.ts",
     "simple.ts",
@@ -147,14 +146,8 @@
     "test:sonar": "SONAR_REPORT=1 vp test --coverage",
     "check:all": "npx vp fmt --check && npx vp lint --type-aware && npm run lint:ast && npm run docs:coverage && npm run knip && npx tsc --noEmit -p tsconfig.check.json && npx vp test && npm run build:js && npm run postbuild && node scripts/check-dist-resolution.mjs && node scripts/check-disc-folder.mjs && bash scripts/check-toolchain-pins.sh",
     "test": "vp test",
-    "test:core": "vp test tests/taglib.test.ts",
-    "test:pictures": "vp test tests/picture-api.test.ts",
-    "test:edge": "vp test tests/edge-cases.test.ts",
-    "test:errors": "vp test tests/error-handling.test.ts",
-    "test:memory": "vp test tests/memory.test.ts",
-    "test:extended": "vp test tests/extended-metadata.test.ts",
     "test:bun": "bun test tests/bun-integration.test.ts",
-    "test:deno": "deno test --allow-read --allow-write --allow-env tests/deno-detect.test.ts tests/deno-fs-provider.test.ts tests/deno-compile.test.ts",
+    "test:deno": "deno test --allow-read --allow-write --allow-env tests/deno-*.test.ts",
     "test:cross-runtime": "./tests/cross-runtime/run.sh",
     "test:watch": "vp test --watch",
     "test:coverage": "vp test --coverage",
@@ -163,13 +156,7 @@
     "docs:build": "cd docs && npm install && npm run build",
     "update-taglib": "./scripts/update-taglib.sh",
     "release": "./scripts/release-safe.sh",
-    "release:quick": "./scripts/release-safe.sh --skip-watch",
-    "publish:npm": "echo 'Use GitHub Actions workflow for publishing'",
-    "publish:github": "echo 'Use GitHub Actions workflow for publishing'",
-    "fmt:vp": "vp fmt",
-    "lint:vp": "vp lint --type-aware",
-    "test:vp": "vp test",
-    "check:vp": "tsc --noEmit -p tsconfig.check.json && vp lint --type-aware"
+    "release:quick": "./scripts/release-safe.sh --skip-watch"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3"

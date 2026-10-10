@@ -47,23 +47,19 @@ function browserRedirect(): TsdownPlugin {
 export default defineConfig({
   fmt: {
     printWidth: 80,
-    // Vendored trees, generated artifacts, and repo-hygiene scratch that
-    // `deno fmt` never scanned (its `fmt.exclude`), plus `lib/taglib/doc/`
-    // and `lib/taglib/bindings/README`, which hard-error oxfmt's HTML/parser
-    // pass (`SyntaxError: Unexpected closing tag "body"`, check exit 2).
-    // oxfmt reads these as gitignore-style `ignorePatterns`, not `exclude`.
+    // Vendored trees, generated artifacts, and repo-hygiene scratch, plus
+    // `lib/taglib/doc/` and `lib/taglib/bindings/README`, which hard-error
+    // oxfmt's HTML/parser pass (`SyntaxError: Unexpected closing tag "body"`,
+    // check exit 2). oxfmt reads these as gitignore-style `ignorePatterns`, not
+    // `exclude`. The patterns `.gitignore` already covers (.beads/, .omp/,
+    // .serena/, .worktrees/, .coverage/, dist/) are deliberately not repeated:
+    // `vp fmt` uses .gitignore as its ignore file by default.
     ignorePatterns: [
       "lib/",
       "build/",
-      "dist/",
       "docs/.vuepress/",
       "docs/index.html",
       ".ast-grep/rule-tests/__snapshots__/",
-      ".beads/",
-      ".omp/",
-      ".serena/",
-      ".worktrees/",
-      ".coverage/",
       ".superpowers/",
     ],
   },
@@ -285,14 +281,12 @@ export default defineConfig({
     // Test files that must NOT run under Vitest:
     //  - bun-integration.test.ts registers with bun:test (npm run test:bun)
     //  - cross-runtime/ runs under three runtimes via tests/cross-runtime/run.sh
-    //  - the Deno-gated tests import Deno-only modules and `jsr:` specifiers,
-    //    so `npm run test:deno` owns them (Deno runs them like Bun runs its own).
+    //  - tests/deno-*.test.ts run under Deno's own test runner
+    //    (npm run test:deno) and use Deno-only globals.
     exclude: [
       "tests/bun-integration.test.ts",
       "tests/cross-runtime/**",
-      "tests/deno-detect.test.ts",
-      "tests/deno-fs-provider.test.ts",
-      "tests/deno-compile.test.ts",
+      "tests/deno-*.test.ts",
     ],
     pool: "forks",
     execArgv: ["--expose-gc"],
