@@ -1,115 +1,72 @@
 #!/usr/bin/env node
 
 /**
- * Fix import/export statements in compiled JavaScript and declaration files.
- * Replaces .ts extensions with .js in import specifiers for compatibility
- * with all moduleResolution modes and Deno.
- * Also fixes taglib-wrapper.js import paths.
+ * Post-emit specifier fixes for dist/.
+ *
+ * Two emitters write dist/, each leaving source-shaped specifiers behind:
+ *
+ * - vp pack (the `.js` tree) preserves the paths as written in source, e.g.
+ *   `import("../../build/taglib-wrapper.js")` and
+ *   `new URL("../../build/taglib-wasi.wasm", import.meta.url)`. Those `build/`
+ *   paths do not exist under dist/; they are rewritten to the co-located copy
+ *   that build:copy-wasm places at the dist/ root, relative to the file depth.
+ *
+ * - tsc --emitDeclarationOnly (the `.d.ts` tree) preserves the `.ts` specifiers
+ *   the sources import with (allowImportingTsExtensions); they are rewritten to
+ *   the emitted `.js` files so the published declarations resolve.
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
 
 function fixImportsInFile(filePath) {
-  let content = readFileSync(filePath, "utf8");
-  let modified = false;
+  const original = readFileSync(filePath, "utf8");
+  let content = original;
 
-  // Fix taglib-wrapper.js imports for any file at any depth under dist/
-  const distRoot = "dist";
-  const relFromDist = relative(distRoot, dirname(filePath));
-  const depth = relFromDist === "" ? 0 : relFromDist.split("/").length;
-  const wrapperRelPath =
-    (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-wrapper.js";
+  if (filePath.endsWith(".d.ts")) {
+    // tsc declaration emit keeps the `.ts` specifiers written in source, in all
+    // three statement forms (`from "./x.ts"`, `export … from "./x.ts"`,
+    // `import("./x.ts")`). The declaration tree holds only those `.ts` relative
+    // specifiers, so a single `.ts` → `.js` rewrite is the whole job.
+    content = content.replace(
+      /(from\s+|import\(\s*)(["'])(\.[^"']+)\.ts\2/g,
+      (_match, prefix, quote, specifier) =>
+        `${prefix}${quote}${specifier}.js${quote}`,
+    );
+  } else {
+    // vp pack's unbundled `.js` tree keeps `build/taglib-wrapper.js` and
+    // `build/taglib-*.wasm` references; point them at the dist/ root copies.
+    const distRoot = "dist";
+    const relFromDist = relative(distRoot, dirname(filePath));
+    const depth = relFromDist === "" ? 0 : relFromDist.split("/").length;
+    const wrapperRelPath =
+      (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-wrapper.js";
 
-  content = content.replace(
-    /from\s+["'][^"']*(?:build|dist)\/taglib-wrapper\.js["']/g,
-    `from "${wrapperRelPath}"`,
-  );
-  content = content.replace(
-    /import\(["'][^"']*(?:build|dist)\/taglib-wrapper\.js["']\)/g,
-    `import("${wrapperRelPath}")`,
-  );
+    content = content.replace(
+      /import\(["'][^"']*(?:build|dist)\/taglib-wrapper\.js["']\)/g,
+      `import("${wrapperRelPath}")`,
+    );
 
-  // Fix wasm binary paths: strip "build/" so they resolve to dist/ root
-  const wasiWasmRelPath =
-    (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-wasi.wasm";
-  const emscriptenWasmRelPath =
-    (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-web.wasm";
-  content = content.replace(
-    /new\s+URL\(\s*["'][^"']*build\/taglib-wasi\.wasm["']/g,
-    `new URL("${wasiWasmRelPath}"`,
-  );
-  content = content.replace(
-    /new\s+URL\(\s*["'][^"']*build\/taglib-web\.wasm["']/g,
-    `new URL("${emscriptenWasmRelPath}"`,
-  );
-  content = content.replace(
-    /resolveWasmPath\(\s*["'][^"']*build\/taglib-wasi\.wasm["']/g,
-    `resolveWasmPath("${wasiWasmRelPath}"`,
-  );
-  modified = true;
+    // Fix wasm binary paths: strip "build/" so they resolve to dist/ root
+    const wasiWasmRelPath =
+      (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-wasi.wasm";
+    const emscriptenWasmRelPath =
+      (depth === 0 ? "./" : "../".repeat(depth)) + "taglib-web.wasm";
+    content = content.replace(
+      /new\s+URL\(\s*["'][^"']*build\/taglib-wasi\.wasm["']/g,
+      `new URL("${wasiWasmRelPath}"`,
+    );
+    content = content.replace(
+      /new\s+URL\(\s*["'][^"']*build\/taglib-web\.wasm["']/g,
+      `new URL("${emscriptenWasmRelPath}"`,
+    );
+    content = content.replace(
+      /resolveWasmPath\(\s*["'][^"']*build\/taglib-wasi\.wasm["']/g,
+      `resolveWasmPath("${wasiWasmRelPath}"`,
+    );
+  }
 
-  // Fix import statements
-  content = content.replace(
-    /from\s+["'](\.[^"']+)["']/g,
-    (match, importPath) => {
-      // Handle .ts.js case from esbuild
-      if (importPath.endsWith(".ts.js")) {
-        modified = true;
-        return `from "${importPath.replace(/\.ts\.js$/, ".js")}"`;
-      } else if (importPath.endsWith(".ts")) {
-        modified = true;
-        return `from "${importPath.replace(/\.ts$/, "")}.js"`;
-      } else if (!importPath.endsWith(".js") && !importPath.endsWith(".json")) {
-        modified = true;
-        return `from "${importPath}.js"`;
-      }
-      return match;
-    },
-  );
-
-  // Fix export statements
-  content = content.replace(
-    /export\s+.*\s+from\s+["'](\.[^"']+)["']/g,
-    (match, importPath) => {
-      // Handle .ts.js case from esbuild
-      if (importPath.endsWith(".ts.js")) {
-        modified = true;
-        return match.replace(/\.ts\.js/, ".js");
-      } else if (importPath.endsWith(".ts")) {
-        modified = true;
-        return match.replace(
-          importPath,
-          importPath.replace(/\.ts$/, "") + ".js",
-        );
-      } else if (!importPath.endsWith(".js") && !importPath.endsWith(".json")) {
-        modified = true;
-        return match.replace(importPath, importPath + ".js");
-      }
-      return match;
-    },
-  );
-
-  // Fix dynamic imports
-  content = content.replace(
-    /import\(["'](\.[^"']+)["']\)/g,
-    (match, importPath) => {
-      // Handle .ts.js case from esbuild
-      if (importPath.endsWith(".ts.js")) {
-        modified = true;
-        return `import("${importPath.replace(/\.ts\.js$/, ".js")}")`;
-      } else if (importPath.endsWith(".ts")) {
-        modified = true;
-        return `import("${importPath.replace(/\.ts$/, "")}.js")`;
-      } else if (!importPath.endsWith(".js") && !importPath.endsWith(".json")) {
-        modified = true;
-        return `import("${importPath}.js")`;
-      }
-      return match;
-    },
-  );
-
-  if (modified) {
+  if (content !== original) {
     writeFileSync(filePath, content);
     console.log(`    ✓ Fixed imports in ${filePath}`);
   }

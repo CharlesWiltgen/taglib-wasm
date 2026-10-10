@@ -415,8 +415,8 @@ import {
 
 The barrel is tree-shaken to leaf granularity by esbuild, rollup, vite, and
 webpack — importing `TagLib` does not pull in the Folder or Web API, and
-`index` vs `simple` is not a size lever (both are ~82 KB in a browser bundle,
-~145 KB in a Node bundle). `./folder` is Node-only in a browser build (it walks
+`index` vs `simple` is not a size lever (both are ~80 KB in a browser bundle,
+~144 KB in a Node bundle). `./folder` is Node-only in a browser build (it walks
 a filesystem; a loud build error is the contract); `./web` has its own `browser`
 condition and builds there, resolving `taglib-web.wasm` alone. The browser
 entries (`index.browser.ts`, `simple.browser.ts`, `web.browser.ts`) must export
@@ -622,9 +622,9 @@ three runtimes via `tests/cross-runtime/run.sh`). No Deno-gated test file
 remains.
 
 **Deno** is no longer the dev toolchain for tests, formatting, linting or type
-checking, and nothing requires it: the TypeScript bundle scripts
-(`scripts/build-js.mjs`, `scripts/postbuild.mjs`) run under `node` and the
-auxiliary `.ts` scripts run under `npx tsx`. The JSR distribution channel
+checking, and nothing requires it: the bundles are produced by `vp pack`
+(configured in `vite.config.ts`), `scripts/postbuild.mjs` runs under `node`, and
+the auxiliary `.ts` scripts run under `npx tsx`. The JSR distribution channel
 (`deno publish`) was retired with the JSR channel.
 
 ### Architecture

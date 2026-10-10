@@ -193,7 +193,7 @@ run_preflight_checks() {
 
     # The npm checks below lint the packed npm tarball, so dist/ must hold a
     # complete package first. `npm run build:release` above does not produce one:
-    # its build:js is scripts/build-js.mjs, which emits .js only — the .d.ts
+    # its build:js is `vp pack`, which emits .js only — the .d.ts
     # files come from tsc, which lives in the npm build:ts. Without this step
     # the checks lint whatever stale dist/ happened to be lying around (and
     # fail outright once it is cleaned). The wasm is copied rather than

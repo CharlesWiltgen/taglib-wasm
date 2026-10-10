@@ -12,6 +12,15 @@
   Deno installs from npm via `npm:taglib-wasm`. The `publish-jsr`
   and `verify-jsr` CI jobs and the `deno.json`/`deno.lock` manifests are gone.
 
+### Changed
+
+- The published `dist/*.js` files are built by the Vite+ bundler (`vp pack`)
+  instead of esbuild; `scripts/build-js.mjs` and the `esbuild` devDependency are
+  removed. Output filenames, the `exports` and `browser` conditions, and the
+  runtime resolution of `taglib-wrapper.js` and `taglib-*.wasm` are unchanged,
+  and the `./disc-folder` subpath remains a single self-contained Wasm-free
+  file.
+
 ### Fixed
 
 - **A WASI host seek that fails no longer corrupts the next read on Node and

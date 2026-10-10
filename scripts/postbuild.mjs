@@ -23,7 +23,7 @@ if (!existsSync(distDir)) {
   mkdirSync(distDir, { recursive: true });
 }
 
-// WASM files to copy from build to dist
+// Runtime glue and wasm files to copy from build/ to dist/
 const wasmFiles = [
   "taglib-wrapper.js",
   "taglib-wrapper.d.ts",
@@ -47,14 +47,13 @@ wasmFiles.forEach((file) => {
   }
 });
 
-// No longer copying TypeScript source files - only compiled output should be in dist
-
-// Fix import specifiers for the built bundle
+// Fix the specifiers the emitters leave behind in dist/
 console.log("\n🔧 Fixing import specifiers for the built bundle...");
 {
   const { execFileSync } = await import("node:child_process");
-  // Hard failure on purpose: fix-imports.js rewrites .ts → .js specifiers and
-  // build/ wasm URLs. A swallowed error here ships dist/ with unfixed import
+  // Hard failure on purpose: fix-imports.js rewrites the build/-relative
+  // glue/wasm paths in the emitted .js tree and the .ts specifiers in the
+  // emitted .d.ts tree. A swallowed error here ships dist/ with unfixed import
   // paths while the build reports success.
   execFileSync(process.execPath, ["scripts/fix-imports.js"], {
     cwd: rootDir,

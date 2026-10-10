@@ -70,11 +70,11 @@ software together.
    > `vite.config.ts` strictly and aborts without the `vite-plus`
    > devDependency. `npx vp test` is a **Vite+ built-in**, not the npm `test`
    > script (run that one with `vpr test`). Deno is no longer required anywhere:
-   > the bundle scripts (`scripts/build-js.mjs`, `scripts/postbuild.mjs`) run
-   > under `node` and the auxiliary `.ts` scripts under `npx tsx`, and the JSR
-   > channel was retired. `npm run build:ts` builds the shippable
-   > bundles and catches bundler-resolution breaks (e.g. an import that isn't
-   > an npm dependency) that pass the tests but break the published package.
+   > the bundles are produced by `vp pack` (configured in `vite.config.ts`),
+   > `scripts/postbuild.mjs` runs under `node` and the auxiliary `.ts` scripts
+   > under `npx tsx`; the JSR channel was retired. `npm run build:ts` builds the
+   > shippable bundles and catches bundler-resolution breaks (e.g. an import that
+   > isn't an npm dependency) that pass the tests but break the published package.
 
 ## 📝 Development Guidelines
 

@@ -1,4 +1,48 @@
+import { dirname, join } from "node:path";
 import { defineConfig } from "vite-plus";
+import type { TsdownPlugin } from "vite-plus/pack";
+
+// Copied from the retired esbuild browser build's redirect plugin — the stub
+// bodies (and their error text) must stay identical.
+const PLATFORM_IO_BROWSER_STUB = `
+  export function getPlatformIO() {
+    throw new Error("Filesystem operations are not available in the browser.");
+  }
+  export function _setPlatformIOForTesting() {}
+  export function _resetPlatformIO() {}
+`;
+const NODE_FS_BROWSER_STUB = `
+  export function getNodeFsSync() {
+    return null;
+  }
+`;
+
+/** The rolldown equivalent of browserRedirectPlugin(): same redirects, same stubs. */
+function browserRedirect(): TsdownPlugin {
+  return {
+    name: "taglib-browser-redirect",
+    resolveId(source, importer) {
+      if (
+        source.endsWith("module-loader.ts") &&
+        importer &&
+        !source.includes("module-loader-browser")
+      ) {
+        return join(
+          dirname(importer),
+          source.replace("module-loader.ts", "module-loader-browser.ts"),
+        );
+      }
+      if (source.endsWith("platform-io.ts")) return "\0taglib:platform-io-stub";
+      if (source.endsWith("node-fs.ts")) return "\0taglib:node-fs-stub";
+      return null;
+    },
+    load(id) {
+      if (id === "\0taglib:platform-io-stub") return PLATFORM_IO_BROWSER_STUB;
+      if (id === "\0taglib:node-fs-stub") return NODE_FS_BROWSER_STUB;
+      return null;
+    },
+  };
+}
 
 export default defineConfig({
   fmt: {
@@ -259,4 +303,109 @@ export default defineConfig({
       : ["default", "junit"],
     outputFile: { junit: "./junit.xml" },
   },
+  pack: [
+    {
+      name: "js",
+      entry: [
+        "index.ts",
+        "simple.ts",
+        "folder.ts",
+        "web.ts",
+        "rating.ts",
+        "src/**/*.ts",
+        "!src/**/*.test.ts",
+      ],
+      outDir: "dist",
+      // The config default is false, but the retired esbuild build hard-failed
+      // on an unresolvable bare specifier — the resolution gate CI advertises.
+      // With warnings ignored, `vp pack` quietly treats an undeclared import as
+      // an external, so every config sets this. The relative-specifier half is
+      // covered by `node scripts/check-dist-resolution.mjs`.
+      failOnWarn: true,
+      // Syntax floor: the retired esbuild build passed `--target=es2020` in
+      // every mode, and tsdown would otherwise default to package.json's
+      // `engines.node` (>=24.0.0). The browser entries inherited that Node
+      // default too, so every config sets this.
+      //
+      // Lowering to ES2020 makes oxc route class fields/private members through
+      // runtime helpers, which the unbundled `js` config emits as separate
+      // modules under `_virtual/_@oxc-project_runtime@<toolchain version>/`
+      // (the browser entries inline them instead, ~1.6 KB each). The version in
+      // that directory name is the one vite-plus pins, so a toolchain bump
+      // renames it and the published file list moves with it; the files are
+      // internal (no `exports` subpath reaches them) and ship under `dist/**`.
+      target: "es2020",
+      unbundle: true,
+      treeshake: false,
+      sourcemap: false,
+      // Defaults to `platform === "node"`, i.e. true here; `.mjs` otherwise.
+      fixedExtension: false,
+      dts: false,
+      platform: "node",
+      // `build:clean` + `build:copy-wasm` own clearing/populating `dist`; a
+      // pack-time clean would delete the copied wasm/glue.
+      clean: false,
+      // The glue is a copied, separately-loaded artifact: tsdown must not
+      // re-emit a copy of it. `external` is deprecated in favour of this key.
+      deps: { neverBundle: [/taglib-wrapper\.js$/] },
+    },
+    {
+      name: "disc-folder",
+      entry: ["disc-folder.ts"],
+      outDir: "dist",
+      failOnWarn: true,
+      target: "es2020",
+      platform: "neutral",
+      fixedExtension: false,
+      dts: false,
+      clean: false,
+    },
+    // THREE single-entry configs, not one 3-entry config:
+    // `outputOptions: { codeSplitting: false }` is rejected with multiple
+    // inputs ("[INVALID_OPTION] … multiple inputs are not supported when
+    // «output.codeSplitting» is false"), and rolldown's default splitting
+    // emits hash-named sibling chunks. One entry per config ⇒ one file each.
+    {
+      name: "browser-index",
+      entry: ["index.browser.ts"],
+      outDir: "dist",
+      failOnWarn: true,
+      target: "es2020",
+      platform: "browser",
+      fixedExtension: false,
+      dts: false,
+      clean: false,
+      deps: { neverBundle: [/taglib-wrapper\.js$/] },
+      outputOptions: { codeSplitting: false },
+      plugins: [browserRedirect()],
+    },
+    {
+      name: "browser-simple",
+      entry: ["simple.browser.ts"],
+      outDir: "dist",
+      failOnWarn: true,
+      target: "es2020",
+      platform: "browser",
+      fixedExtension: false,
+      dts: false,
+      clean: false,
+      deps: { neverBundle: [/taglib-wrapper\.js$/] },
+      outputOptions: { codeSplitting: false },
+      plugins: [browserRedirect()],
+    },
+    {
+      name: "browser-web",
+      entry: ["web.browser.ts"],
+      outDir: "dist",
+      failOnWarn: true,
+      target: "es2020",
+      platform: "browser",
+      fixedExtension: false,
+      dts: false,
+      clean: false,
+      deps: { neverBundle: [/taglib-wrapper\.js$/] },
+      outputOptions: { codeSplitting: false },
+      plugins: [browserRedirect()],
+    },
+  ],
 });
