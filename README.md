@@ -553,9 +553,9 @@ reproduced:
 
 | Consumer app                          | esbuild (browser)¹ | rollup (browser)¹ | vite (app) | webpack (web)² | esbuild (Node)³ | rollup (Node)³ |
 | ------------------------------------- | ------------------ | ----------------- | ---------- | -------------- | --------------- | -------------- |
-| `taglib-wasm` — `TagLib.initialize()` | 78,968             | 76,247            | 81,925     | 79,952         | 141,711         | 130,254        |
-| `taglib-wasm/simple` — `getTagLib()`  | 78,689             | 76,505            | 81,659     | 80,770         | 142,716         | 130,625        |
-| `taglib-wasm/folder` — `scanFolder`⁴  | —                  | 134,016⁴          | 144,427⁴   | —              | 146,061         | 134,016        |
+| `taglib-wasm` — `TagLib.initialize()` | 79,826             | 77,058            | 82,778     | 80,736         | 143,600         | 133,060        |
+| `taglib-wasm/simple` — `getTagLib()`  | 79,548             | 77,316            | 82,512     | 81,554         | 144,602         | 133,431        |
+| `taglib-wasm/folder` — `scanFolder`⁴  | —                  | 136,822⁴          | 145,895⁴   | —              | 147,942         | 136,822        |
 
 ¹ the `browser` `exports` condition. ² `target: "web"`. ³ the Node `exports`
 condition. ⁴ Node-only entry — see below.
@@ -581,10 +581,10 @@ browser-targeted build resolves an Emscripten-only build of that entry and pulls
 the vite build on the `node` condition instead emits both `taglib-web.wasm` and
 `taglib-wasi.wasm` (1,458,150 bytes of assets for a call that needs neither
 engine). The browser build is a pre-bundled file like `index.browser.js`, so it
-barely tree-shakes: that call is 80,153 bytes in the vite app build and 77,670
+barely tree-shakes: that call is 81,006 bytes in the vite app build and 78,528
 under the esbuild browser column, against 205 bytes under esbuild's Node column —
-and importing any pure helper from the barrel costs ~79 KB there too. Rollup is
-the exception: it shakes the pre-bundled file down to 758 bytes, though still
+and importing any pure helper from the barrel costs ~80 KB there too. Rollup is
+the exception: it shakes the pre-bundled file down to 745 bytes, though still
 not to the 210-byte leaf its Node column reaches. That granularity is a property
 of the pre-bundled browser entries, not of this subpath.
 
@@ -620,7 +620,7 @@ The `browser` condition itself is resolved by default by esbuild
 
 **The barrel is not a tax.** Adding an API to an import that already loads the
 engine costs only that API. Against the `taglib-wasm` row above (esbuild, Node
-column): adding `scanFolder` costs **4,384 bytes** and adding
+column): adding `scanFolder` costs **4,376 bytes** and adding
 `pictureToDataURL` costs **187 bytes**, because neither drags in the rest of the
 Folder or Web module tree.
 
@@ -629,16 +629,16 @@ pre-bundled file, so a consumer of the barrel downloads the whole file whatever
 it imports; adding the pure `bwf` / `groupAlbums` / `discFolderInfo` exports to
 that file's export list therefore costs nothing measurable. Bundling
 `import { TagLib }` against the entry with and without those three export names
-gives identical bytes under esbuild (78,968) and rollup (76,247) and 12 bytes
-more under vite (81,911 → 81,923). Nothing else moved: the Folder and Web APIs
+gives identical bytes under esbuild (79,826) and rollup (77,058) and 12 bytes
+more under vite (82,764 → 82,776). Nothing else moved: the Folder and Web APIs
 are still reached only when imported, and the Node entries are unchanged.
 
 **Entry-point choice is not a size lever.** `taglib-wasm` and
 `taglib-wasm/simple` differ by about a kilobyte either way — in a browser bundle
-`simple` is 279 bytes _smaller_, on Node 1,005 bytes _larger_, because
+`simple` is 278 bytes _smaller_, on Node 1,002 bytes _larger_, because
 `getTagLib()` reaches the full `TagLib` class through a dynamic import. Pick by
 API surface. The lever that does matter is the `browser` export condition: a
-browser-targeted bundle is ~79 KB where a Node-targeted one is ~142 KB.
+browser-targeted bundle is ~80 KB where a Node-targeted one is ~144 KB.
 
 **`"sideEffects": false`** is set in `package.json`, so a bundler may drop any
 module whose exports go unused. Before that field, importers of the sub-entries
@@ -654,7 +654,7 @@ under every bundler:
 | `import "taglib-wasm/web"` (uses nothing)                      | 17,224 → 0        | 16,428 → 1        | 17,328 → 711      |
 | `import "taglib-wasm/folder"` (uses nothing)                   | 17,428 → 0        | 16,479 → 1        | 17,669 → 711      |
 | `pictureToDataURL` from `taglib-wasm/web`                      | 17,428 → 205      | 16,637 → 210      | 17,540 → 923      |
-| `import { TagLib } from "taglib-wasm"`, referenced by `typeof` | 142,691 → 141,690 | 130,284 → 130,233 | 140,376 → 139,985 |
+| `import { TagLib } from "taglib-wasm"`, referenced by `typeof` | 144,582 → 143,579 | 133,090 → 133,039 | 141,847 → 141,456 |
 
 ## Runtime Compatibility
 
