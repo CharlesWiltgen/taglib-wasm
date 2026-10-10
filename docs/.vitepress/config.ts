@@ -40,7 +40,6 @@ export default defineConfig({
       { text: "API Reference", link: "/api/" },
       { text: "Examples", link: "/guide/examples" },
       { text: "NPM", link: "https://www.npmjs.com/package/taglib-wasm" },
-      { text: "JSR", link: "https://jsr.io/@charlesw/taglib-wasm" },
     ],
 
     sidebar: {

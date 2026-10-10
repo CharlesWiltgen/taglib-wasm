@@ -14,7 +14,7 @@ software together.
 
 - **Node.js 24+** - Primary development runtime (Active LTS; matches the CI matrix)
 - **npm 11+** - The package manager; run `npm ci` before any `vp` command
-- **Deno 2.x** - Still required for the TypeScript bundle scripts, the auxiliary scripts, and JSR publishing (retired in phase 3)
+- **No Deno required** - The bundle scripts run under `node` and the auxiliary `.ts` scripts under `npx tsx`; the JSR distribution channel was retired in 3.0.0
 - **Emscripten SDK** - For building the Emscripten Wasm backend
 - **WASI SDK 34** - For building the WASI Wasm backend (optional for TS-only changes)
 - **Git** - With submodule support
@@ -69,11 +69,11 @@ software together.
    > `npm ci` must run before any `npx vp` command — `vp` loads
    > `vite.config.ts` strictly and aborts without the `vite-plus`
    > devDependency. `npx vp test` is a **Vite+ built-in**, not the npm `test`
-   > script (run that one with `vpr test`). Deno is no longer the dev toolchain
-   > for tests, formatting, linting or type checking; it remains only for the
-   > TypeScript bundle scripts, the auxiliary scripts, and JSR publishing
-   > (`deno publish`) until phase 3. `npm run build:ts` builds the shippable
-   > bundles and catches bundler-resolution breaks (e.g. a JSR import that isn't
+   > script (run that one with `vpr test`). Deno is no longer required anywhere:
+   > the bundle scripts (`scripts/build-js.mjs`, `scripts/postbuild.mjs`) run
+   > under `node` and the auxiliary `.ts` scripts under `npx tsx`, and the JSR
+   > channel was retired in 3.0.0. `npm run build:ts` builds the shippable
+   > bundles and catches bundler-resolution breaks (e.g. an import that isn't
    > an npm dependency) that pass the tests but break the published package.
 
 ## 📝 Development Guidelines
@@ -192,7 +192,7 @@ describe("Feature", () => {
    > bun:test-registered file and `tests/cross-runtime/run.sh` runs the
    > cross-runtime suite. `npm ci` must precede every `npx vp` command
    > (`vp` loads `vite.config.ts` strictly). `npm run build:ts` builds the
-   > shippable bundles and catches bundler-resolution breaks (e.g. a JSR import
+   > shippable bundles and catches bundler-resolution breaks (e.g. an import
    > that isn't an npm dependency) that pass the tests but break the published
    > package.
 
@@ -352,32 +352,20 @@ git commit -m "chore: update TagLib to v2.2.1"
 
 ## 🚀 Releasing
 
-Releases are cut from `main` with one command — **but the automated path is
-currently non-functional** (see the warning below):
+Releases are cut from `main` with one command:
 
 ```bash
-deno task release              # auto-increment patch version
-deno task release 2.3.0        # explicit version
-deno task release:quick 2.3.0  # same gates and same flow, but do not wait for the result
+npm run release                 # auto-increment patch version
+npm run release -- 3.1.0        # explicit version (npm needs `--` to pass it through)
+npm run release:quick -- 3.1.0  # same gates and same flow, but do not wait for the result
 ```
-
-> **Blocked pending phase 3.** `scripts/release-safe.sh` still runs the retired
-> gates as its first checks — `deno fmt --check` (`:83`), `deno lint` (`:92`) and
-> `deno check` (`:101`). `deno fmt --check` fails by design on the vp-formatted
-> tree, so every `deno task release` exits 1 at its first check.
->
-> The failure output suggests **`Run 'deno task fmt' to fix formatting` — do not
-> run it.** `deno task fmt` reformats the whole tree back to Deno style and
-> breaks the `npx vp fmt --check` gate. Release automation is migrated in phase
-> 3; until then, releases are blocked. JSR publishing still uses `deno publish`
-> (`release-safe.sh`) until phase 3 replaces that leg.
 
 `scripts/release-safe.sh` runs the gates, bumps the version, pushes the bump
 commit, **waits for CI to pass on that commit**, verifies the npm publish path
 (`scripts/check-publish-access.sh`), and then dispatches
 `publish-everywhere.yml` and waits for the result.
 
-That workflow builds the package, publishes JSR → npm → GitHub Packages, and —
+That workflow builds the package, publishes npm → GitHub Packages, and —
 **only once every registry has the version** — creates the tag and the GitHub
 release, with notes taken from the CHANGELOG section for that version. Nothing
 is tagged before the release is real, so a failed publish leg cannot leave a
@@ -387,7 +375,7 @@ built, not at whatever `main` happens to be when the run finishes.
 A manually created GitHub release still triggers the same workflow
 (`on: release: types: [published]`), which is the escape hatch if you need to
 publish from a release object someone else created. Use
-`deno task release:quick <version>` (equivalent to `SKIP_PUBLISH_WATCH=1`) to
+`npm run release:quick -- <version>` (equivalent to `SKIP_PUBLISH_WATCH=1`) to
 dispatch without waiting — the gates and the publish flow are identical.
 
 ### npm authentication
