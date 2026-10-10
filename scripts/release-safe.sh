@@ -477,8 +477,11 @@ publish_release() {
         exit 1
     fi
 
-    # Commit version changes (skip if already at target version)
-    git add package.json sonar-project.properties src/version.ts CHANGELOG.md
+    # Commit version changes (skip if already at target version). The list must
+    # name every file sync-version.ts writes (jsr.json included — CI's
+    # check-jsr-package-files.sh asserts it matches package.json, so a bump that
+    # leaves it behind fails Package Compatibility).
+    git add package.json sonar-project.properties src/version.ts jsr.json CHANGELOG.md
     if git diff --cached --quiet; then
         print_warning "Version already at $version, skipping commit"
     else
