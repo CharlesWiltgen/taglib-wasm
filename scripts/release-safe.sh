@@ -36,6 +36,48 @@ print_warning() {
     echo -e "${YELLOW}⚠${NC} $1"
 }
 
+# Put the pinned Emscripten on PATH for this run.
+#
+# Two traps this closes, both hit during the 2.3.1 release:
+#   * `build/emsdk` (the emsdk ROOT) on PATH breaks the native task runner's
+#     child spawn: the pre-commit hook's `vpr static` fails with
+#     "env: unknown error: execvp failed" (exit 126) on any cache miss — and a
+#     release always causes one, because the CHANGELOG retitle changes a task
+#     input. emsdk_env.sh exports exactly that root, so it must not be sourced
+#     here; add only the toolchain directories.
+#   * An emcc that is not the pin (installed-but-never-activated, or a Homebrew
+#     build shadowing it) produces a wasm that differs from the committed one,
+#     which surfaces two steps later at verify_wasm_freshness with a message
+#     that blames the binary. Assert the active version up front instead.
+setup_pinned_toolchain() {
+    local root emsdk pin active node_bin python_bin
+    root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+    emsdk="$root/build/emsdk"
+    # The pin's single source of truth for developers is the installer.
+    pin=$(grep -oE 'emsdk install [0-9]+\.[0-9]+\.[0-9]+' "$root/build/setup-dev-env.sh" 2>/dev/null |
+        head -1 | awk '{print $3}')
+
+    if [ ! -x "$emsdk/upstream/emscripten/emcc" ]; then
+        print_error "The pinned Emscripten SDK is not installed and activated at build/emsdk"
+        print_warning "Install and activate it: (cd build/emsdk && ./emsdk install ${pin:-<version>} && ./emsdk activate ${pin:-<version>})"
+        print_warning "Do not source emsdk_env.sh for this: it puts the emsdk root on PATH (see above)."
+        exit 1
+    fi
+
+    node_bin=$(ls -d "$emsdk"/node/*/bin 2>/dev/null | tail -1)
+    python_bin=$(ls -d "$emsdk"/python/*/bin 2>/dev/null | tail -1)
+    PATH="$emsdk/upstream/emscripten${node_bin:+:$node_bin}${python_bin:+:$python_bin}:$PATH"
+    export PATH
+
+    active=$(emcc --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    if [ -n "$pin" ] && [ "$active" != "$pin" ]; then
+        print_error "Active emcc is ${active:-unknown}, but this repository pins $pin"
+        print_warning "Activate the pin — (cd build/emsdk && ./emsdk activate $pin) — then re-run."
+        exit 1
+    fi
+    print_success "Emscripten ${active:-unknown} active from build/emsdk${pin:+ (pin $pin)}"
+}
+
 # Function to check if we're on main branch
 check_main_branch() {
     # Split from the assignment: `local x=$(…)` returns local's own status, so a
@@ -136,10 +178,11 @@ verify_wasm_freshness() {
 
     # After build, Emscripten wasm in build/ should match what's committed
     if ! git diff --quiet -- build/taglib-web.wasm; then
-        print_error "build/taglib-web.wasm is stale!"
-        print_warning "The Emscripten build produced a different binary than what's committed."
-        print_warning "Stage the updated file and re-run the release:"
-        print_warning "  git add build/taglib-web.wasm && git commit --amend --no-edit"
+        print_error "build/taglib-web.wasm differs from the committed binary!"
+        print_warning "Committed build/*.wasm are CI distribution artifacts — never commit a local rebuild."
+        print_warning "setup_pinned_toolchain already asserted the pinned emcc is active, so this is real"
+        print_warning "drift, not a PATH accident. Restore the artifact and investigate before releasing:"
+        print_warning "  git checkout -- build/taglib-web.wasm"
         exit 1
     fi
     print_success "build/taglib-web.wasm matches fresh build"
@@ -164,10 +207,10 @@ verify_wasm_freshness() {
     # compare only applies on Linux hosts.
     if [[ "$(uname -s)" == "Linux" ]]; then
         if ! git diff --quiet -- build/taglib-wasi.wasm; then
-            print_error "build/taglib-wasi.wasm is stale!"
-            print_warning "The WASI build produced a different binary than what's committed."
-            print_warning "Stage the updated file and re-run the release:"
-            print_warning "  git add build/taglib-wasi.wasm && git commit --amend --no-edit"
+            print_error "build/taglib-wasi.wasm differs from the committed binary!"
+            print_warning "Committed build/*.wasm are CI distribution artifacts — never commit a local rebuild."
+            print_warning "This reference is the CI/Linux build, so a local difference on Linux is real drift."
+            print_warning "Restore and investigate:  git checkout -- build/taglib-wasi.wasm"
             exit 1
         fi
         print_success "build/taglib-wasi.wasm matches fresh build"
@@ -521,6 +564,8 @@ main() {
     echo "🚀 TagLib-Wasm Safe Release Script"
     echo "=================================="
     echo
+
+    setup_pinned_toolchain
 
     # Flags, in any order, before the optional version argument.
     while [[ "${1:-}" == --* ]]; do

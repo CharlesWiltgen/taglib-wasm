@@ -391,19 +391,32 @@ jobs:
           # "+ taglib-wasm@2.2.3" and /taglib-wasm/2.2.3 answered 200 while
           # `npm view` kept saying "not found" past the old 50s budget.
           URL="https://registry.npmjs.org/taglib-wasm/$VERSION"
-          sleep 10  # Give NPM time to propagate
 
-          for i in {1..12}; do
+          # Budget, not a verdict. On 2026-10-10 this step's 12 x 10s schedule
+          # declared failure AFTER a publish that had succeeded, and that failure
+          # skipped the tag, the GitHub release and the whole GitHub Packages leg.
+          # The immutable version endpoint is still the right query — it is the
+          # packument (`npm view`) that lies for minutes — but propagation can
+          # exceed two minutes, so back off for ~9 minutes; if it still lags,
+          # defer the verdict rather than failing the leg. The finalize job
+          # installs the published package and exercises both wasm backends, and
+          # that check owns the tag. Recovery if a publish leg fails for any other
+          # reason: `gh run rerun <id> --failed` — it replays this definition and
+          # keeps should-publish true, whereas a fresh dispatch would compute
+          # should-publish=false and create no tag.
+          DELAY=10
+          for attempt in $(seq 1 20); do
             if [ "$(curl -s -o /dev/null -w '%{http_code}' "$URL")" = "200" ]; then
-              echo "Successfully verified version $VERSION on NPM"
+              echo "Successfully verified version $VERSION on NPM (attempt $attempt)"
               exit 0
             fi
-            echo "Attempt $i: version endpoint not ready, waiting..."
-            sleep 10
+            echo "Attempt $attempt/20: version endpoint not ready, waiting ${DELAY}s..."
+            sleep "$DELAY"
+            if [ "$DELAY" -lt 30 ]; then DELAY=$((DELAY + 5)); fi
           done
 
-          echo "Failed to verify NPM publication ($URL)"
-          exit 1
+          echo "::warning title=NPM version endpoint still lagging::${URL} did not answer 200 within the backoff window. The publish step reported success; the finalize job installs taglib-wasm@${VERSION} and exercises both wasm backends before any tag is created, so the verdict is deferred there. If that verification fails, the release is genuinely broken rather than unlucky."
+          exit 0
 
   publish-github:
     name: Publish to GitHub Packages
