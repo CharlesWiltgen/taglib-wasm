@@ -8,10 +8,12 @@ binaries, with multiple approaches for different use cases.
 `TagLib.initialize()` **auto-detects Deno compile mode** on Deno releases that
 mark a compiled binary with the `deno-compile://` scheme in `Deno.mainModule`
 (through Deno 2.8). On Deno 2.9.x that URL is instead a `file://` path under
-`deno-compile-<name>`, so detection returns false there — pass the embedded Wasm
-path explicitly (`initializeForDenoCompile("./taglib-web.wasm")`, Method 3). When
-detection does fire, initialization switches to Emscripten buffer mode and
-attempts to load the embedded Wasm.
+`deno-compile-<name>`, so detection returns false there — and because
+`initializeForDenoCompile()` shares that detection, passing it a path does not
+load your file either: both entry points initialize from the Wasm shipped inside
+the package. To load your own copy on 2.9.x, use Method 4. When detection does
+fire, initialization switches to Emscripten buffer mode and attempts to load the
+embedded Wasm.
 
 For advanced use cases, explicit helpers are also available:
 
@@ -145,9 +147,11 @@ The `initializeForDenoCompile()` function:
    Overview for the Deno 2.9 caveat)
 2. Attempts to load embedded WASM from `./taglib-web.wasm`
 3. Falls back to the Wasm shipped in this package (`dist/taglib-web.wasm`,
-   resolved relative to the module) — present when running from source, absent
-   inside a compiled binary, so a build without `--include` fails at
-   initialization; use Method 2 (`wasmUrl`) if a runtime fetch is wanted
+   resolved relative to the module). That fallback is why a compiled binary
+   works without `--include` too: `deno compile` embeds the whole npm package
+   tree, so the file is present. Embedding your own copy pins the version you
+   tested rather than repairing a missing file; use Method 2 (`wasmUrl`) if a
+   runtime fetch is wanted
 
 ## Method 4: Manual Control (Advanced)
 
@@ -332,28 +336,32 @@ One row per method, in the order they appear above:
 | 3. Explicit Helper (`initializeForDenoCompile()`) | ✅ when embedded | +500KB      | Medium     | A custom embedded Wasm path     |
 | 4. Manual Control (`wasmBinary`)                  | ✅ when embedded | +500KB      | Complex    | A custom resolution strategy    |
 
-Methods 1 and 3 both load an embedded Wasm — they differ only in whether you
-call `TagLib.initialize()` or `initializeForDenoCompile()` with your own path.
-On Deno 2.9.x only Method 3 does: Method 1's detection does not fire, because
-`Deno.mainModule` no longer carries the `deno-compile://` scheme. Method 4
-reimplements the same strategies by hand.
+On Deno ≤ 2.8, Methods 1 and 3 both load an embedded Wasm — they differ only in
+whether you call `TagLib.initialize()` or `initializeForDenoCompile()` with your
+own path. **On Deno 2.9.x neither reads the file you embed**:
+`initializeForDenoCompile()` gates its explicit-path strategies behind the same
+detection, which does not fire there, so both initialize from the Wasm inside the
+package. To load your own copy on 2.9.x, use Method 4.
 
 ## Best Practices
 
 1. **Embed the Wasm for offline support** — compile with
    `--include taglib-web.wasm`, or run `prepareWasmForEmbedding()` in a build
-   step. Without an embedded Wasm a compiled binary has no file to load; use
-   Method 2 (`wasmUrl`) if it should fetch the Wasm at runtime instead.
+   step. A compiled binary initializes from the Wasm inside the npm package
+   `deno compile` embeds anyway, so `--include` is not what makes it work — it
+   pins the copy you tested. Use Method 2 (`wasmUrl`) if it should fetch the
+   Wasm at runtime instead.
 2. **Resolve the embedded file relative to `Deno.mainModule`** — inside a
    compiled binary that URL points into the binary's filesystem (on Deno 2.9.6 a
    `file://` path under `deno-compile-<name>`), so resolve the Wasm relative to
    it (see [Path Resolution](#3-path-resolution)) rather than to your source
-   tree — and pass that path explicitly, since `isDenoCompiled()` does not
-   detect Deno 2.9.6 binaries.
-3. **Expect a missing embedded Wasm** — `initializeForDenoCompile()` falls back
-   to the Wasm resolved from this package, which is present when running from
-   source and absent inside a compiled binary; a build that forgot `--include`
-   therefore fails at initialization, not at first use.
+   tree. Note that on 2.9.x neither detection nor an explicit path reaches the
+   library's embedded-file strategies, so Method 4 is the way to load your own
+   copy.
+3. **Expect the package fallback** — `initializeForDenoCompile()` falls back to
+   the Wasm resolved from this package, and `deno compile` embeds that package,
+   so a build that forgot `--include` still initializes. What it loses is the
+   guarantee that the binary/version you tested is the one being loaded.
 4. **Handle an unreachable CDN** — a CDN-only binary that runs offline fails at
    initialization. Surface that error; the library stays uninitialized.
 

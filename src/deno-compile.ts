@@ -34,10 +34,12 @@ export const WASM_EMBED_SEARCH_PATHS: readonly string[] = [
  * Initialize TagLib with automatic handling for Deno compiled binaries.
  *
  * In compiled binaries, this function attempts to load embedded WASM from a
- * specified path relative to the binary. If the embedded WASM is not found —
- * or when running from source — it falls back to the Wasm resolved from this
- * package, which exists in a development tree but not inside a compiled
- * binary: a binary built without `--include` fails to initialize.
+ * specified path relative to the binary. Both that attempt and the detection
+ * above are gated on `isDenoCompiled()`, which returns false on Deno 2.9.x
+ * (see the guide); otherwise — and when no embedded file is found — it falls
+ * back to the Wasm resolved from this package. `deno compile` embeds the whole
+ * package tree, so that fallback is present inside a compiled binary too:
+ * `--include` pins the copy you tested rather than repairing a missing file.
  *
  * @param embeddedWasmPath - Path to embedded WASM file (default: './taglib-web.wasm')
  * @returns Promise resolving to initialized TagLib instance
@@ -81,7 +83,9 @@ export async function initializeForDenoCompile(
     }
 
     console.warn(`Could not load embedded WASM from ${embeddedWasmPath}`);
-    console.warn("Falling back to network fetch (requires --allow-net)");
+    console.warn(
+      "Falling back to the Wasm shipped in this package (not a network fetch)",
+    );
   }
 
   // Fall back to default network-based initialization (Emscripten for compile targets)

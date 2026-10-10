@@ -9,7 +9,7 @@
   `isDenoCompiled`, `prepareWasmForEmbedding`) are unchanged. What was retired
   is the Deno _dev_ toolchain and the JSR _distribution_ channel (below); the
   project now builds and gates on Node + Vite+ (`vp`). Its examples and docs
-  were corrected in this release, not withdrawn — those fixes are under Fixed.
+  were corrected in this release, not withdrawn.
 - The published `dist/*.js` files are built by the Vite+ bundler (`vp pack`)
   instead of esbuild; `scripts/build-js.mjs` and the `esbuild` devDependency are
   removed. Output filenames, the `exports` and `browser` conditions are
