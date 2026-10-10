@@ -311,10 +311,10 @@ export default defineConfig({
     // tests). These globs replace the per-batch include list the migration grew.
     include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
     // Test files that must NOT run under Vitest:
-    //  - bun-integration.test.ts registers with bun:test (npm run test:bun)
+    //  - bun-integration.test.ts registers with bun:test (pnpm run test:bun)
     //  - cross-runtime/ runs under three runtimes via tests/cross-runtime/run.sh
     //  - tests/deno-*.test.ts run under Deno's own test runner
-    //    (npm run test:deno) and use Deno-only globals.
+    //    (pnpm run test:deno) and use Deno-only globals.
     exclude: [
       "tests/bun-integration.test.ts",
       "tests/cross-runtime/**",
@@ -327,7 +327,7 @@ export default defineConfig({
     coverage: { provider: "v8", reporter: ["lcov", "text"] },
     // The Sonar run adds a Generic Test Data reporter (root <testExecutions>);
     // every other run keeps the default + junit reporters unchanged. Enable it
-    // with SONAR_REPORT=1 (npm run test:sonar).
+    // with SONAR_REPORT=1 (pnpm run test:sonar).
     reporters: process.env.SONAR_REPORT
       ? [
           "default",

@@ -2,8 +2,8 @@
  * @fileoverview Consolidated test suite for TagLib-Wasm
  * Combines format testing, API testing, and edge cases with proper Vitest assertions
  *
- * Run with: npx vp test tests/taglib.test.ts
- * Or: npm test
+ * Run with: pnpm exec vp test tests/taglib.test.ts
+ * Or: pnpm test
  */
 
 import { afterAll, describe, expect, it } from "vite-plus/test";

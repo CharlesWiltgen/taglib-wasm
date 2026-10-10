@@ -82,7 +82,7 @@ if command -v node >/dev/null 2>&1; then
       run_suite "node(tsx)" "$suite" "${node_argv[@]}"
     done
   else
-    echo "  ⚠ node present but tsx is not installed (run npm ci) — SKIPPED"
+    echo "  ⚠ node present but tsx is not installed (run pnpm install) — SKIPPED"
     skipped=$((skipped + 1))
   fi
 else

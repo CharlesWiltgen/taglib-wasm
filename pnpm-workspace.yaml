@@ -1,0 +1,21 @@
+# pnpm settings for this repository.
+#
+# pnpm v10+ no longer reads the `pnpm` field in package.json (verified on
+# pnpm 12.10.1: it warns and ignores it) — pnpm-workspace.yaml is the home for
+# every non-auth setting (https://pnpm.io/settings). The `packages` field is
+# intentionally omitted: only the root project is a workspace member, and
+# docs/ keeps its own lockfile so its toolchain (VitePress) is not installed
+# by every root job.
+#
+# Dependency-management policy:
+#   - The root project's dependency graph and lockfile are pnpm's: pnpm-lock.yaml.
+#   - docs/ is a standalone pnpm project: docs/pnpm-lock.yaml.
+#   - npm remains the registry client for `npm pack` / `npm publish` and for
+#     global CLI tools (it is what the release path and pack guards are
+#     verified against); it is no longer the project's package manager.
+#
+# Build scripts: pnpm >=10 denies dependency lifecycle scripts by default.
+# esbuild ships a postinstall validator that must run, so it is allowed by
+# name (the shape `pnpm approve-builds` writes).
+allowBuilds:
+  esbuild: true

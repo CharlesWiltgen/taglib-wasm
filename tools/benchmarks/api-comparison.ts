@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env -S pnpm exec tsx
 
 /**
  * Performance benchmarks comparing Simple vs TagLib API styles

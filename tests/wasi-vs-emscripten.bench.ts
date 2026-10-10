@@ -64,7 +64,7 @@ const HAS_DEEZER = existsSync(DEEZER_DIR);
 if (!HAS_WASM) {
   console.error(
     `❌ bench input missing: ${WASM_PATH}\n` +
-      `   Build it with: npm run build:wasm:wasi`,
+      `   Build it with: pnpm run build:wasm:wasi`,
   );
   process.exit(1);
 }

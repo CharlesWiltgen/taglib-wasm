@@ -68,6 +68,7 @@ check_command make "Install build tools for your OS" || MISSING_TOOLS=true
 check_command python3 "Install Python 3 from https://python.org" || MISSING_TOOLS=true
 check_command node "Install Node.js from https://nodejs.org" || MISSING_TOOLS=true
 check_command npm "Comes with Node.js installation" || MISSING_TOOLS=true
+check_command pnpm "Install pnpm (https://pnpm.io/installation) or run corepack enable pnpm" || MISSING_TOOLS=true
 
 # Optional but recommended
 echo ""
@@ -220,9 +221,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 cd "$PROJECT_ROOT"
 
 if [ -f "package.json" ]; then
-    echo "Installing npm packages..."
-    npm install
-    echo -e "${GREEN}✅ npm packages installed${NC}"
+    echo "Installing pnpm packages..."
+    pnpm install
+    echo -e "${GREEN}✅ pnpm packages installed${NC}"
 else
     echo -e "${YELLOW}⚠️  No package.json found${NC}"
 fi
@@ -233,6 +234,7 @@ echo "Installing global WebAssembly tools..."
 # binaryen@132.0.0: pinned to emsdk 6.0.9's vendored Binaryen version so the
 # WASI rebuild is byte-deterministic across machines (taglib-peml). wasm-strip
 # has no npm package and is no longer used by the build.
+# npm is retained here as the global-tool installer; pnpm owns project dependencies.
 npm install -g binaryen@132.0.0 2>/dev/null || true
 
 # Initialize git submodules
@@ -315,7 +317,7 @@ echo -e "   ${CYAN}source ./build/wasi-env.sh${NC}"
 echo -e "   ${CYAN}./build/build-wasi.sh${NC}"
 echo ""
 echo "3. Run tests:"
-echo -e "   ${CYAN}npx vp test${NC}       # Vitest (Node)"
+echo -e "   ${CYAN}pnpm exec vp test${NC}  # Vitest (Node)"
 echo -e "   ${CYAN}bun test${NC}          # Bun tests"
 echo ""
 echo "For more information, see docs/phase1-setup.md"

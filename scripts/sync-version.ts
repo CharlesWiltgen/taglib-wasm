@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env -S pnpm exec tsx
 
 /**
  * @fileoverview Synchronize the package version across the repo.
@@ -7,11 +7,11 @@
  * sonar-project.properties, and checks that all four agree.
  *
  * Usage:
- *   npx tsx scripts/sync-version.ts patch
- *   npx tsx scripts/sync-version.ts minor
- *   npx tsx scripts/sync-version.ts major
- *   npx tsx scripts/sync-version.ts set 1.2.3
- *   npx tsx scripts/sync-version.ts check
+ *   pnpm exec tsx scripts/sync-version.ts patch
+ *   pnpm exec tsx scripts/sync-version.ts minor
+ *   pnpm exec tsx scripts/sync-version.ts major
+ *   pnpm exec tsx scripts/sync-version.ts set 1.2.3
+ *   pnpm exec tsx scripts/sync-version.ts check
  */
 
 import { readFile, writeFile } from "node:fs/promises";

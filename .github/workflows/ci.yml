@@ -30,49 +30,50 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup pnpm
+        # Version comes from packageManager in package.json — pnpm/action-setup
+        # reads it, so there is no version here to drift out of sync.
+        uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-
-      - name: Cache dependencies
-        uses: actions/cache@v6
-        with:
-          # Cache only the npm download cache, not node_modules itself:
-          # restoring a stale tree can mask what `npm ci` would install.
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
+          # Cache the pnpm store (content-addressed), not node_modules:
+          # restoring a stale tree can mask what `pnpm install --frozen-lockfile`
+          # would install.
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: npx vp fmt --check
+        run: pnpm exec vp fmt --check
 
       - name: Run linter
         # No --type-aware: vite.config.ts's lint.options.typeAware already
         # enables the type-checked rules (oxlint documents the flag as
         # equivalent), so passing it here was a second source of truth.
-        run: npx vp lint
+        run: pnpm exec vp lint
 
       - name: Materialize the glue wrappers for the type check
         # dist/ is gitignored, so a fresh checkout has none, and three modules
         # import the Emscripten glue from dist/taglib-wrapper.js — `tsc` then
         # fails with TS2307 before any build has run (measured: the identical
-        # three errors with dist/ hidden, green after `npm run build:copy-wasm`).
+        # three errors with dist/ hidden, green after `pnpm run build:copy-wasm`).
         # Same class of fix as the parity-test step in the `test` job, which
         # materializes the committed WASI binary for the same reason. The
         # pre-migration lint job used `deno check`, which did not need it.
-        run: npm run build:copy-wasm
+        run: pnpm run build:copy-wasm
 
       - name: Type check
         # tsconfig.check.json is tests-inclusive: tsconfig.json excludes tests
-        # (it is the npm build config), so this config is what type-checks
+        # (it is the dist build's config), so this config is what type-checks
         # tests/ and src/ together.
-        run: npx tsc --noEmit -p tsconfig.check.json
+        run: pnpm exec tsc --noEmit -p tsconfig.check.json
 
       - name: Install ast-grep
+        # Global CLI tools stay on npm: npm's global bin dir is on PATH on every
+        # runner. pnpm owns the project's dependency graph, not runner tooling.
         run: npm install -g @ast-grep/cli@0.45.1
 
       - name: Lint with ast-grep structural rules
@@ -80,13 +81,13 @@ jobs:
         # CI after the Deno-era `lint:ast` task was retired, yet the docs-coverage
         # comment below calls an unrun guard "decoration". The script itself
         # no-ops with a warning if ast-grep is absent, so it is safe on any runner.
-        run: npm run lint:ast
+        run: pnpm run lint:ast
 
       - name: Verify docs coverage of public exports
         # Local-only gate made mandatory: flags a shipped export that no doc
         # mentions (name-mention check, not accuracy). A guard that does not
         # run in CI is decoration — the same rule as the ast-grep step above.
-        run: npm run docs:coverage
+        run: pnpm run docs:coverage
 
       - name: Lint GitHub Actions workflows
         # The release path lives entirely in .github/workflows/*, and nothing
@@ -113,13 +114,13 @@ jobs:
 
       - name: Verify no unused exports or dependencies (knip)
         # Local-only gate made mandatory: dead exports and orphaned deps rot
-        # silently otherwise. knip is pinned in devDependencies and the npm
-        # script uses --no-install, so the analyzed version is deterministic
-        # rather than whatever npx would fetch. The strict (production-mode)
-        # pass is the only one that reports a devDependency imported from
-        # src/ - the class that ships as a missing runtime dependency - so it
-        # runs here too rather than only in a local check:all.
-        run: npm run knip && npm run knip:strict
+        # silently otherwise. knip is pinned in devDependencies and the script
+        # uses `pnpm exec` (which never fetches), so the analyzed version is
+        # deterministic rather than whatever a resolver would fetch. The strict
+        # (production-mode) pass is the only one that reports a devDependency
+        # imported from src/ - the class that ships as a missing runtime
+        # dependency - so it runs here too rather than only in a local check:all.
+        run: pnpm run knip && pnpm run knip:strict
 
       - name: Verify toolchain pins agree across files
         # The wasm freshness gates byte-compare fresh builds against the
@@ -136,35 +137,36 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Setup pnpm
+        # Version comes from packageManager in package.json — pnpm/action-setup
+        # reads it, so there is no version here to drift out of sync.
+        uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-
-      - name: Cache dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
+          # Cache the pnpm store (content-addressed), not node_modules:
+          # restoring a stale tree can mask what `pnpm install --frozen-lockfile`
+          # would install.
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       # Bundle the TS entry points through `vp pack` (seconds, no Emscripten/WASI).
-      # Use `npm run build:js`, NOT `npm run build:ts`: build:ts also runs `tsc`,
+      # Use `pnpm run build:js`, NOT `pnpm run build:ts`: build:ts also runs `tsc`,
       # which fails in a fresh checkout because dist/taglib-wrapper.js (a
       # wasm-build artifact) is absent. The pack configs externalize that wrapper
       # and fail on any unresolvable bare specifier, so this still catches
       # bundler-resolution regressions without the multi-minute build-embind job.
       - name: Build TypeScript bundles
-        run: npm run build:js
+        run: pnpm run build:js
 
       - name: Materialize the runtime files for the resolution check
         # `vp pack` keeps the source-shaped glue/wasm specifiers; postbuild
         # copies the runtime files into dist/ and applies the depth-relative
         # fixes that make every emitted reference resolve.
-        run: npm run postbuild
+        run: pnpm run postbuild
 
       - name: Verify the emitted dist tree resolves
         # Every relative specifier and import.meta.url asset reference in the
@@ -206,22 +208,21 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup pnpm
+        # Version comes from packageManager in package.json — pnpm/action-setup
+        # reads it, so there is no version here to drift out of sync.
+        uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-
-      - name: Cache dependencies
-        uses: actions/cache@v6
-        with:
-          # Cache only the npm download cache, not node_modules itself:
-          # restoring a stale tree can mask what `npm ci` would install.
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
+          # Cache the pnpm store (content-addressed), not node_modules:
+          # restoring a stale tree can mask what `pnpm install --frozen-lockfile`
+          # would install.
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v16
@@ -231,7 +232,7 @@ jobs:
       - name: Build WebAssembly
         # Emscripten-only by design: this job installs emsdk but not the WASI
         # SDK. The WASI backend is built by the separate build-wasi job.
-        run: npm run build:wasm:emscripten
+        run: pnpm run build:wasm:emscripten
 
       # Byte-compare freshness gate (taglib-peml): build-wasm.sh pins
       # BINARYEN_ROOT to emsdk's vendored Binaryen, so the fresh rebuild must
@@ -244,7 +245,7 @@ jobs:
         run: |
           if ! git diff --quiet -- build/taglib-web.wasm build/taglib-wrapper.js; then
             echo "::error::build/taglib-web.wasm or build/taglib-wrapper.js is stale — the fresh build differs from the committed artifacts."
-            echo "Rebuild with 'npm run build:wasm:emscripten', then commit the updated artifacts."
+            echo "Rebuild with 'pnpm run build:wasm:emscripten', then commit the updated artifacts."
             git diff --stat -- build/taglib-web.wasm build/taglib-wrapper.js
             exit 1
           fi
@@ -255,10 +256,10 @@ jobs:
       # wasm stays green); this fails the build instead. Catches wasm/glue
       # import-module mismatches (the 1.4.1 "./a" regression) before publish.
       - name: Emscripten smoke test (must instantiate on Node)
-        run: npx tsx scripts/smoke-emscripten.ts
+        run: pnpm exec tsx scripts/smoke-emscripten.ts
 
       - name: WASI smoke test (must instantiate on Node)
-        run: npx tsx scripts/smoke-wasi.ts
+        run: pnpm exec tsx scripts/smoke-wasi.ts
 
       - name: Copy WASM files to dist
         run: |
@@ -268,10 +269,10 @@ jobs:
           cp build/taglib-wrapper.d.ts dist/
 
       - name: Build TypeScript
-        run: npm run build:ts
+        run: pnpm run build:ts
 
       - name: Run postbuild
-        run: npm run postbuild
+        run: pnpm run postbuild
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -310,14 +311,6 @@ jobs:
           path: build/wasi-sdk/wasi-sdk-${{ env.WASI_VERSION }}-x86_64-linux
           key: ${{ runner.os }}-wasi-sdk-${{ env.WASI_VERSION }}
 
-      - name: Cache dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
       - name: Setup WASI SDK
         run: |
           set -euo pipefail
@@ -352,6 +345,11 @@ jobs:
         # binaryen is pinned at 132.0.0 — the same version as emsdk 6.0.9's
         # vendored Binaryen — so the WASI rebuild is byte-deterministic and
         # the freshness compare below is meaningful (taglib-peml).
+        #
+        # npm is the installer for global CLI tools (its global bin dir is on
+        # PATH on every runner, and pnpm's is not); project dependencies are
+        # pnpm's. The job's former ~/.npm cache step went with the npm lockfile
+        # it keyed on.
         run: |
           npm install -g binaryen@132.0.0
           # ninja-build ships on ubuntu-latest images; apt is only a fallback
@@ -392,7 +390,7 @@ jobs:
         run: |
           if ! git diff --quiet -- build/taglib-wasi.wasm; then
             echo "::error::build/taglib-wasi.wasm is stale — the fresh build differs from the committed binary."
-            echo "Rebuild with 'npm run build:wasm' (both backends) or 'npm run build:wasm:wasi',"
+            echo "Rebuild with 'pnpm run build:wasm' (both backends) or 'pnpm run build:wasm:wasi',"
             echo "then commit the updated binary."
             echo "For the CI/Linux reference build: download the 'wasi-fresh-reference' artifact"
             echo "from this run and commit dist/wasi/taglib-wasi.wasm as build/taglib-wasi.wasm."
@@ -434,22 +432,21 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup pnpm
+        # Version comes from packageManager in package.json — pnpm/action-setup
+        # reads it, so there is no version here to drift out of sync.
+        uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-
-      - name: Cache dependencies
-        uses: actions/cache@v6
-        with:
-          # Cache only the npm download cache, not node_modules itself —
-          # restoring a stale tree can mask what `npm ci` would install.
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
+          # Cache the pnpm store (content-addressed), not node_modules:
+          # restoring a stale tree can mask what `pnpm install --frozen-lockfile`
+          # would install.
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Download build artifacts
         uses: actions/download-artifact@v8
@@ -478,7 +475,7 @@ jobs:
         # runs both, so CI must too — a guard that does not run in CI is
         # decoration (extra-state-registry.test.ts caught _mp4ItemNames to no
         # one). --expose-gc comes from vite.config.ts `test.execArgv`.
-        run: npx vp test --coverage
+        run: pnpm exec vp test --coverage
 
       - name: Upload coverage reports
         if: matrix.os == 'ubuntu-latest'
@@ -497,13 +494,22 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup pnpm
+        # Version comes from packageManager in package.json — pnpm/action-setup
+        # reads it, so there is no version here to drift out of sync.
+        uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          # Cache the pnpm store (content-addressed), not node_modules:
+          # restoring a stale tree can mask what `pnpm install --frozen-lockfile`
+          # would install.
+          cache: pnpm
 
       - name: Install dependencies
-        # Vitest is an npm devDependency, so this job needs the Node toolchain.
-        run: npm ci
+        # Vitest is a pnpm devDependency, so this job needs the Node toolchain.
+        run: pnpm install --frozen-lockfile
 
       - name: Download WASI artifacts
         uses: actions/download-artifact@v8
@@ -531,7 +537,7 @@ jobs:
         # Positional filters narrow the widened `test.include` globs
         # (vite.config.ts) to the four files that exercise the WASI backend.
         run: |
-          npx vp test \
+          pnpm exec vp test \
             tests/wasi-host.test.ts \
             tests/wasi-write-roundtrip.test.ts \
             tests/extended-write-roundtrip.test.ts \
@@ -546,9 +552,18 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup pnpm
+        # Version comes from packageManager in package.json — pnpm/action-setup
+        # reads it, so there is no version here to drift out of sync.
+        uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          # Cache the pnpm store (content-addressed), not node_modules:
+          # restoring a stale tree can mask what `pnpm install --frozen-lockfile`
+          # would install.
+          cache: pnpm
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -565,7 +580,7 @@ jobs:
           deno-version: "2.9.6"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Verify JSR publish ships the intended file set
         # taglib-asy / taglib-qrp class: what the JSR package ships is decided
@@ -587,26 +602,27 @@ jobs:
         # assert real values for both wasm backends. A backend a runtime cannot
         # load is reported with its reason and fails the run — never a silent
         # skip — and any failed check exits non-zero. A run that executes
-        # nothing also fails. Local entry point: npm run test:cross-runtime.
+        # nothing also fails. Local entry point: pnpm run test:cross-runtime.
         run: bash tests/cross-runtime/run.sh
 
       - name: Deno - run the Deno-gated tests
         # tests/deno-*.test.ts use Deno's built-in test runner (Vitest excludes
         # them), so nothing else in this workflow would notice them rotting.
-        run: npm run test:deno
+        run: pnpm run test:deno
 
       - name: NPM - publint
-        # --no-install and a devDependency pin: without them `npx` resolves
+        # `pnpm exec` and a devDependency pin: without them `npx` resolves
         # `publint` from the registry at run time, so the check analyzes
         # whatever version is published that day (the same reasoning as the
-        # knip step above). --no-install never fetches; note a warm npm cache
+        # knip step above). `pnpm exec` never fetches; note a warm pnpm store
         # can still satisfy a missing local copy with a cached version, so the
-        # unconditional guarantee is CI's: cold cache plus `npm ci`.
-        run: npx --no-install publint
+        # unconditional guarantee is CI's: cold store plus `pnpm install
+        # --frozen-lockfile`.
+        run: pnpm exec publint
 
       - name: NPM - arethetypeswrong
         run: |
-          npx --no-install @arethetypeswrong/cli --pack --profile esm-only
+          pnpm exec attw --pack --profile esm-only
           echo "Note: Using esm-only profile (CJS dynamic import warnings are expected)"
 
       - name: Bun - import test
@@ -640,6 +656,9 @@ jobs:
           echo ":: Bun integration tests passed"
 
       - name: Node.js - import test
+        # npm here is deliberate: this step simulates an npm consumer
+        # installing the package from the workspace, which is the point of the
+        # check. pnpm is this repo's package manager, not the consumer's.
         run: |
           cd /tmp
           mkdir -p node-compat-test
@@ -666,6 +685,7 @@ jobs:
           echo ":: Node.js compatibility verified"
 
       - name: Vite - browser bundle test
+        # npm-backed scratch consumer again (see the Node.js import test).
         run: |
           cd /tmp
           mkdir -p vite-compat-test

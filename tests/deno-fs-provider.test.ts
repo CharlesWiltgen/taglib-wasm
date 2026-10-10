@@ -3,7 +3,7 @@
  *
  * Runs the twelve-case `FileSystemProvider` contract that the Vitest suite
  * (tests/wasi-fs-provider.test.ts) runs against the Node provider, but here
- * against `createDenoFsProvider()` under `deno test` (npm run test:deno).
+ * against `createDenoFsProvider()` under `deno test` (pnpm run test:deno).
  *
  * Deno-only: Vitest's config excludes this file. Dependency-free (`Deno.test`
  * + the local assert helpers) since the retired deno.json import map is gone.

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Minimal dependency-free assertions for the Deno-run test files.
  *
- * These tests run under `deno test` (npm run test:deno), not Vitest. The
+ * These tests run under `deno test` (pnpm run test:deno), not Vitest. The
  * retired `deno.json` import map is gone, so they must not use `jsr:` or `@std`
  * specifiers. These helpers cover the handful of assertion shapes the
  * Deno-only tests need.

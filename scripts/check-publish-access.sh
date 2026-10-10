@@ -23,7 +23,7 @@
 # run it after any change to the checks, or a shape npm prints differently will
 # be found on a release instead of there. Run it with:
 #
-#   npx vp test tests/check-publish-access.test.ts
+#   pnpm exec vp test tests/check-publish-access.test.ts
 set -uo pipefail
 
 PACKAGE="taglib-wasm"

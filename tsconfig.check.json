@@ -32,7 +32,7 @@
     // tests/wasi-vs-emscripten.bench.ts run on Node and type-check under this
     // config, so neither is excluded here.
     // The Deno-gated tests use Deno's built-in test globals that the Node type
-    // check does not model; `npm run test:deno` runs them under Deno instead.
+    // check does not model; `pnpm run test:deno` runs them under Deno instead.
     // Listing them here keeps this gate aligned with the files the Node test
     // gate actually runs — it is not a way to hide a type error in code Node
     // executes.

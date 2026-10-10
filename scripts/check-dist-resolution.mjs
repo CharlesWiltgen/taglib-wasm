@@ -27,7 +27,7 @@ const root = resolve(process.argv[2] ?? "dist");
 if (!existsSync(root)) {
   console.error(`dist tree not found: ${root}`);
   console.error(
-    "Build it first: npm run build:copy-wasm && npm run build:ts && npm run postbuild",
+    "Build it first: pnpm run build:copy-wasm && pnpm run build:ts && pnpm run postbuild",
   );
   process.exit(2);
 }
@@ -152,9 +152,9 @@ if (problems.length > 0) {
   for (const problem of problems) console.error(`  ${problem}`);
   if (problems.some((problem) => /build\//.test(problem))) {
     console.error(
-      "Hint: a reference into a build/ path only resolves after `npm run " +
+      "Hint: a reference into a build/ path only resolves after `pnpm run " +
         "postbuild` materializes the runtime files at the dist/ root and " +
-        "applies the depth-relative rewrite. Run `npm run postbuild` first.",
+        "applies the depth-relative rewrite. Run `pnpm run postbuild` first.",
     );
   }
   process.exit(1);

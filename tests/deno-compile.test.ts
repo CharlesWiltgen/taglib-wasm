@@ -5,7 +5,7 @@
  * tests/offline-support.test.ts when it dropped the deno-compile API from that
  * Vitest file (which keeps its Emscripten loader cases).
  *
- * Deno-only: Vitest's config excludes this file and `npm run test:deno` owns it.
+ * Deno-only: Vitest's config excludes this file and `pnpm run test:deno` owns it.
  * Dependency-free (`Deno.test` + the local assert helpers) since the retired
  * deno.json import map is gone.
  */

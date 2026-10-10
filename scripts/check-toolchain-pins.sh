@@ -5,7 +5,7 @@
 # reds CI with a confusing "binary is stale" error — this has happened twice
 # (6.0.3->6.0.6 and 6.0.6->6.0.7 both left publish-everywhere.yml and/or
 # setup-dev-env.sh behind). This guard makes drift fail fast at the pins
-# themselves. Runs in CI (lint job) and locally (npm run check:all).
+# themselves. Runs in CI (lint job) and locally (pnpm run check:all).
 #
 # Covered pins:
 #   emsdk    — .github/workflows/{ci,publish-everywhere}.yml

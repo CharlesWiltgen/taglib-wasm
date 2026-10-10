@@ -114,13 +114,21 @@ jobs:
         # default (900) and let the classification below tolerate flaky legs.
         run: bash scripts/wait-for-ci.sh "${{ github.sha }}" 900 15
 
+      - name: Setup pnpm
+        # Version comes from packageManager in package.json — pnpm/action-setup
+        # reads it, so there is no version here to drift out of sync.
+        uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          cache: "npm"
+          # Cache the pnpm store (content-addressed), not node_modules:
+          # restoring a stale tree can mask what `pnpm install --frozen-lockfile`
+          # would install.
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v16
@@ -165,7 +173,10 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           SHOULD_PUBLISH="true"
 
-          # Check if version already exists on NPM
+          # Check if version already exists on NPM. npm is retained here as the
+          # registry client, not as the project's package manager (which is
+          # pnpm): the release path's OIDC trusted publishing is verified
+          # against the npm CLI.
           if npm view taglib-wasm@$VERSION version 2>/dev/null; then
             echo "Version $VERSION already exists on NPM"
             SHOULD_PUBLISH="false"
@@ -205,7 +216,7 @@ jobs:
 
       - name: Build project
         if: steps.check.outputs.should-publish == 'true'
-        run: npm run build
+        run: pnpm run build
 
       - name: Verify build artifacts
         if: steps.check.outputs.should-publish == 'true'
@@ -370,6 +381,9 @@ jobs:
       # verification below also checks the staged version.
       - uses: actions/checkout@v7
 
+      # No project dependency install in this job, so no pnpm store cache: npm
+      # is retained as the registry client, not as the package manager — the
+      # release path's OIDC trusted publishing is verified against the npm CLI.
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -537,6 +551,8 @@ jobs:
     outputs:
       published: ${{ steps.publish.outputs.published }}
     steps:
+      # No project dependency install in this job, so no pnpm store cache: npm
+      # is retained as the registry client, not as the package manager.
       - uses: actions/setup-node@v7
         with:
           node-version: "24"

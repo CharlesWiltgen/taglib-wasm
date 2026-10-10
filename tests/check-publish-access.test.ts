@@ -39,7 +39,7 @@
  * a finding can be re-derived against the code that carried it:
  *
  *     git show acd6218:scripts/check-publish-access.sh > /tmp/guard.sh
- *     CHECK_PUBLISH_ACCESS_SCRIPT=/tmp/guard.sh npx vp test \
+ *     CHECK_PUBLISH_ACCESS_SCRIPT=/tmp/guard.sh pnpm exec vp test \
  *       tests/check-publish-access.test.ts
  */
 

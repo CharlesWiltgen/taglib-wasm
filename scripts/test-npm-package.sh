@@ -23,7 +23,7 @@ cd "$PROJECT_ROOT"
 
 # Ensure we have a clean build
 echo -e "\n📦 Building project..."
-npm run build
+pnpm run build
 
 # Create the NPM package
 echo -e "\n📦 Creating NPM package..."
@@ -69,7 +69,8 @@ cat > "$NODE_CJS_DIR/package.json" << EOF
 }
 EOF
 
-# Install the package
+# Install the package (npm = consumer proxy: simulates an end user installing
+# the packed tarball; pnpm only owns this repo's own dependencies)
 cd "$NODE_CJS_DIR"
 npm install --no-save
 
@@ -134,7 +135,7 @@ cat > "$NODE_ESM_DIR/package.json" << EOF
 }
 EOF
 
-# Install the package
+# Install the package (npm = consumer proxy, as above)
 cd "$NODE_ESM_DIR"
 npm install --no-save
 

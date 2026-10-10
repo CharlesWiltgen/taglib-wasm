@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env -S pnpm exec tsx
 /**
  * docs-coverage.ts — flags public exports not referenced anywhere in the docs.
  *
@@ -9,7 +9,7 @@
  * signature still matches. That accuracy judgment is the skill's job; this script
  * only catches the "shipped an export, never mentioned it" class of drift.
  *
- * Usage:   npm run docs:coverage [-- --list-exports]
+ * Usage:   pnpm run docs:coverage [-- --list-exports]
  * Exit:    0 if every export is documented or allowlisted; 1 otherwise.
  */
 

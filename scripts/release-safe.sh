@@ -8,9 +8,9 @@ set -euo pipefail
 # Packages all carry the version (taglib-rkx0).
 #
 # Usage:
-#   npm run release                       # Auto-increment patch version (0.0.1)
-#   npm run release -- 2.3.4              # Set specific version
-#   SKIP_PUBLISH_WATCH=1 npm run release  # Do not wait for the publish result
+#   pnpm run release                       # Auto-increment patch version (0.0.1)
+#   pnpm run release -- 2.3.4              # Set specific version
+#   SKIP_PUBLISH_WATCH=1 pnpm run release  # Do not wait for the publish result
 
 # Colors for output
 RED='\033[0;31m'
@@ -150,16 +150,16 @@ run_tests() {
 
     # Run format check
     print_step "Checking code formatting..."
-    if ! npx vp fmt --check > /dev/null 2>&1; then
+    if ! pnpm exec vp fmt --check > /dev/null 2>&1; then
         print_error "Code formatting check failed"
-        print_warning "Run 'npx vp fmt' to fix formatting"
+        print_warning "Run 'pnpm exec vp fmt' to fix formatting"
         exit 1
     fi
     print_success "Code formatting check passed"
 
     # Run lint
     print_step "Running linter..."
-    if ! npx vp lint --type-aware > /dev/null 2>&1; then
+    if ! pnpm exec vp lint --type-aware > /dev/null 2>&1; then
         print_error "Linting failed"
         print_warning "Fix linting errors before releasing"
         exit 1
@@ -168,7 +168,7 @@ run_tests() {
 
     # Run type check
     print_step "Running type check..."
-    if ! npx tsc --noEmit -p tsconfig.check.json > /dev/null 2>&1; then
+    if ! pnpm exec tsc --noEmit -p tsconfig.check.json > /dev/null 2>&1; then
         print_error "Type checking failed"
         exit 1
     fi
@@ -176,7 +176,7 @@ run_tests() {
 
     # Run tests
     print_step "Running test suite..."
-    if ! npx vp test; then
+    if ! pnpm exec vp test; then
         print_error "Tests failed"
         exit 1
     fi
@@ -184,7 +184,7 @@ run_tests() {
 
     # Check if build works
     print_step "Verifying build process..."
-    if ! npm run build:release > /dev/null 2>&1; then
+    if ! pnpm run build:release > /dev/null 2>&1; then
         print_error "Build failed"
         exit 1
     fi
@@ -206,7 +206,7 @@ verify_wasm_freshness() {
     fi
     print_success "build/taglib-web.wasm matches fresh build"
 
-    # Same check for the WASI binary. `npm run build:release` now rebuilds both
+    # Same check for the WASI binary. `pnpm run build:release` now rebuilds both
     # backends, so a stale committed binary shows up as a dirty working tree.
     #
     # This replaces an older cmp against dist/wasi/taglib-wasi.wasm, which
@@ -216,7 +216,7 @@ verify_wasm_freshness() {
     # WASI binary built from an older lib/taglib passed silently (taglib-mpw).
     if [ ! -f build/taglib-wasi.wasm ]; then
         print_error "build/taglib-wasi.wasm is missing!"
-        print_warning "Run: npm run build:wasm:wasi"
+        print_warning "Run: pnpm run build:wasm:wasi"
         exit 1
     fi
     # The WASI reference binary is the CI/Linux build: wasi-sdk's clang emits
@@ -263,44 +263,44 @@ run_preflight_checks() {
     print_success "JSR package files guard passed"
 
     # The npm checks below lint the packed npm tarball, so dist/ must hold a
-    # complete package first. `npm run build:release` above does not produce one:
+    # complete package first. `pnpm run build:release` above does not produce one:
     # its build:js is `vp pack`, which emits .js only — the .d.ts
-    # files come from tsc, which lives in the npm build:ts. Without this step
+    # files come from tsc, which lives in the `build:ts` script. Without this step
     # the checks lint whatever stale dist/ happened to be lying around (and
     # fail outright once it is cleaned). The wasm is copied rather than
-    # rebuilt; `npm run build:release` already produced fresh binaries.
+    # rebuilt; `pnpm run build:release` already produced fresh binaries.
     print_step "Building npm package artifacts..."
-    if ! (npm run build:clean && npm run build:copy-wasm && npm run build:ts \
-        && npm run postbuild) > /dev/null 2>&1; then
+    if ! (pnpm run build:clean && pnpm run build:copy-wasm && pnpm run build:ts \
+        && pnpm run postbuild) > /dev/null 2>&1; then
         print_error "npm package build failed"
-        print_warning "Run 'npm run build' to see details"
+        print_warning "Run 'pnpm run build' to see details"
         exit 1
     fi
     print_success "npm package artifacts built"
 
     # publint (verify package.json)
     print_step "Running publint..."
-    # `npx --no-install` never fetches, but a warm npm cache can still satisfy a
-    # missing local copy with a different version — which would defeat the pin.
-    # Require the pinned bins to be present rather than trusting the cache.
+    # `pnpm exec` never fetches — it resolves only from the local install — so a
+    # missing local copy cannot be substituted from a cache with a different
+    # version. Require the pinned bins to be present rather than trusting resolution.
     for tool in publint attw; do
         if [ ! -x "node_modules/.bin/$tool" ]; then
-            print_error "node_modules/.bin/$tool is missing — run 'npm ci' first"
+            print_error "node_modules/.bin/$tool is missing — run 'pnpm install' first"
             exit 1
         fi
     done
-    if ! npx --no-install publint > /dev/null 2>&1; then
+    if ! pnpm exec publint > /dev/null 2>&1; then
         print_error "publint failed"
-        print_warning "Run 'npx --no-install publint' to see details"
+        print_warning "Run 'pnpm exec publint' to see details"
         exit 1
     fi
     print_success "publint passed"
 
     # arethetypeswrong (verify type exports)
     print_step "Checking TypeScript type exports..."
-    if ! npx --no-install @arethetypeswrong/cli --pack --profile esm-only > /dev/null 2>&1; then
+    if ! pnpm exec attw --pack --profile esm-only > /dev/null 2>&1; then
         print_error "arethetypeswrong check failed"
-        print_warning "Run 'npx --no-install @arethetypeswrong/cli --pack --profile esm-only' to see details"
+        print_warning "Run 'pnpm exec attw --pack --profile esm-only' to see details"
         exit 1
     fi
     print_success "Type exports check passed"
@@ -332,9 +332,9 @@ run_preflight_checks() {
 check_version_sync() {
     print_step "Checking version synchronization..." >&2
 
-    if ! npx tsx scripts/sync-version.ts check >&2; then
+    if ! pnpm exec tsx scripts/sync-version.ts check >&2; then
         print_error "Version mismatch detected!" >&2
-        print_warning "Run 'npx tsx scripts/sync-version.ts set <version>' to synchronize all version references" >&2
+        print_warning "Run 'pnpm exec tsx scripts/sync-version.ts set <version>' to synchronize all version references" >&2
         exit 1
     fi
 
@@ -350,7 +350,7 @@ update_versions() {
 
     print_step "Updating version to $new_version..."
 
-    if ! npx tsx scripts/sync-version.ts set "$new_version"; then
+    if ! pnpm exec tsx scripts/sync-version.ts set "$new_version"; then
         print_error "Failed to update versions"
         exit 1
     fi
@@ -603,7 +603,7 @@ main() {
         case "$1" in
             --skip-watch)
                 # Dispatch the publish workflow without waiting for the result.
-                # Exposed as `npm run release:quick`; every gate still runs (the
+                # Exposed as `pnpm run release:quick`; every gate still runs (the
                 # old release:quick skipped them and then tagged before
                 # publishing, which is the 2.2.3 failure shape this script exists
                 # to prevent — review finding SEC-06).
