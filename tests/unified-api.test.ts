@@ -59,7 +59,11 @@ describe("Unified loader", () => {
     expect(module.isEmscripten).toStrictEqual(false);
     expect(module.runtime.environment).toStrictEqual("node-wasi");
 
-    const metrics = module.getPerformanceMetrics();
+    // The WASI unified module exposes metrics; assert the method exists
+    // instead of probing it, so a missing method fails here rather than
+    // silently skipping the assertions (taglib-ecnq).
+    expect(typeof module.getPerformanceMetrics).toStrictEqual("function");
+    const metrics = module.getPerformanceMetrics!();
     expect(typeof metrics.initTime).toStrictEqual("number");
     expect(metrics.wasmType).toStrictEqual("wasi");
     expect(metrics.environment).toStrictEqual("node-wasi");
