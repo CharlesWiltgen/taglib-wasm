@@ -133,8 +133,15 @@ async function collectDocText(path: string, sink: string[]): Promise<void> {
  */
 function docImportedNames(docs: string[]): Set<string> {
   const names = new Set<string>();
+  // Accept every documented specifier form for this package: the bare npm
+  // name, its subpaths, Deno's `npm:`/`jsr:` prefixes (the documented install
+  // form since the JSR channel returned), and scoped names
+  // (`@charlesw/taglib-wasm` on JSR, `@charleswiltgen/taglib-wasm` on GitHub
+  // Packages). The bare pattern used to miss all prefixed forms, so a doc
+  // importing a nonexistent name through one passed the reverse check silently
+  // (taglib-ccd8).
   const importRe =
-    /import\s+(?:type\s+)?\{([^}]+)\}\s+from\s+["']taglib-wasm(?:\/[^"']*)?["']/g;
+    /import\s+(?:type\s+)?\{([^}]+)\}\s+from\s+["'](?:npm:|jsr:)?(?:@[\w.-]+\/)?taglib-wasm(?:\/[^"']*)?["']/g;
   for (const text of docs) {
     for (const m of text.matchAll(importRe)) {
       for (const part of m[1].split(",")) {
