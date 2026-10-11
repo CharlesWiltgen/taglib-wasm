@@ -239,6 +239,10 @@ describe("createPlatformIOFor routing (taglib-2b4)", () => {
       expect(typeof io.readFile).toStrictEqual("function");
       expect(typeof io.writeFile).toStrictEqual("function");
       expect(typeof io.stat).toStrictEqual("function");
+      // Every filesystem provider must implement partial reads (taglib-essc):
+      // a bare provider that omits readPartial turns path opens of tag-only
+      // files into an EnvironmentError that blames the runtime.
+      expect(typeof io.readPartial).toStrictEqual("function");
     }
   });
 

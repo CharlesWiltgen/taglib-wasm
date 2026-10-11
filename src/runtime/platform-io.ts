@@ -166,6 +166,8 @@ function createNodeIO(): PlatformIO {
 type BunFile = {
   arrayBuffer(): Promise<ArrayBuffer>;
   size: number;
+  /// Bun exposes lazy seek-backed ranges: `slice` reads nothing until asked.
+  slice(start?: number, end?: number): { arrayBuffer(): Promise<ArrayBuffer> };
 };
 
 type BunGlobal = {
@@ -195,6 +197,37 @@ function createBunIO(): PlatformIO {
           isFile: entry.isFile(),
         };
       }
+    },
+    // Same contract as the Node and Deno providers (taglib-essc): files small
+    // enough to fit the two windows are read whole, larger ones are spliced
+    // from a header read and a footer read. Bun's Blob.slice is the seek —
+    // both ranges are lazy, so only the requested bytes cross from disk.
+    readPartial: async (path, headerSize, footerSize) => {
+      const file = B.file(path);
+      const fileSize = file.size;
+      const full = await readFullFile(
+        async (p) => new Uint8Array(await B.file(p).arrayBuffer()),
+        path,
+        headerSize,
+        footerSize,
+        fileSize,
+      );
+      if (full) return full;
+
+      const actualHeader = Math.min(headerSize, fileSize);
+      const header = new Uint8Array(
+        await file.slice(0, actualHeader).arrayBuffer(),
+      );
+      const actualFooter = Math.min(footerSize, fileSize);
+      const footerStart = fileSize - actualFooter;
+      const footer = new Uint8Array(
+        await file.slice(footerStart, fileSize).arrayBuffer(),
+      );
+
+      const combined = new Uint8Array(actualHeader + actualFooter);
+      combined.set(header, 0);
+      combined.set(footer, actualHeader);
+      return combined;
     },
   };
 }

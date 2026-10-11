@@ -28,6 +28,7 @@ import {
   scanFolder,
   TagLib,
 } from "../src/index.ts";
+import { createPlatformIOFor } from "../src/runtime/platform-io.ts";
 
 const TEST_FILES_DIR = resolve(import.meta.dir, "test-files");
 
@@ -417,5 +418,60 @@ describe("readMetadata", () => {
     expect(metadata.properties.duration).toBeGreaterThan(0);
     expect(metadata.properties.sampleRate).toBe(44100);
     expect(metadata.hasCoverArt).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Path-mode partial reads (taglib-essc)
+// ---------------------------------------------------------------------------
+
+describe("path-mode partial reads", () => {
+  // tags-only.mp3 (148 B) takes the head-probe path: readPartialFileData with a
+  // zero footer. Bun used to reject it with our own EnvironmentError because
+  // createBunIO had no readPartial.
+  it("reads a tags-only file by path", async () => {
+    const path = resolve(TEST_FILES_DIR, "mp3/tags-only.mp3");
+    const tags = await readTags(path);
+
+    expect(tags.title).toEqual(["Media Range Title"]);
+    expect(tags.artist).toEqual(["Media Range Artist"]);
+    expect(tags.album).toEqual(["Media Range Album"]);
+  });
+
+  // Baseline, not a guard for this bug: the large file states its audio
+  // properties, so the path open never reaches a partial read — it passed
+  // before the fix too. Kept as the consumer contract for large path reads.
+  it("reads an over-threshold file by path", async () => {
+    const path = resolve(TEST_FILES_DIR, "mp3/large-1_2MiB.mp3");
+    const tags = await readTags(path);
+    const props = await readProperties(path);
+
+    expect(tags.title).toEqual(["Kiss"]);
+    expect(tags.artist).toEqual(["Prince"]);
+    expect(props.sampleRate).toBe(44100);
+  });
+});
+
+describe("Bun provider readPartial", () => {
+  it("splices header + footer for an over-threshold file", async () => {
+    const path = resolve(TEST_FILES_DIR, "mp3/large-1_2MiB.mp3");
+    const io = createPlatformIOFor("bun-wasi");
+    const full = new Uint8Array(await readFile(path));
+
+    const spliced = await io.readPartial!(path, 4096, 128);
+
+    expect(spliced.byteLength).toBe(4096 + 128);
+    expect(spliced.subarray(0, 4096)).toEqual(full.subarray(0, 4096));
+    expect(spliced.subarray(4096)).toEqual(full.subarray(full.length - 128));
+  });
+
+  it("returns the whole file when the two windows overlap", async () => {
+    const path = resolve(TEST_FILES_DIR, "mp3/tags-only.mp3");
+    const io = createPlatformIOFor("bun-wasi");
+    const full = new Uint8Array(await readFile(path));
+
+    const whole = await io.readPartial!(path, 4096, 0);
+
+    expect(whole).toEqual(full);
   });
 });

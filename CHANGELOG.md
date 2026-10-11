@@ -52,6 +52,14 @@
   importing it in Deno: unpatched fails with the exact error, patched
   instantiates both backends.
 
+- **Bun path reads stop failing on tag-only files.** `createBunIO` had no
+  `readPartial` while the Node and Deno providers did, so every path read that
+  needed a header probe (a tag-only file, or any file whose audio properties
+  are absent) threw the library's own `EnvironmentError` claiming the runtime
+  "does not support partial file reading" — a capability Bun has via
+  `Bun.file().slice()`. The Bun provider now splices header + footer with the
+  same contract as the other providers (taglib-essc).
+
 ## 2.3.1
 
 ### Changed
