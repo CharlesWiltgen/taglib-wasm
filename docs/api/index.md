@@ -258,7 +258,7 @@ console.log(`Lossless: ${props.isLossless}`);
 ### clearTags()
 
 Remove all metadata tags and embedded pictures from an audio file and return the
-stripped content.
+stripped content. The input file is not modified — a path is read, not written.
 
 ```typescript
 function clearTags(file: AudioFileInput): Promise<Uint8Array>;

@@ -183,12 +183,17 @@ async function demonstrateRealWorldUsage() {
 
   for (const file of filesToUpdate) {
     try {
-      await applyTags(file, {
+      // applyTags() returns the updated bytes; it never writes the file it
+      // reads. Write the buffer yourself, or call applyTagsToFile() when the
+      // file itself should be updated in place.
+      const updated = await applyTags(file, {
         album: "Bulk Update Album",
         year: 2025,
         genre: "Updated",
       });
-      console.log(`✅ Updated: ${file}`);
+      console.log(
+        `✅ ${file}: ${updated.byteLength} bytes of updated metadata (in memory)`,
+      );
     } catch (error) {
       console.log(`❌ Failed: ${file} - ${error.message}`);
     }

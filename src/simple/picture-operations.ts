@@ -16,6 +16,9 @@ export async function readPictures(file: AudioFileInput): Promise<Picture[]> {
 /**
  * Replaces all embedded pictures in an audio file and returns the modified content as a buffer.
  *
+ * The input is read, never written: a path is only where the bytes come from,
+ * so the file on disk is left untouched.
+ *
  * @param file - File path, Uint8Array, ArrayBuffer, or File object
  * @param pictures - Complete set of pictures to embed; replaces any existing pictures
  * @returns Modified audio file contents with the updated picture set
@@ -34,6 +37,9 @@ export async function applyPictures(
 
 /**
  * Appends a single picture to an audio file's existing embedded pictures.
+ *
+ * The input is read, never written: a path is only where the bytes come from,
+ * so the file on disk is left untouched.
  *
  * @param file - File path, Uint8Array, ArrayBuffer, or File object
  * @param picture - Picture to append to the file
