@@ -32,9 +32,17 @@ describe("folder-api", () => {
 
     // Should find at least 5 test files
     expect(result.items.length >= 5).toStrictEqual(true);
-    expect(result.items.every((item) => item.status === "ok")).toStrictEqual(
-      true,
-    );
+    // Name every failing item instead of a bare false: the scan walks the
+    // shared tests/test-files tree under ~97 parallel workers, so a transient
+    // failure must say which path errored and why (taglib-y17g).
+    const failedItems = result.items.filter((item) => item.status !== "ok");
+    expect(
+      failedItems.map((item) =>
+        item.status === "error"
+          ? `${item.path}: ${item.error.message}`
+          : `${item.path}: unexpected status`,
+      ),
+    ).toStrictEqual([]);
 
     // Check that we got metadata for each file
     for (const item of result.items) {
