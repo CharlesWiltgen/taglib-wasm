@@ -4,14 +4,8 @@
  * Post-build script to copy runtime files to dist directory
  */
 
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  statSync,
-} from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -78,29 +72,9 @@ console.log(
   );
 }
 
-// Verify no stale build/ wasm references remain
-console.log("\n🔍 Verifying wasm path resolution...");
-const { readFileSync } = await import("node:fs");
-const wasmLoaders = [
-  "dist/runtime/unified-loader/module-loading.js",
-  "dist/runtime/wasi-host-loader.js",
-  "dist/runtime/module-loader.js",
-];
-let wasmPathsOk = true;
-for (const file of wasmLoaders) {
-  const fullPath = join(rootDir, file);
-  if (!existsSync(fullPath)) continue;
-  const src = readFileSync(fullPath, "utf8");
-  if (
-    src.includes("build/taglib-wasi.wasm") ||
-    src.includes("build/taglib-web.wasm")
-  ) {
-    console.error(`  ✗ ${file} still contains build/ wasm references`);
-    wasmPathsOk = false;
-  }
-}
-if (wasmPathsOk) {
-  console.log("  ✓ All wasm paths resolve correctly");
-}
+// A stale-build/ reference check lived here; it printed findings but never
+// failed a build (taglib-fmxa). scripts/check-dist-resolution.mjs now fails on
+// that class — a relative reference into build/, which the package does not
+// ship — for the whole emitted tree.
 
 console.log("\n✨ Post-build complete!");

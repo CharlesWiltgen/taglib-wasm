@@ -128,6 +128,17 @@ for (const file of files) {
         problems.push(`${rel}: surviving .ts ${kind} "${spec}"`);
         continue;
       }
+      // The published package ships no build/ (it is absent from package.json's
+      // `files`), so any relative reference into it is stale in the shipped
+      // tree — even though it resolves on disk in a checkout, where build/
+      // exists. This replaces the check postbuild used to print without
+      // failing (taglib-fmxa).
+      if (/(^|\/)build\//.test(spec)) {
+        problems.push(
+          `${rel}: ${kind} "${spec}" references build/, which the published package does not ship`,
+        );
+        continue;
+      }
       if (!resolveTarget(file, spec)) {
         problems.push(`${rel}: ${kind} "${spec}" does not resolve`);
       }
