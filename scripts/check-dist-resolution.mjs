@@ -66,11 +66,15 @@ const KNOWN_UNRESOLVED = [
   },
 ];
 
-const FROM_RE = /\bfrom\s*["']([^"']+)["']/g;
-const SIDE_RE = /\bimport\s*["']([^"']+)["']/g;
-const DYN_RE = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+// Quote classes include the backtick: oxc re-quotes dynamic imports as
+// template literals whenever minification runs, as in
+// `import(`./taglib-wrapper.js`)`. A ["']-only class walked straight past
+// those references while the gate still reported OK (taglib-yeqp).
+const FROM_RE = /\bfrom\s*["'`]([^"'`]+)["'`]/g;
+const SIDE_RE = /\bimport\s*["'`]([^"'`]+)["'`]/g;
+const DYN_RE = /\bimport\s*\(\s*["'`]([^"'`]+)["'`]\s*\)/g;
 const URL_RE =
-  /new\s+URL\s*\(\s*["']([^"']+)["']\s*,\s*import\.meta\.url\s*\)/g;
+  /new\s+URL\s*\(\s*["'`]([^"'`]+)["'`]\s*,\s*import\.meta\.url\s*\)/g;
 
 const files = [];
 (function walk(dir) {
