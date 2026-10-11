@@ -35,6 +35,17 @@ concurrency:
 #    failed publish leg cannot leave a released-but-unpublished version
 #    (taglib-rkx0).
 #
+# Publishing is atomic for all destinations. The should-publish gate asks
+# whether ANY registry lacks the version; when one does, every publish leg runs
+# — registries that already carry it no-op through their own "already
+# published" handling — and finalize creates the tag only after every leg
+# succeeded and the installed package verified. So one dispatch brings every
+# destination to the same state, and a version is never tagged while a
+# destination is missing it. Refilling a partial publish (the version on some
+# registries but not others) is exactly this path: the npm-only gate used to
+# skip every leg in that state, which left the gap unfillable and the tag
+# uncreatable.
+#
 # CI gate: release-safe.sh already waits for ci.yml to pass before dispatching.
 # The wait step here is belt-and-suspenders for the workflow_dispatch path and
 # for direct release edits — it uses scripts/wait-for-ci.sh with per-leg
@@ -47,6 +58,7 @@ jobs:
     permissions:
       contents: read
       actions: read # the CI gate below reads workflow runs via `gh run list/view`
+      packages: read # the should-publish probe reads the GitHub Packages packument
     outputs:
       version: ${{ steps.version.outputs.version }}
       should-publish: ${{ steps.check.outputs.should-publish }}
@@ -167,21 +179,52 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
-      - name: Check if should publish
+      - name: Check which destinations still need the version
         id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          SHOULD_PUBLISH="true"
 
-          # Check if version already exists on NPM. npm is retained here as the
-          # registry client, not as the project's package manager (which is
-          # pnpm): the release path's OIDC trusted publishing is verified
-          # against the npm CLI.
-          if npm view taglib-wasm@$VERSION version 2>/dev/null; then
-            echo "Version $VERSION already exists on NPM"
-            SHOULD_PUBLISH="false"
+          # Atomic for all destinations: ask whether ANY registry lacks the
+          # version. When one does, every publish leg runs (a registry that
+          # already carries it no-ops through that leg's own "already
+          # published" handling) and finalize tags the release only after every
+          # leg and the installed-package verification succeeded.
+          #
+          # A registry the probe cannot confirm (auth, network, CDN lag) counts
+          # as missing: its leg then runs and the idempotent path absorbs the
+          # false positive. The probes are registry-protocol reads: npm answers
+          # its immutable per-version URL (the packument `npm view` reads is
+          # CDN-cached and can lag a publish by minutes), JSR serves a
+          # per-version metadata document, and GitHub Packages is read through
+          # the abbreviated packument its own publish leg verifies with.
+          NPM_MISSING=true
+          JSR_MISSING=true
+          GITHUB_MISSING=true
+
+          NPM_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://registry.npmjs.org/taglib-wasm/${VERSION}" || echo 000)
+          if [ "$NPM_CODE" = "200" ]; then NPM_MISSING=false; fi
+
+          JSR_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://jsr.io/@charlesw/taglib-wasm/${VERSION}_meta.json" || echo 000)
+          if [ "$JSR_CODE" = "200" ]; then JSR_MISSING=false; fi
+
+          GITHUB_CODE=$(curl -s -o /tmp/gh-pkg.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.npm.install-v1+json' \
+            "https://npm.pkg.github.com/@charleswiltgen%2Ftaglib-wasm" || echo 000)
+          if [ "$GITHUB_CODE" = "200" ] && jq -e --arg v "$VERSION" '.versions[$v]' /tmp/gh-pkg.json >/dev/null 2>&1; then
+            GITHUB_MISSING=false
           fi
 
+          SHOULD_PUBLISH="false"
+          if [ "$NPM_MISSING" = "true" ] || [ "$JSR_MISSING" = "true" ] || [ "$GITHUB_MISSING" = "true" ]; then
+            SHOULD_PUBLISH="true"
+          fi
+
+          echo "npm=$NPM_CODE jsr=$JSR_CODE github=$GITHUB_CODE; should-publish=$SHOULD_PUBLISH"
           echo "should-publish=$SHOULD_PUBLISH" >> "$GITHUB_OUTPUT"
 
       - name: Sync versions across files
