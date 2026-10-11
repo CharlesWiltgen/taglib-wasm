@@ -11,7 +11,7 @@
  * surface (single batch-write convention).
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { beforeAll, describe, expect, it } from "vite-plus/test";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -20,10 +20,10 @@ import { TagLib } from "../src/taglib.ts";
 import {
   editTagsBatch,
   readTags,
-  setBufferMode,
   writeTagsBatch,
 } from "../src/simple/index.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
+import { useSimpleBackend } from "./simple-backend.ts";
 
 interface TempFiles {
   mp3: string;
@@ -293,11 +293,11 @@ function runScenarios(): void {
 }
 
 describe("writeTagsBatch (taglib-pmhp) [wasi]", () => {
-  setBufferMode(false);
+  beforeAll(() => useSimpleBackend(false));
   runScenarios();
 });
 
 describe("writeTagsBatch (taglib-pmhp) [emscripten]", () => {
-  setBufferMode(true);
+  beforeAll(() => useSimpleBackend(true));
   runScenarios();
 });

@@ -112,9 +112,10 @@ Simple API batch layer) are pinned by looped-backend suites in `tests/`:
 **Pitfall: a `setBufferMode` call at describe scope is collected before any
 test runs, so the last one wins for the whole file** — a `[wasi]` suite written
 that way silently runs on emscripten (found in `tests/simple-write-contract.test.ts`
-during taglib-chrs: the WASI guard passed vacuously). Call it in the suite's
-`beforeAll`, and assert the loaded backend (`module.isWasi`) so the suite can
-only cover what its name claims.
+during taglib-chrs: the WASI guard passed vacuously). Call
+`useSimpleBackend(false)` / `(true)` from `tests/simple-backend.ts` in the
+suite's `beforeAll` — it pins the backend and asserts the loaded one
+(`module.isWasi`), so the suite can only cover what its name claims.
 
 ## Parity gaps (filed as sub-issues of taglib-7ek)
 

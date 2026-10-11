@@ -22,27 +22,10 @@ import {
   applyTags,
   applyTagsToFile,
   clearTags,
-  getTagLib,
   readTags,
-  setBufferMode,
 } from "../src/simple/index.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
-
-/** TagLib.module is private (src/taglib/taglib-class.ts:58); a test needs the loaded backend's identity. `isWasi` is WASI-only — the emscripten module omits it entirely (tests/unified-api.test.ts:182). */
-type TagLibWithModule = { module: { isWasi?: boolean } };
-
-/**
- * `setBufferMode` clears a lazily-created singleton, so a call at describe
- * scope is applied at collection time and the LAST one wins for both suites —
- * a describe-scope toggle silently runs the [wasi] suite on emscripten (the
- * trap taglib-1zn1's cousins keep finding). beforeAll applies it where it
- * takes effect, and the assertion keeps the suite honest about its backend.
- */
-async function useBackend(bufferMode: boolean): Promise<void> {
-  setBufferMode(bufferMode);
-  const taglib = (await getTagLib()) as unknown as TagLibWithModule;
-  expect(taglib.module.isWasi ?? false).toStrictEqual(!bufferMode);
-}
+import { useSimpleBackend } from "./simple-backend.ts";
 
 const tempDirs: string[] = [];
 
@@ -98,11 +81,11 @@ function runScenarios() {
 }
 
 describe("Simple-API write contract [wasi]", () => {
-  beforeAll(() => useBackend(false));
+  beforeAll(() => useSimpleBackend(false));
   runScenarios();
 });
 
 describe("Simple-API write contract [emscripten] (baseline)", () => {
-  beforeAll(() => useBackend(true));
+  beforeAll(() => useSimpleBackend(true));
   runScenarios();
 });

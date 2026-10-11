@@ -10,7 +10,7 @@
  * backends (WASI: open-time snapshot; Emscripten: built once per call).
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { beforeAll, describe, expect, it } from "vite-plus/test";
 import { readFile } from "node:fs/promises";
 import { TagLib } from "../src/taglib.ts";
 import {
@@ -19,9 +19,9 @@ import {
   readMetadataBatch,
   readTags,
   readTagsBatch,
-  setBufferMode,
 } from "../src/simple/index.ts";
 import { FIXTURE_PATH } from "./shared-fixtures.ts";
+import { useSimpleBackend } from "./simple-backend.ts";
 
 const RELEASE_ID = "11111111-2222-3333-4444-555555555555";
 
@@ -136,11 +136,11 @@ function runScenarios(): void {
 }
 
 describe("includeProperties (taglib-3s1f) [wasi]", () => {
-  setBufferMode(false);
+  beforeAll(() => useSimpleBackend(false));
   runScenarios();
 });
 
 describe("includeProperties (taglib-3s1f) [emscripten]", () => {
-  setBufferMode(true);
+  beforeAll(() => useSimpleBackend(true));
   runScenarios();
 });
