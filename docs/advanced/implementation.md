@@ -40,12 +40,12 @@ File path (JS) → WASI fd_read/fd_seek syscalls → FileRef(path) → TagLib �
 
 Key components:
 
-- **`src/capi/taglib_shim.cpp`** — C++ shim using FileRef for both path I/O
+- **`src/capi/taglib_shim.cpp`** – C++ shim using FileRef for both path I/O
   and buffer I/O (`FileRef(IOStream*)`)
-- **`src/capi/taglib_boundary.c`** — Pure C WASI exports (no exceptions)
-- **`src/capi/taglib_msgpack.c`** — MessagePack encoding via mpack
-- **`src/runtime/wasi-host.ts`** — WASI P1 syscall implementation for Deno
-- **`src/runtime/wasi-host-loader.ts`** — Loader with memory proxy pattern
+- **`src/capi/taglib_boundary.c`** – Pure C WASI exports (no exceptions)
+- **`src/capi/taglib_msgpack.c`** – MessagePack encoding via mpack
+- **`src/runtime/wasi-host.ts`** – WASI P1 syscall implementation for Deno
+- **`src/runtime/wasi-host-loader.ts`** – Loader with memory proxy pattern
 
 ### EH-Enabled Sysroot
 
@@ -68,11 +68,11 @@ initialization.
 
 ## TypeScript API Layers
 
-1. **`src/taglib.ts`** — Core `TagLib` class and `AudioFile` interface
-2. **`src/simple.ts`** — Simple API (`readTags`, `applyTags`, `applyTagsToFile`)
-3. **`src/folder-api.ts`** — Batch folder operations (`scanFolder`,
+1. **`src/taglib.ts`** – Core `TagLib` class and `AudioFile` interface
+2. **`src/simple.ts`** – Simple API (`readTags`, `applyTags`, `applyTagsToFile`)
+3. **`src/folder-api.ts`** – Batch folder operations (`scanFolder`,
    `findDuplicates`)
-4. **`src/runtime/unified-loader.ts`** — Backend auto-selection and loading
+4. **`src/runtime/unified-loader.ts`** – Backend auto-selection and loading
 
 ## Build System
 

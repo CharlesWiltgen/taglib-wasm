@@ -581,20 +581,20 @@ Where a build splits its output into several files, the figure is the total of
 every JavaScript chunk it emits. Exact invocations, so the table can be
 reproduced:
 
-- **esbuild 0.28.2** — `esbuild <app> --bundle --minify --format=esm
+- **esbuild 0.28.2** – `esbuild <app> --bundle --minify --format=esm
   --target=es2022 --platform=browser --external:node:module` for the browser
   column; the same with `--platform=node` and no `--external` for the Node
   column. The `--external` matches the dynamic `import("node:module")` in
   `dist/taglib-wrapper.js`. (`--external` takes a colon, not `=`.)
-- **rollup 4.63.3** — `input: <app>`, plugins `@rollup/plugin-node-resolve`
+- **rollup 4.63.3** – `input: <app>`, plugins `@rollup/plugin-node-resolve`
   (`{ browser: true, exportConditions: ["browser", "default"] }` for the browser
   column, default options for the Node column) and `@rollup/plugin-terser`,
   output `{ format: "esm", inlineDynamicImports: true }`.
-- **vite 8.3.0** — a real app build: `index.html` plus a
+- **vite 8.3.0** – A real app build: `index.html` plus a
   `<script type="module">` pointing at the entry, `build.minify: "esbuild"`,
   `target: "es2022"`. Vite builds for the browser; the figures below that name
   the `node` condition instead add `resolve.conditions: ["node"]`.
-- **webpack 5.111.1** — `mode: "production"`, `target: "web"`,
+- **webpack 5.111.1** – `mode: "production"`, `target: "web"`,
   `externals: { module: "module" }`. `target: "web"` alone fails on the
   `import("node:module")` inside `dist/taglib-wrapper.js`.
 
@@ -623,7 +623,7 @@ browser, scan on a server and post the result; the pure
 
 **`./web` builds for the browser.** It declares a `browser` condition, so a
 browser-targeted build resolves an Emscripten-only build of that entry and pulls
-**`taglib-web.wasm` alone** — measured with the vite invocation above on
+**`taglib-web.wasm` alone** – Measured with the vite invocation above on
 `pictureToDataURL` from `taglib-wasm/web`: one 703,477-byte Wasm asset, where
 the vite build on the `node` condition instead emits both `taglib-web.wasm` and
 `taglib-wasi.wasm` (1,458,150 bytes of assets for a call that needs neither
@@ -691,7 +691,7 @@ browser-targeted bundle is ~80 KB where a Node-targeted one is ~144 KB.
 module whose exports go unused. Before that field, importers of the sub-entries
 paid ~17 KB for property-metadata tables that were kept only because module-level
 table building looked impure; those bundles are now a few hundred bytes or less.
-Measured on the **`node` condition** — esbuild `--platform=node`, rollup with
+Measured on the **`node` condition** – esbuild `--platform=node`, rollup with
 default `node-resolve` options, and vite's app build with
 `resolve.conditions: ["node"]` — the combination under which all four apps build
 under every bundler:

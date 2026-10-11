@@ -387,7 +387,7 @@ commit, **waits for CI to pass on that commit**, verifies the npm publish path
 `publish-everywhere.yml` and waits for the result.
 
 That workflow builds the package, publishes npm → GitHub Packages, and —
-**only once every registry has the version** — creates the tag and the GitHub
+**only once every registry has the version** – Creates the tag and the GitHub
 release, with notes taken from the CHANGELOG section for that version. Nothing
 is tagged before the release is real, so a failed publish leg cannot leave a
 released-but-unpublished version. The tag points at the commit the workflow
@@ -446,7 +446,7 @@ means a clean retry rather than a half-published version:
    though the version is already live on npm. A _fresh_ dispatch would skip every
    publish leg — the workflow turns itself off when npm already has the version.
 
-2. **Missing or mismatched trusted publisher** — create the entry, then re-run:
+2. **Missing or mismatched trusted publisher** – Create the entry, then re-run:
 
    ```bash
    npm login --auth-type=web

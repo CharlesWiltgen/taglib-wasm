@@ -344,7 +344,7 @@ if (errors.length > 0) {
 1. **Start with small directories** when testing to understand performance
    characteristics
 2. **Use progress callbacks** for user feedback on long operations
-3. **Expect per-file failures** — a corrupted or unreadable file is reported as
+3. **Expect per-file failures** – A corrupted or unreadable file is reported as
    an `error` item in the results array instead of thrown, so check
    `result.items.filter((i) => i.status === "error")`
 4. **Consider memory usage** when processing large collections

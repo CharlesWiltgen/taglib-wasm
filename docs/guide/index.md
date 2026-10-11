@@ -30,14 +30,14 @@ file.setProperty("acoustidId", "12345678-90ab-cdef");
 
 Choose the API that fits your needs:
 
-**Simple API** — one call per file:
+**Simple API** – One call per file:
 
 ```typescript
 const tags = await readTags("song.mp3");
 await applyTagsToFile("song.mp3", { title: "New Title" });
 ```
 
-**Full API** — an open handle for multi-step work:
+**Full API** – An open handle for multi-step work:
 
 ```typescript
 const taglib = await TagLib.initialize();

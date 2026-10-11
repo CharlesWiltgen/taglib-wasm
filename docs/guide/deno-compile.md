@@ -310,10 +310,10 @@ deno compile --allow-read --include taglib-web.wasm myapp.ts
 
 Embedded Wasm is resolved using a multi-strategy fallback:
 
-1. **`Deno.mainModule`** — relative to the user's entry point (where `--include`
+1. **`Deno.mainModule`** – Relative to the user's entry point (where `--include`
    embeds files)
-2. **`import.meta.url`** — relative to the library module (fallback)
-3. **Bare path** — virtual root / CWD
+2. **`import.meta.url`** – Relative to the library module (fallback)
+3. **Bare path** – Virtual root / CWD
 
 This ensures the Wasm file is found regardless of whether the compiled binary
 resolves paths relative to the entry point or the library module.
@@ -347,22 +347,22 @@ for a resolution strategy of your own.
 
 ## Best Practices
 
-1. **Embed the Wasm for offline support** — compile with
+1. **Embed the Wasm for offline support** – Compile with
    `--include taglib-web.wasm`, or run `prepareWasmForEmbedding()` in a build
    step. A compiled binary initializes from the Wasm inside the npm package
    `deno compile` embeds anyway, so `--include` is not what makes it work — it
    pins the copy you tested. Use Method 2 (`wasmUrl`) if it should fetch the
    Wasm at runtime instead.
-2. **Resolve the embedded file relative to `Deno.mainModule`** — inside a
+2. **Resolve the embedded file relative to `Deno.mainModule`** – Inside a
    compiled binary that URL points into the binary's filesystem (on Deno 2.9.6 a
    `file://` path under `deno-compile-<name>`), so resolve the Wasm relative to
    it (see [Path Resolution](#3-path-resolution)) rather than to your source
    tree.
-3. **Expect the package fallback** — `initializeForDenoCompile()` falls back to
+3. **Expect the package fallback** – `initializeForDenoCompile()` falls back to
    the Wasm resolved from this package, and `deno compile` embeds that package,
    so a build that forgot `--include` still initializes. What it loses is the
    guarantee that the binary/version you tested is the one being loaded.
-4. **Handle an unreachable CDN** — a CDN-only binary that runs offline fails at
+4. **Handle an unreachable CDN** – A CDN-only binary that runs offline fails at
    initialization. Surface that error; the library stays uninitialized.
 
 ## Common Issues and Solutions

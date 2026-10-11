@@ -9,9 +9,9 @@
 `taglib-wasm` ships two Wasm backends to cover the full JavaScript runtime
 matrix:
 
-- **Emscripten + Embind** — produces `build/taglib-web.wasm` for browsers,
+- **Emscripten + Embind** – Produces `build/taglib-web.wasm` for browsers,
   Workers, and bundler-served apps.
-- **WASI** — produces `build/taglib-wasi.wasm` for Deno, Node.js, Cloudflare
+- **WASI** – Produces `build/taglib-wasi.wasm` for Deno, Node.js, Cloudflare
   Workers, Bun, and any Wasmer-style host. Enables features like `deno compile`.
 
 These backends were chosen for sound reasons: Embind is the obvious shape for
@@ -98,16 +98,16 @@ cheaper than retrofitting.
 In rough priority order:
 
 1. **Cost of every new feature**, today and into the Mutagen-parity push
-2. **Correctness across backends** — the population of "subtle divergence" bugs
+2. **Correctness across backends** – The population of "subtle divergence" bugs
    is provably non-zero and likely to grow
-3. **Contributor onboarding cost** — the dual model is undocumented; new
+3. **Contributor onboarding cost** – The dual model is undocumented; new
    contributors will rediscover divergences by hitting test surprises
-4. **Browser bundle size** — Embind's glue JS already costs ~200 KB; any change
+4. **Browser bundle size** – Embind's glue JS already costs ~200 KB; any change
    must not regress this
-5. **WASI runtime support** — must keep deno-compile, Cloudflare Workers, Wasmer
+5. **WASI runtime support** – Must keep deno-compile, Cloudflare Workers, Wasmer
    hosts working
-6. **Public TS API stability** — `AudioFile` interface should not break
-7. **Performance** — tag-read/write throughput must remain in the same order of
+6. **Public TS API stability** – `AudioFile` interface should not break
+7. **Performance** – Tag-read/write throughput must remain in the same order of
    magnitude on both backends
 
 ## Considered options
@@ -225,7 +225,7 @@ Option A is in force:
   that section records the _how-to-not-break-parity_ working guidance (optimistic
   cache updates, OR-merge composition, location-vs-pointer guards,
   TagUnion-propagation awareness).
-- `taglib-7ek` (parity audit) is **essential** — a cross-backend parity test is
+- `taglib-7ek` (parity audit) is **essential** – a cross-backend parity test is
   required before any feature with backend-divergent behavior merges.
 - `taglib-wgz` (promote `test-wasi` to a required CI gate) is the highest-value
   hardening: until it lands, WASI divergences do not block merge, which is the

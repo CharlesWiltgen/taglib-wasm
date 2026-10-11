@@ -25,13 +25,13 @@ on a real divergence) over separate per-backend tests.
 
 ## Legend
 
-- **✓** — exercised on this backend through the public `AudioFile` API.
-- **unit** — exercised only at the `WasiFileHandle` adapter level
+- **✓** – Exercised on this backend through the public `AudioFile` API.
+- **unit** – Exercised only at the `WasiFileHandle` adapter level
   (`wasi-adapter-unit.test.ts` / `wasi-host.test.ts`), not via `AudioFile`.
-- **error** — exercised only on an error path (e.g. throws on wrong format),
+- **error** – Exercised only on an error path (e.g. throws on wrong format),
   not a functional round-trip.
-- **✗** — not exercised.
-- **Paired** — a single test runs the SAME scenario on both backends (the
+- **✗** – Not exercised.
+- **Paired** – A single test runs the SAME scenario on both backends (the
   strongest form: a `for (const backend of ["wasi","emscripten"])` loop,
   `forEachBackend`, the `BackendAdapter` layer, or paired `[backend]` cases).
 

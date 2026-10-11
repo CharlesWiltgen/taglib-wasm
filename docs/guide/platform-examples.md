@@ -218,13 +218,13 @@ input?.addEventListener("change", async () => {
 
 ::: warning Limitations
 
-- **Emscripten backend only** — the WASI backend and filesystem paths are not
+- **Emscripten backend only** – The WASI backend and filesystem paths are not
   available in workers
-- **Buffer-only** — pass audio data as `ArrayBuffer` or `Uint8Array`
-- **Worker detection works today** — dedicated and shared workers both report
+- **Buffer-only** – Pass audio data as `ArrayBuffer` or `Uint8Array`
+- **Worker detection works today** – Dedicated and shared workers both report
   the `"worker"` environment (any `WorkerGlobalScope`), so the buffer API is the
   same as the browser's
-- **Transfer lists are caller-managed** — the library hands back buffers;
+- **Transfer lists are caller-managed** – The library hands back buffers;
   whether `postMessage()` copies or transfers them is up to your code
 - **SharedWorker browser support varies** —
   [check compatibility](https://caniuse.com/sharedworkers)
@@ -257,8 +257,8 @@ export default {
 
 ::: warning Limitations
 
-- **Memory limit** — 128MB per request
-- **Buffer-only** — no filesystem access
+- **Memory limit** – 128MB per request
+- **Buffer-only** – No filesystem access
 
 :::
 
