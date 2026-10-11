@@ -691,7 +691,7 @@ browser-targeted bundle is ~80 KB where a Node-targeted one is ~144 KB.
 module whose exports go unused. Before that field, importers of the sub-entries
 paid ~17 KB for property-metadata tables that were kept only because module-level
 table building looked impure; those bundles are now a few hundred bytes or less.
-Measured on the **`node` condition** – esbuild `--platform=node`, rollup with
+Measured on the **`node` condition** — esbuild `--platform=node`, rollup with
 default `node-resolve` options, and vite's app build with
 `resolve.conditions: ["node"]` — the combination under which all four apps build
 under every bundler:

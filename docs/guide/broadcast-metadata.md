@@ -3,7 +3,7 @@
 Broadcast Wave Format (BWF) adds production metadata to WAV files via two
 chunks: `bext` (the Broadcast Audio Extension, EBU Tech 3285) and `iXML` (an
 XML payload used by field recorders, DAWs, and editorial tools). TagLib-Wasm
-reads and writes both – for **WAV and FLAC files** – through the Full API.
+reads and writes both — for **WAV and FLAC files** — through the Full API.
 
 ```typescript
 import { TagLib } from "taglib-wasm";

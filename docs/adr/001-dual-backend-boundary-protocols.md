@@ -225,7 +225,7 @@ Option A is in force:
   that section records the _how-to-not-break-parity_ working guidance (optimistic
   cache updates, OR-merge composition, location-vs-pointer guards,
   TagUnion-propagation awareness).
-- `taglib-7ek` (parity audit) is **essential** – a cross-backend parity test is
+- `taglib-7ek` (parity audit) is **essential** — a cross-backend parity test is
   required before any feature with backend-divergent behavior merges.
 - `taglib-wgz` (promote `test-wasi` to a required CI gate) is the highest-value
   hardening: until it lands, WASI divergences do not block merge, which is the
