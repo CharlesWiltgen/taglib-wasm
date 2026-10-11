@@ -11,6 +11,7 @@ import {
   supportsExnref,
 } from "../src/runtime/detector.ts";
 import { createPlatformIOFor } from "../src/runtime/platform-io.ts";
+import { isDenoCompiled } from "../src/runtime/deno-detect.ts";
 import {
   getRecommendedConfig,
   isWasiAvailable,
@@ -254,5 +255,51 @@ describe("createPlatformIOFor routing (taglib-2b4)", () => {
         "does not support filesystem operations",
       );
     }
+  });
+});
+
+describe("isDenoCompiled mainModule forms (taglib-d6bs)", () => {
+  // isDenoCompiled() reads the Deno global, so the forms can be exercised
+  // under Vitest by injecting one and restoring it.
+  const DenoGlobal = globalThis as { Deno?: unknown };
+  const originalDeno = DenoGlobal.Deno;
+
+  function withDeno(mainModule: unknown, fn: () => void): void {
+    DenoGlobal.Deno = { mainModule };
+    try {
+      fn();
+    } finally {
+      if (originalDeno === undefined) {
+        delete DenoGlobal.Deno;
+      } else {
+        DenoGlobal.Deno = originalDeno;
+      }
+    }
+  }
+
+  it("accepts the deno-compile:// scheme (Deno through 2.8)", () => {
+    withDeno("deno-compile:///app.ts", () => {
+      expect(isDenoCompiled()).toStrictEqual(true);
+    });
+  });
+
+  it("accepts a file:// URL under a deno-compile-<name> path (Deno 2.9+)", () => {
+    // Measured on Deno 2.9.6: a compiled binary reports
+    // file:///var/folders/.../T/deno-compile-<output-name>/<entry>.ts.
+    withDeno("file:///var/folders/x/T/deno-compile-probe/probe.ts", () => {
+      expect(isDenoCompiled()).toStrictEqual(true);
+    });
+  });
+
+  it("rejects an ordinary file:// main module", () => {
+    withDeno("file:///home/user/app/main.ts", () => {
+      expect(isDenoCompiled()).toStrictEqual(false);
+    });
+  });
+
+  it("returns false when Deno is absent or mainModule is not a string", () => {
+    withDeno(undefined, () => {
+      expect(isDenoCompiled()).toStrictEqual(false);
+    });
   });
 });

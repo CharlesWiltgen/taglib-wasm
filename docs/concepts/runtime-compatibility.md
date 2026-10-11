@@ -280,7 +280,7 @@ binaries:
 import { initializeForDenoCompile } from "taglib-wasm";
 
 // Automatically uses embedded WASM in compiled binaries
-// Falls back to network fetch in development
+// Falls back to the package's Wasm in development
 const taglib = await initializeForDenoCompile();
 ```
 

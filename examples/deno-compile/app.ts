@@ -31,8 +31,8 @@ async function initializeTagLib(): Promise<TagLib> {
 
   // Strategy 1: Check if running as compiled binary with included WASM.
   // Use the library's own predicate — a hand-rolled `import.meta.url` test
-  // disagrees with it (src/runtime/deno-detect.ts keys off Deno.mainModule's
-  // `deno-compile://` scheme).
+  // disagrees with it (src/runtime/deno-detect.ts accepts both compiled-binary
+  // mainModule forms).
   const isCompiled = isDenoCompiled();
 
   if (isCompiled) {

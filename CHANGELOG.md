@@ -60,6 +60,15 @@
   `Bun.file().slice()`. The Bun provider now splices header + footer with the
   same contract as the other providers (taglib-essc).
 
+- **`isDenoCompiled()` recognizes Deno 2.9+ compiled binaries.** Deno 2.9
+  reports a compiled binary's main module as a `file://` URL under a
+  `deno-compile-<name>` temporary directory, not the `deno-compile://` scheme
+  older releases used, so the predicate answered false: the automatic
+  embedded-Wasm search never ran and `initializeForDenoCompile()`'s
+  explicit-path strategies were unreachable no-ops. Both forms are recognized
+  now; verified by compiling a probe against Deno 2.9.6 (the binary reports
+  `true`, `deno run` still reports `false`) (taglib-d6bs).
+
 ## 2.3.1
 
 ### Changed

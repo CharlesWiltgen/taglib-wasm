@@ -35,11 +35,13 @@ export const WASM_EMBED_SEARCH_PATHS: readonly string[] = [
  *
  * In compiled binaries, this function attempts to load embedded WASM from a
  * specified path relative to the binary. Both that attempt and the detection
- * above are gated on `isDenoCompiled()`, which returns false on Deno 2.9.x
- * (see the guide); otherwise — and when no embedded file is found — it falls
- * back to the Wasm resolved from this package. `deno compile` embeds the whole
- * package tree, so that fallback is present inside a compiled binary too:
- * `--include` pins the copy you tested rather than repairing a missing file.
+ * above are gated on `isDenoCompiled()`, which recognizes both compiled-binary
+ * main-module forms (the `deno-compile://` scheme through Deno 2.8, and the
+ * `file://` URL under a `deno-compile-<name>` path on Deno 2.9+). When no
+ * embedded file is found it falls back to the Wasm resolved from this package.
+ * `deno compile` embeds the whole package tree, so that fallback is present
+ * inside a compiled binary too: `--include` pins the copy you tested rather
+ * than repairing a missing file.
  *
  * @param embeddedWasmPath - Path to embedded WASM file (default: './taglib-web.wasm')
  * @returns Promise resolving to initialized TagLib instance

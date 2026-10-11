@@ -59,9 +59,9 @@ import { dirname } from "@std/path";
 
 async function main() {
   // Show runtime environment
-  // Note: on Deno 2.9.x a compiled binary reports a file:// mainModule, so
-  // isDenoCompiled() returns false and this prints "Development Mode" even
-  // inside a compiled binary — see docs/guide/deno-compile.md.
+  // isDenoCompiled() recognizes both compiled-binary mainModule forms
+  // (deno-compile:// through Deno 2.8, a file:// URL under deno-compile-<name>
+  // on 2.9+), so this prints "Compiled Binary" inside a compiled binary.
   console.log(
     `🚀 Running as: ${
       isDenoCompiled() ? "Compiled Binary" : "Development Mode"
