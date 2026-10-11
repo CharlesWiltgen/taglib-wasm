@@ -10,8 +10,9 @@
  * read it back, and check an unrelated tag survived.
  *
  * Usage: node scripts/smoke-dist.mjs   (run after `pnpm run build:js` and
- * `pnpm run postbuild`; the WASI binary is read from build/ and the
- * Emscripten pair from dist/)
+ * `pnpm run postbuild`: both wasm artifacts are then read from dist/ — the
+ * WASI module from dist/taglib-wasi.wasm, the Emscripten module from
+ * dist/taglib-web.wasm and dist/taglib-wrapper.js)
  */
 
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
@@ -36,15 +37,30 @@ for (const backend of ["wasi", "emscripten"]) {
     const taglib = await TagLib.initialize({ forceWasmType: backend });
     await taglib.updateFile(workPath, { title: "Dist Smoke" });
 
+    // Read back through the forced instance: the simple API caches one
+    // auto-detected module (src/simple/config.ts), so readTags() alone would
+    // always read with the first iteration's backend (review finding).
+    const reopened = await taglib.open(workPath);
+    try {
+      const title = reopened.tag().title;
+      const artist = reopened.tag().artist;
+      if (title !== "Dist Smoke") {
+        throw new Error(`title did not round-trip: ${JSON.stringify(title)}`);
+      }
+      if (artist !== "Prince") {
+        throw new Error(
+          `unrelated tag was lost: artist ${JSON.stringify(artist)}`,
+        );
+      }
+    } finally {
+      reopened.dispose();
+    }
+
+    // The simple-API surface is covered too, on the auto-detected backend.
     const tags = await readTags(workPath);
     if (tags.title?.[0] !== "Dist Smoke") {
       throw new Error(
-        `title did not round-trip: ${JSON.stringify(tags.title)}`,
-      );
-    }
-    if (tags.artist?.[0] !== "Prince") {
-      throw new Error(
-        `unrelated tag was lost: artist ${JSON.stringify(tags.artist)}`,
+        `simple read did not see the write: ${JSON.stringify(tags.title)}`,
       );
     }
     console.log(`ok   dist smoke [${backend}] read + write round-trip`);

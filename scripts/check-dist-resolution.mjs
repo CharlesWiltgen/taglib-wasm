@@ -143,6 +143,10 @@ for (const file of files) {
         );
         continue;
       }
+      // A computed specifier (a minifier may interpolate a template literal,
+      // as in import(`./x/${name}.js`)) cannot be resolved statically; skip
+      // only the on-disk check — the build/ and .ts rules above still applied.
+      if (spec.includes("${")) continue;
       if (!resolveTarget(file, spec)) {
         problems.push(`${rel}: ${kind} "${spec}" does not resolve`);
       }
