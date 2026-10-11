@@ -274,6 +274,14 @@ jobs:
       - name: Run postbuild
         run: pnpm run postbuild
 
+      - name: Smoke the emitted dist tree (both backends)
+        # Nothing else executes dist/: every test and both smoke-*.ts scripts
+        # import src/, so a bundler/lowering/postbuild regression that only
+        # affects the shipped artifacts could pass everything else. This runs
+        # the artifact end to end on both backends — initialize from
+        # dist/index.js, write a tag to a fixture copy, read it back.
+        run: pnpm run smoke:dist
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
