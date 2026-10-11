@@ -47,16 +47,17 @@ deno compile --allow-read --include taglib-web.wasm myapp.ts
 
 **How it works:**
 
-1. Detects a compiled binary by checking `Deno.mainModule` — it accepts the
-   `deno-compile://` scheme (Deno through 2.8) and the `file://` URL under a
-   `deno-compile-<name>` path (Deno 2.9+); see [Detection of Compiled
+1. Detects a compiled binary — Deno's own `Deno.build.standalone` flag when
+   it is exposed, otherwise both `Deno.mainModule` forms (the
+   `deno-compile://` scheme through Deno 2.8, the `file://` URL under a
+   `deno-compile-<name>` path on 2.9+); see [Detection of Compiled
    Binaries](#1-detection-of-compiled-binaries)
 2. Automatically sets `forceWasmType: "emscripten"` (Emscripten, not WASI)
 3. Tries to load embedded Wasm using the multi-strategy fallback (see
    [Path Resolution](#3-path-resolution))
 4. Falls back to the Wasm resolved from the package when the embedded file is
-   not found — present when running from a checkout, absent inside a compiled
-   binary
+   not found — `deno compile` embeds the whole package tree, so the fallback
+   works inside a compiled binary too (see Best Practice 3)
 
 ## Method 2: CDN Loading
 
@@ -161,9 +162,9 @@ For full control over the loading strategy:
 import { TagLib } from "npm:taglib-wasm";
 
 async function initializeTagLib(): Promise<TagLib> {
-  // Check both compiled-binary mainModule forms, as isDenoCompiled() does:
-  // Deno through 2.8 uses the deno-compile:// scheme; Deno 2.9+ reports a
-  // file:// URL under a deno-compile-<name> path.
+  // A hand-rolled check of both compiled-binary mainModule forms; the
+  // library's isDenoCompiled() prefers Deno.build.standalone when the runtime
+  // exposes it and only falls back to these.
   const isCompiled =
     Deno.mainModule.includes("deno-compile://") ||
     Deno.mainModule.includes("/deno-compile-");
@@ -275,8 +276,9 @@ if (import.meta.main) {
 
 ### 1. Detection of Compiled Binaries
 
-The `isDenoCompiled()` helper checks `Deno.mainModule` for both
-compiled-binary forms:
+The `isDenoCompiled()` helper prefers `Deno.build.standalone` — true inside a
+compiled binary, false under `deno run` — and falls back to the two
+`Deno.mainModule` forms when the flag is not exposed:
 
 ```typescript
 import { isDenoCompiled } from "npm:taglib-wasm";
@@ -289,7 +291,7 @@ const isCompiled = isDenoCompiled();
   directory (measured on 2.9.6:
   `file:///var/folders/…/T/deno-compile-probe/probe.ts`).
 
-Both forms fire the automatic embedded-Wasm search, and both make
+Either signal fires the automatic embedded-Wasm search and makes
 `initializeForDenoCompile()`'s explicit strategies reachable:
 
 ```typescript

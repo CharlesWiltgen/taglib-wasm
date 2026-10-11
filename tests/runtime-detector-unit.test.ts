@@ -258,14 +258,14 @@ describe("createPlatformIOFor routing (taglib-2b4)", () => {
   });
 });
 
-describe("isDenoCompiled mainModule forms (taglib-d6bs)", () => {
-  // isDenoCompiled() reads the Deno global, so the forms can be exercised
+describe("isDenoCompiled detection (taglib-d6bs)", () => {
+  // isDenoCompiled() reads the Deno global, so the signals can be exercised
   // under Vitest by injecting one and restoring it.
   const DenoGlobal = globalThis as { Deno?: unknown };
   const originalDeno = DenoGlobal.Deno;
 
-  function withDeno(mainModule: unknown, fn: () => void): void {
-    DenoGlobal.Deno = { mainModule };
+  function withDeno(value: unknown, fn: () => void): void {
+    DenoGlobal.Deno = value;
     try {
       fn();
     } finally {
@@ -277,29 +277,72 @@ describe("isDenoCompiled mainModule forms (taglib-d6bs)", () => {
     }
   }
 
-  it("accepts the deno-compile:// scheme (Deno through 2.8)", () => {
-    withDeno("deno-compile:///app.ts", () => {
+  it("prefers Deno.build.standalone: true inside a compiled binary", () => {
+    withDeno(
+      {
+        build: { standalone: true },
+        mainModule: "file:///home/user/app/main.ts",
+      },
+      () => {
+        expect(isDenoCompiled()).toStrictEqual(true);
+      },
+    );
+  });
+
+  it("prefers Deno.build.standalone: false, even on a deno-compile-* path", () => {
+    // Measured on Deno 2.9.6: a plain `deno run` from a directory that merely
+    // is named deno-compile-* must not be misread as a compiled binary
+    // (review finding: the main-module substring alone matched it).
+    withDeno(
+      {
+        build: { standalone: false },
+        mainModule: "file:///tmp/deno-compile-fake/app.ts",
+      },
+      () => {
+        expect(isDenoCompiled()).toStrictEqual(false);
+      },
+    );
+  });
+
+  it("falls back to the deno-compile:// scheme without the flag", () => {
+    withDeno({ mainModule: "deno-compile:///app.ts" }, () => {
       expect(isDenoCompiled()).toStrictEqual(true);
     });
   });
 
-  it("accepts a file:// URL under a deno-compile-<name> path (Deno 2.9+)", () => {
-    // Measured on Deno 2.9.6: a compiled binary reports
+  it("falls back to a file:// URL under a deno-compile-<name> path", () => {
+    // Measured on Deno 2.9.6: a compiled binary reports a main module like
     // file:///var/folders/.../T/deno-compile-<output-name>/<entry>.ts.
-    withDeno("file:///var/folders/x/T/deno-compile-probe/probe.ts", () => {
-      expect(isDenoCompiled()).toStrictEqual(true);
-    });
+    withDeno(
+      { mainModule: "file:///var/folders/x/T/deno-compile-probe/probe.ts" },
+      () => {
+        expect(isDenoCompiled()).toStrictEqual(true);
+      },
+    );
   });
 
   it("rejects an ordinary file:// main module", () => {
-    withDeno("file:///home/user/app/main.ts", () => {
+    withDeno({ mainModule: "file:///home/user/app/main.ts" }, () => {
       expect(isDenoCompiled()).toStrictEqual(false);
     });
   });
 
-  it("returns false when Deno is absent or mainModule is not a string", () => {
+  it("returns false without Deno, or with signals of the wrong type", () => {
+    expect(isDenoCompiled()).toStrictEqual(false);
     withDeno(undefined, () => {
       expect(isDenoCompiled()).toStrictEqual(false);
     });
+    withDeno({ mainModule: 42 }, () => {
+      expect(isDenoCompiled()).toStrictEqual(false);
+    });
+    withDeno(
+      {
+        build: { standalone: "yes" },
+        mainModule: "file:///home/user/app/main.ts",
+      },
+      () => {
+        expect(isDenoCompiled()).toStrictEqual(false);
+      },
+    );
   });
 });

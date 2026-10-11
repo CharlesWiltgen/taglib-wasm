@@ -90,7 +90,8 @@ export async function initializeForDenoCompile(
     );
   }
 
-  // Fall back to default network-based initialization (Emscripten for compile targets)
+  // Fall back to the Wasm resolved from this package (Emscripten buffer mode;
+  // no network fetch happens on this path).
   return await TagLib.initialize({ forceWasmType: "emscripten" });
 }
 
