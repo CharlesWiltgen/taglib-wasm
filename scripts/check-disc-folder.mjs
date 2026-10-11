@@ -150,10 +150,24 @@ console.log(`disc-folder guard (${SHIPPED})`);
 const scratch = mkdtempSync(join(tmpdir(), "disc-folder-guard-"));
 let rebuilt = null;
 try {
-  execFileSync("npx", ["vp", "pack", "-F", "disc-folder", "-d", scratch], {
-    cwd: rootDir,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  // The workspace's own vp, by path: a missing devDependency must fail this
+  // guard rather than resolve another `vp` from PATH or, as bare `npx` would,
+  // fetch the registry's unrelated package (taglib-864b). pnpm's .bin shims
+  // are .cmd files on Windows, which need a shell.
+  execFileSync(
+    join(
+      rootDir,
+      "node_modules",
+      ".bin",
+      process.platform === "win32" ? "vp.cmd" : "vp",
+    ),
+    ["pack", "-F", "disc-folder", "-d", scratch],
+    {
+      cwd: rootDir,
+      stdio: ["ignore", "pipe", "pipe"],
+      ...(process.platform === "win32" ? { shell: true } : {}),
+    },
+  );
   rebuilt = readFileSync(join(scratch, "disc-folder.js"));
 } catch (error) {
   const stderr = error.stderr?.toString().trim();

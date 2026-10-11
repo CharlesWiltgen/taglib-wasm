@@ -7,7 +7,7 @@ import { TagLib } from "../../../src/taglib.ts";
 const [wavSrc, flacSrc, wavOut, flacOut] = process.argv.slice(2);
 if (!wavSrc || !flacSrc || !wavOut || !flacOut) {
   console.error(
-    "usage: npx tsx tests/test-files/_gen/make-bwf-fixtures.ts <wavSrc> <flacSrc> <wavOut> <flacOut>",
+    "usage: pnpm exec tsx tests/test-files/_gen/make-bwf-fixtures.ts <wavSrc> <flacSrc> <wavOut> <flacOut>",
   );
   process.exit(1);
 }
