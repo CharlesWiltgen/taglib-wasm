@@ -12,7 +12,7 @@
  * - WAV: INFO chunk fields
  */
 
-import { TagLib, Tags } from "../../src/index.ts";
+import { PROPERTIES, TagLib } from "../../src/index.ts";
 import { METADATA_MAPPINGS } from "../../src/types.ts";
 import { isMainModule } from "./is-main.ts";
 
@@ -46,33 +46,33 @@ async function demonstrateAdvancedMetadata() {
       const properties = file.properties();
       console.log(
         `  AcoustID Fingerprint: ${
-          properties[Tags.AcoustidFingerprint]?.[0] || "(none)"
+          properties.acoustidFingerprint?.[0] || "(none)"
         }`,
       );
-      console.log(
-        `  AcoustID ID: ${properties[Tags.AcoustidId]?.[0] || "(none)"}`,
-      );
+      console.log(`  AcoustID ID: ${properties.acoustidId?.[0] || "(none)"}`);
       console.log(
         `  MusicBrainz Track ID: ${
-          properties[Tags.MusicBrainzTrackId]?.[0] || "(none)"
+          properties.musicbrainzTrackId?.[0] || "(none)"
         }`,
       );
-      console.log(
-        `  Album Artist: ${properties[Tags.AlbumArtist]?.[0] || "(none)"}`,
-      );
-      console.log(`  Composer: ${properties[Tags.Composer]?.[0] || "(none)"}`);
+      console.log(`  Album Artist: ${properties.albumArtist?.[0] || "(none)"}`);
+      console.log(`  Composer: ${properties.composer?.[0] || "(none)"}`);
 
       // Demonstrate format-agnostic field setting
       console.log("\n✏️  Setting automatic tag mapping (format-agnostic)...");
 
-      // Using PropertyMap API for extended metadata with tag constants
+      // Writes go through TagLib wire keys; PROPERTIES.<key>.key is the
+      // type-safe way to name one.
       file.setProperty(
-        Tags.AcoustidFingerprint,
+        PROPERTIES.acoustidFingerprint.key,
         "AQADtMmybfGO8NCNEESLnzHyXNOHeHnG4wccz9DR_gGNT_",
       );
-      file.setProperty(Tags.AcoustidId, "e7359e88-f1f7-41ed-b9f6-16e58e906997");
       file.setProperty(
-        Tags.MusicBrainzTrackId,
+        PROPERTIES.acoustidId.key,
+        "e7359e88-f1f7-41ed-b9f6-16e58e906997",
+      );
+      file.setProperty(
+        PROPERTIES.musicbrainzTrackId.key,
         "f4d1b6b8-8c1e-4d9a-9f2a-1234567890ab",
       );
 
@@ -107,9 +107,12 @@ async function demonstrateAdvancedMetadata() {
         console.log(`  MusicBrainz Track ID → ${mbTrackIdMapping.mp4}`);
       }
 
-      // Note: The actual implementation would require C++ support for PropertyMap
+      // The property map now carries the values (staged in the handle; this
+      // example never saves).
       console.log(
-        `\n⚠️  Note: Advanced metadata writing requires PropertyMap implementation in C++`,
+        `\n✅ AcoustID Fingerprint set: ${
+          file.getProperty(PROPERTIES.acoustidFingerprint.key)?.[0]
+        }`,
       );
 
       file.dispose();
@@ -179,7 +182,7 @@ function showMetadataMappingTable() {
   console.log("```typescript");
   console.log("// This single call works for ALL formats!");
   console.log(
-    'file.setProperty(Tags.AcoustidFingerprint, "AQADtMmybfGO8NCNEESLnzHyXNOHeHnG...");',
+    'file.setProperty(PROPERTIES.acoustidFingerprint.key, "AQADtMmybfGO8NCNEESLnzHyXNOHeHnG...");',
   );
   console.log("");
   console.log("// Automatically stores as:");

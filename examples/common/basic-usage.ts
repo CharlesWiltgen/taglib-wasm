@@ -11,6 +11,7 @@
  * - Properly dispose of resources
  */
 
+import { readFile } from "node:fs/promises";
 import { TagLib } from "../../src/index.ts";
 import { isMainModule } from "./is-main.ts";
 
@@ -28,7 +29,10 @@ async function demonstrateBasicUsage() {
     const audioFilePath = "./tests/test-files/mp3/kiss-snippet.mp3";
     console.log(`📁 Loading audio file: ${audioFilePath}`);
 
-    const file = await taglib.open(audioFilePath);
+    // Open a buffer-mode handle, so Step 8's save() builds the modified file
+    // in memory. A path-mode handle writes through to this fixture on save().
+    const bytes = await readFile(audioFilePath);
+    const file = await taglib.open(new Uint8Array(bytes));
 
     if (!file.isValid()) {
       throw new Error("Failed to load audio file");
@@ -81,11 +85,17 @@ async function demonstrateBasicUsage() {
     console.log(`  Genre: "${updatedTags.genre}"`);
     console.log(`  Comment: "${updatedTags.comment}"`);
 
-    // Step 8: Attempt to save (note: only affects in-memory representation)
+    // Step 8: Save the edits into the in-memory copy
     console.log("\n💾 Saving changes...");
     const saveResult = file.save();
     console.log(`💾 Save result: ${saveResult ? "Success" : "Failed"}`);
-    console.log("ℹ️  Note: Changes only affect in-memory representation");
+    const modified = file.getFileBuffer();
+    console.log(`📦 Modified file: ${modified.length} bytes (in memory)`);
+    console.log(
+      "ℹ️  Nothing was written to disk: this handle was opened from a buffer. " +
+        "To persist, use saveToFile(path) on a path-mode handle, or the " +
+        "Simple API's applyTagsToFile().",
+    );
 
     // Step 9: Clean up resources
     console.log("\n🧹 Cleaning up...");
@@ -98,7 +108,7 @@ async function demonstrateBasicUsage() {
     if (error.stack) {
       console.error("Stack trace:", error.stack);
     }
-    Deno.exit(1);
+    process.exitCode = 1;
   }
 }
 

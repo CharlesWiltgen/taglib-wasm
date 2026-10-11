@@ -15,7 +15,6 @@ import {
   PROPERTIES,
   PropertyKey,
   TagLib,
-  Tags,
 } from "../../src/index.ts";
 import { isMainModule } from "./is-main.ts";
 
@@ -154,14 +153,28 @@ async function demonstrateEnhancedProperties() {
       console.log(`  ${prop}: ${meta.description} (${meta.type})`);
     }
 
-    console.log("\n🔄 Backward Compatibility:");
+    console.log("\n🔄 Property Keys and Wire Names:");
     console.log("=".repeat(50));
 
-    // Show that legacy Tags constants still work
-    console.log("Legacy Tags constants still supported:");
-    console.log(`Tags.Title = "${Tags.Title}"`);
-    console.log(`Tags.AlbumArtist = "${Tags.AlbumArtist}"`);
-    console.log("But PROPERTIES provide much richer functionality!");
+    // Each PROPERTIES entry carries both spellings: the camelCase key you
+    // index `properties()` with, and `.key`, TagLib's ALL_CAPS wire name.
+    const vocabulary: PropertyKey[] = [
+      "title",
+      "albumArtist",
+      "musicbrainzTrackId",
+    ];
+    for (const prop of vocabulary) {
+      console.log(`  ${prop} → "${PROPERTIES[prop].key}"`);
+    }
+
+    // The property APIs normalize either spelling, so both reads agree.
+    const byCamelKey = JSON.stringify(file.getProperty("title"));
+    const byWireName = JSON.stringify(file.getProperty(PROPERTIES.title.key));
+    console.log(
+      `getProperty("title") === getProperty("${PROPERTIES.title.key}"): ${
+        byCamelKey === byWireName
+      }`,
+    );
 
     // Clean up
     file.dispose();

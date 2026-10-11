@@ -14,7 +14,7 @@ import {
   readFormat,
   readProperties,
   readTags,
-} from "../src/simple/index.ts";
+} from "../../src/simple/index.ts";
 
 // For go-taglib style constants
 import * as taglib from "../../src/simple/index.ts";
