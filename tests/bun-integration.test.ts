@@ -470,7 +470,11 @@ describe("Bun provider readPartial", () => {
     const io = createPlatformIOFor("bun-wasi");
     const full = new Uint8Array(await readFile(path));
 
-    const whole = await io.readPartial!(path, 4096, 0);
+    // Windows that overlap after clamping (100 + 100 > the 148 B file), so a
+    // splice would return 200 bytes and the case fails if the whole-file
+    // shortcut is lost. With 4096/0 the two paths coincide byte-for-byte and
+    // the case cannot fail (review finding).
+    const whole = await io.readPartial!(path, 100, 100);
 
     expect(whole).toEqual(full);
   });
