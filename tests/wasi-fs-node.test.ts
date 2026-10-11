@@ -1,8 +1,8 @@
 /**
  * @fileoverview `seekSync` contract for the Node/Bun filesystem provider.
  *
- * Regression coverage for taglib-tl17.1 (see CHANGELOG): a seek that is
- * rejected must leave the cursor untouched. The provider used to store the
+ * Regression coverage for taglib-tl17.1 (see the 2.3.1 release notes): a
+ * rejected seek must leave the cursor untouched. The provider used to store the
  * computed offset *before* validating it, so a rejected seek left the cursor
  * negative and the guest's next read handed that negative position to
  * `node:fs`, which threw `ERR_OUT_OF_RANGE` out of the host where the guest

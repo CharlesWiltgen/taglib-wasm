@@ -7,6 +7,10 @@ on:
         description: "Version to publish (e.g., 1.2.3)"
         required: true
         type: string
+      notes:
+        description: "Release notes body (markdown). Sent by scripts/release-safe.sh from the local CHANGELOG ledger; empty falls back to the one-line body plus a compare link."
+        required: false
+        type: string
   release:
     types: [published]
 
@@ -30,7 +34,8 @@ concurrency:
 # 4. publish-npm: Publish to NPM (only if JSR succeeds)
 # 5. publish-github: Publish to GitHub Packages (only if JSR and NPM succeed)
 # 6. finalize: On success, create the release tag + GitHub release (notes from
-#    CHANGELOG); on failure, write the failure summary with rollback commands.
+#    the `notes` dispatch input); on failure, write the failure summary with
+#    rollback commands.
 #    Tag/release creation lives here rather than in scripts/release-safe.sh so a
 #    failed publish leg cannot leave a released-but-unpublished version
 #    (taglib-rkx0).
@@ -1023,27 +1028,23 @@ jobs:
           fi
 
       - name: Publish GitHub release
-        # Notes come from the CHANGELOG section for this version. The previous
-        # flow had release-safe.sh create a generic "Version bump to X" body and
-        # relied on somebody editing it afterwards.
+        # The body is the `notes` input, which scripts/release-safe.sh fills from
+        # the version's CHANGELOG section. That ledger is local and untracked, so
+        # it cannot be read from this checkout. An empty input (a hand dispatch,
+        # or the release-event trigger) falls back to the compare link below.
         if: steps.status.outputs.success == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.prepare-and-build.outputs.version }}
+          NOTES_INPUT: ${{ inputs.notes }}
         run: |
           TAG="v${VERSION}"
           NOTES=/tmp/release-notes.md
 
-          awk -v ver="$VERSION" '
-            # Exact heading, or the heading followed by a space: "## 2.2.3" must
-            # not swallow "## 2.2.30" (review finding 3).
-            $0 == "## " ver || index($0, "## " ver " ") == 1 { found = 1; next }
-            found && /^## / { exit }
-            found { print }
-          ' CHANGELOG.md > "$NOTES"
-
-          if [ ! -s "$NOTES" ]; then
-            echo "::warning::No CHANGELOG section for ${VERSION}; falling back to the compare link"
+          if [ -n "$NOTES_INPUT" ]; then
+            printf '%s\n' "$NOTES_INPUT" > "$NOTES"
+          else
+            echo "::warning::No release notes were passed for ${VERSION}; falling back to the compare link"
             echo "Release ${TAG}." > "$NOTES"
           fi
 
@@ -1062,4 +1063,4 @@ jobs:
           case "$VERSION" in *-*) FLAGS="--prerelease" ;; esac
 
           gh release create "$TAG" --title "Release ${TAG}" --notes-file "$NOTES" "$FLAGS"
-          echo "Published GitHub release ${TAG} with CHANGELOG notes"
+          echo "Published GitHub release ${TAG} with the dispatched notes"

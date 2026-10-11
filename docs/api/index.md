@@ -2172,8 +2172,9 @@ type TagLibErrorCode =
 #### TagName
 
 Removed in 2.0.0 — `Tags`, `TagName`, `getAllTagNames()`, and
-`isValidTagName()` were deleted (CHANGELOG 2.0.0 Breaking). They were a
-strict subset of the `PROPERTIES` family; migrate by renaming:
+`isValidTagName()` were deleted (see the [2.0.0 release
+notes](https://github.com/CharlesWiltgen/TagLib-Wasm/releases/tag/v2.0.0)).
+They were a strict subset of the `PROPERTIES` family; migrate by renaming:
 `getAllTagNames()` → `getAllPropertyKeys()`, `isValidTagName(k)` →
 `isValidProperty(k)`, `TagName` → `PropertyKey`. See [Tag Name Constants](/api/tag-constants) and §Tag Validation.
 

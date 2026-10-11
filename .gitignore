@@ -9,6 +9,9 @@ CLAUDE*
 BACKLOG.md
 KNOWN_ISSUES.md
 CONTINUE.md
+# The release ledger is local-only: sections are drafted here and travel to the
+# publish workflow as its `notes` input, never through git.
+CHANGELOG.md
 
 # Build artifacts
 build/*/

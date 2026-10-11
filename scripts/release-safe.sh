@@ -360,11 +360,30 @@ update_versions() {
 
 # Retitle the CHANGELOG's "## Unreleased" heading to "## <version>".
 #
-# The publish workflow builds the GitHub release body by extracting the CHANGELOG
-# section whose heading is exactly "## <version>"; with no such heading it warns
-# and falls back to a one-line body plus a compare link (publish-everywhere.yml,
-# "Extract release notes"). That retitle used to be manual — fc58c99 did it by
-# hand for 2.3.0 — and nothing enforced it.
+# The ledger is local and untracked, so it never reaches the publish workflow's
+# checkout: the release body travels with the dispatch instead. This retitle is
+# what the section reader below looks for ("## <version>"), and with no such
+# heading the dispatch carries no notes and the release falls back to a
+# one-line body plus a compare link (publish-everywhere.yml, "Publish GitHub
+# release"). That retitle used to be manual — fc58c99 did it by hand for 2.3.0 —
+# and nothing enforced it.
+#
+# Print the body of a version's section (heading excluded), which the dispatch
+# sends as the workflow's `notes` input. Same heading rule as the retitle:
+# "## 2.2.3" must not match "## 2.2.30".
+read_changelog_section() {
+    local version=$1
+    local changelog="CHANGELOG.md"
+
+    [ -f "$changelog" ] || return 0
+
+    awk -v ver="$version" '
+        $0 == "## " ver || index($0, "## " ver " ") == 1 { found = 1; next }
+        found && /^## / { exit }
+        found { print }
+    ' "$changelog"
+}
+
 cut_changelog_section() {
     local new_version=$1
     local changelog="CHANGELOG.md"
@@ -481,7 +500,7 @@ publish_release() {
     # name every file sync-version.ts writes (jsr.json included — CI's
     # check-jsr-package-files.sh asserts it matches package.json, so a bump that
     # leaves it behind fails Package Compatibility).
-    git add package.json sonar-project.properties src/version.ts jsr.json CHANGELOG.md
+    git add package.json sonar-project.properties src/version.ts jsr.json
     if git diff --cached --quiet; then
         print_warning "Version already at $version, skipping commit"
     else
@@ -514,10 +533,22 @@ publish_release() {
     # publish workflow's finalize job, and only after every registry has the
     # version (taglib-rkx0): tagging locally publishes a release that a failed
     # publish leg then strands on some registries.
+    #
+    # The release body is the ledger's section for this version, read here
+    # because the ledger is local and never reaches the CI checkout.
+    local notes dispatch_args
+    notes=$(read_changelog_section "$version")
+    dispatch_args=(-f "version=$version")
+    if [ -n "$notes" ]; then
+        dispatch_args+=(-f "notes=$notes")
+    else
+        print_warning "CHANGELOG has no '## $version' section — the release body falls back to a compare link"
+    fi
+
     print_step "Dispatching the publish workflow for $version..."
-    if ! gh workflow run publish-everywhere.yml -f version="$version"; then
+    if ! gh workflow run publish-everywhere.yml "${dispatch_args[@]}"; then
         print_error "Could not dispatch the publish workflow"
-        print_warning "Dispatch it manually: gh workflow run publish-everywhere.yml -f version=$version"
+        print_warning "Dispatch it manually: gh workflow run publish-everywhere.yml -f version=$version -f notes=\"\$(the version's CHANGELOG section)\""
         exit 1
     fi
 
