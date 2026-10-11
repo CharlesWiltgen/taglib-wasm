@@ -12,6 +12,7 @@
  */
 
 import { TagLib } from "../../src/index.ts";
+import { isMainModule } from "./is-main.ts";
 
 async function demonstrateBasicUsage() {
   console.log("🎵 TagLib-Wasm - Basic Usage Example");
@@ -152,7 +153,7 @@ async function demonstrateBatchProcessing() {
 }
 
 // Run the examples
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   await demonstrateBasicUsage();
   await demonstrateBatchProcessing();
 }

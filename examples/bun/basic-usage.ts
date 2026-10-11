@@ -14,6 +14,7 @@
 
 import { TagLib } from "../../src/index.ts";
 import process from "node:process";
+import { isMainModule } from "../common/is-main.ts";
 
 async function demonstrateBunUsage() {
   console.log("🎵 TagLib-Wasm - Bun Runtime Example");
@@ -158,7 +159,7 @@ function showBunInfo() {
 }
 
 // Run the example
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   showBunInfo();
   await demonstrateBunUsage();
 }

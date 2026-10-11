@@ -14,6 +14,7 @@ import {
   scanFolder,
 } from "../src/index.ts";
 import { writeTagsBatch } from "../src/simple/index.ts";
+import { isMainModule } from "./common/is-main.ts";
 
 // Example 1: Scan a folder and display all metadata
 async function scanAndDisplay() {
@@ -269,6 +270,6 @@ async function main() {
 }
 
 // Run the examples
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   main().catch(console.error);
 }

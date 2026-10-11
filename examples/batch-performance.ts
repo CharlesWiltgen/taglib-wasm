@@ -13,6 +13,7 @@ import {
   readTagsBatch,
   scanFolder,
 } from "../src/index.ts";
+import { isMainModule } from "./common/is-main.ts";
 
 // Helper to format duration
 function formatDuration(ms: number): string {
@@ -190,6 +191,6 @@ async function main() {
 }
 
 // Run the example
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   main().catch(console.error);
 }

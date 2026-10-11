@@ -20,6 +20,7 @@
 
 import { TagLib } from "../../src/index.ts";
 import { METADATA_MAPPINGS } from "../../src/types.ts";
+import { isMainModule } from "./is-main.ts";
 
 async function demonstrateReplayGainAndSoundCheck() {
   console.log("🔊 TagLib-Wasm - ReplayGain & Apple Sound Check Example");
@@ -259,7 +260,7 @@ function showNormalizationMappingTable() {
 }
 
 // Run the examples
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   await demonstrateReplayGainAndSoundCheck();
   showNormalizationMappingTable();
 }

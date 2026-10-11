@@ -4,6 +4,7 @@
 
 // For local development:
 import { TagLib } from "../../src/index.ts";
+import { isMainModule } from "../common/is-main.ts";
 
 // When using the published package:
 // import { TagLib } from "npm:taglib-wasm";
@@ -53,6 +54,6 @@ async function main() {
   }
 }
 
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   await main();
 }

@@ -12,6 +12,7 @@
  */
 
 import { initializeForDenoCompile, readTags } from "npm:taglib-wasm";
+import { isMainModule } from "../common/is-main.ts";
 
 async function main() {
   const args = Deno.args;
@@ -60,6 +61,6 @@ async function main() {
   }
 }
 
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   main();
 }

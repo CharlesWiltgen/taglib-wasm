@@ -21,6 +21,7 @@
  */
 
 import { TagLib } from "../src/taglib.ts";
+import { isMainModule } from "./common/is-main.ts";
 
 async function analyzeAudioFile(filePath: string) {
   console.log(`\n🎵 Analyzing: ${filePath}`);
@@ -147,7 +148,7 @@ async function analyzeAudioFile(filePath: string) {
 }
 
 // Main execution
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   const args = Deno.args;
 
   if (args.length === 0) {

@@ -17,6 +17,7 @@ import {
   TagLib,
   Tags,
 } from "../../src/index.ts";
+import { isMainModule } from "./is-main.ts";
 
 async function demonstrateEnhancedProperties() {
   console.log("🎵 TagLib-Wasm - Enhanced Property System Example");
@@ -176,6 +177,6 @@ async function demonstrateEnhancedProperties() {
 }
 
 // Run the example
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   await demonstrateEnhancedProperties();
 }

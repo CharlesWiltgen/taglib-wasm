@@ -16,6 +16,7 @@ import {
   readTags,
   TagLib,
 } from "../../src/index.ts";
+import { isMainModule } from "../common/is-main.ts";
 
 // Configuration from environment
 const USE_EMBEDDED = Deno.env.get("USE_EMBEDDED_WASM") === "true";
@@ -206,7 +207,7 @@ async function main() {
 }
 
 // Run the application
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   await main();
 }
 

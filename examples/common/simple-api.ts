@@ -18,6 +18,7 @@ import {
 
 // For go-taglib style constants
 import * as taglib from "../../src/simple/index.ts";
+import { isMainModule } from "./is-main.ts";
 
 async function demonstrateSimpleAPI() {
   console.log("🎵 TagLib-Wasm - Simple API Examples");
@@ -195,7 +196,7 @@ async function demonstrateRealWorldUsage() {
 }
 
 // Run all examples
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   await demonstrateSimpleAPI();
   await demonstrateBatchProcessing();
   await demonstrateRealWorldUsage();

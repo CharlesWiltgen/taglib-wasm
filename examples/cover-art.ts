@@ -34,6 +34,7 @@ import {
   importCoverArt,
   loadPictureFromFile,
 } from "../src/file-utils/index.ts";
+import { isMainModule } from "./common/is-main.ts";
 
 // Helper to load an image file
 async function loadImage(path: string): Promise<Uint8Array> {
@@ -422,7 +423,7 @@ async function coverArtQualityCheck(audioFile: string) {
 }
 
 // Run examples
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   try {
     // Basic examples
     await extractCoverArt();

@@ -9,6 +9,7 @@
  */
 
 import { readTags, TagLib } from "../../src/index.ts";
+import { isMainModule } from "../common/is-main.ts";
 
 // Create a test WAV file with minimal valid header
 function createTestWav(): Uint8Array {
@@ -135,6 +136,6 @@ async function main() {
   }
 }
 
-if (import.meta.main) {
+if (isMainModule(import.meta)) {
   await main();
 }
