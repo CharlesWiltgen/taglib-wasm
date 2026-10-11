@@ -46,6 +46,11 @@ concurrency:
 # skip every leg in that state, which left the gap unfillable and the tag
 # uncreatable.
 #
+# A version every destination already carries but that was never tagged is not
+# covered by a fresh dispatch — the gate finds nothing to publish, so finalize
+# is skipped; recovery there is `gh run rerun --failed` on the run that
+# published it, which reuses its prepare-and-build outputs.
+#
 # CI gate: release-safe.sh already waits for ci.yml to pass before dispatching.
 # The wait step here is belt-and-suspenders for the workflow_dispatch path and
 # for direct release edits — it uses scripts/wait-for-ci.sh with per-leg
@@ -203,15 +208,15 @@ jobs:
           JSR_MISSING=true
           GITHUB_MISSING=true
 
-          NPM_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+          NPM_CODE=$(curl -s --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' \
             "https://registry.npmjs.org/taglib-wasm/${VERSION}" || echo 000)
           if [ "$NPM_CODE" = "200" ]; then NPM_MISSING=false; fi
 
-          JSR_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+          JSR_CODE=$(curl -s --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' \
             "https://jsr.io/@charlesw/taglib-wasm/${VERSION}_meta.json" || echo 000)
           if [ "$JSR_CODE" = "200" ]; then JSR_MISSING=false; fi
 
-          GITHUB_CODE=$(curl -s -o /tmp/gh-pkg.json -w '%{http_code}' \
+          GITHUB_CODE=$(curl -s --connect-timeout 10 --max-time 30 -o /tmp/gh-pkg.json -w '%{http_code}' \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H 'Accept: application/vnd.npm.install-v1+json' \
             "https://npm.pkg.github.com/@charleswiltgen%2Ftaglib-wasm" || echo 000)
@@ -382,7 +387,11 @@ jobs:
   verify-jsr:
     name: Verify published JSR package
     needs: [prepare-and-build, publish-jsr]
-    if: needs.prepare-and-build.outputs.should-publish == 'true'
+    # Verify only a JSR leg that succeeded this run: after a failed publish the
+    # import would target a version that is not there, burning the retry
+    # budget and reporting a misleading failure (finalize already blocks the
+    # tag either way).
+    if: needs.prepare-and-build.outputs.should-publish == 'true' && needs.publish-jsr.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: denoland/setup-deno@v2
