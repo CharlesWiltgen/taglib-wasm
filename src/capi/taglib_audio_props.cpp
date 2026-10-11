@@ -169,9 +169,27 @@ ExtendedAudioInfo get_extended_audio_info(
     if (auto* f = dynamic_cast<TagLib::RIFF::WAV::File*>(file)) {
         auto* props = f->audioProperties();
         if (props) info.bitsPerSample = props->bitsPerSample();
-        info.codec = "PCM";
+        // Three-way codec mapping and the lossless flag that follows it, exactly
+        // as the Emscripten binding reports both (build/taglib_embind.cpp: the
+        // WAV branch maps the RIFF format code 1/3/other, and its codec-name
+        // isLossless rule treats PCM and IEEEFloat as lossless, "WAV" as lossy).
+        // Keep both backends in sync (taglib-e2cg).
+        unsigned int format = 0;
+        if (auto* wavProps =
+                dynamic_cast<TagLib::RIFF::WAV::Properties*>(props)) {
+            format = wavProps->format();
+        }
+        if (format == 1) {
+            info.codec = "PCM";
+            info.isLossless = true;
+        } else if (format == 3) {
+            info.codec = "IEEEFloat";
+            info.isLossless = true;
+        } else {
+            info.codec = "WAV";
+            info.isLossless = false;
+        }
         info.container = "WAV";
-        info.isLossless = true;
         return info;
     }
 

@@ -75,6 +75,12 @@
   whose C++ properties carry the flag cannot be silently dropped by the TS
   side (taglib-rcz).
 
+- **WAV files report their real codec on the WASI backend.** The WASI shim
+  hardcoded `PCM` and lossless for every WAV; it now maps the RIFF format code
+  the way Emscripten does — `IEEEFloat` for float WAVs, `WAV` for anything
+  else — and derives `isLossless` from the codec, so an A-law WAV no longer
+  claims to be lossless (taglib-e2cg).
+
 ## 2.3.1
 
 ### Changed
