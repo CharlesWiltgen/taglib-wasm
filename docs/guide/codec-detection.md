@@ -96,10 +96,7 @@ The `codec` field returns a string identifying the audio codec:
 - **FLAC files**: `"FLAC"`
 - **OGG files**: `"Vorbis"`, `"Opus"`, `"FLAC"` (FLAC-in-Ogg), or `"Speex"`
 - **WAV files**: `"PCM"` (format 1), `"IEEEFloat"` (format 3), or `"WAV"` for
-  other codecs — note the three-way answer is Emscripten-only. The WASI shim
-  reports `"PCM"` for every WAV regardless of its format chunk, so a
-  floating-point WAV is indistinguishable from integer PCM there
-  (taglib-e2cg).
+  other codecs, identically on both backends (taglib-e2cg).
 - **AIFF files**: `"PCM"`
 - **Unclassified**: `"unknown"`
 
