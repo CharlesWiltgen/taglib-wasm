@@ -2,17 +2,6 @@
 
 ## 2.4.0
 
-### Added
-
-- **JSR distribution is restored.** `deno publish` ships
-  `@charlesw/taglib-wasm` again: the `publish-jsr` (OIDC-authenticated) and
-  `verify-jsr` legs return to `publish-everywhere.yml`, and a new `jsr.json`
-  declares the package for the current layout. Deno can install from JSR
-  (`jsr:@charlesw/taglib-wasm`) or from npm (`npm:taglib-wasm`); every release
-  publishes both. `scripts/check-jsr-package-files.sh` pins the exact file set
-  the publish ships — the 2.3.0 JSR package had leaked `.claude/**`, repo
-  dotfiles and `src/**.test.ts`.
-
 ### Changed
 
 - **pnpm replaces npm as the package manager.** `package.json` now pins
