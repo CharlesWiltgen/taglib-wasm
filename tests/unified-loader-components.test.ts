@@ -33,31 +33,19 @@ const createMockWasiExports = (
 // and check behavior rather than testing internals directly
 
 describe("UnifiedLoaderComponents", () => {
-  it("WASI capability validation - should fallback gracefully", async () => {
-    // Test that the unified loader falls back to Emscripten when WASI is unavailable
-    try {
-      const { loadUnifiedTagLibModule } =
-        await import("../src/runtime/unified-loader/index.ts");
+  it("loads the WASI backend in a Node environment", async () => {
+    const { loadUnifiedTagLibModule } =
+      await import("../src/runtime/unified-loader/index.ts");
 
-      // Should fallback to Emscripten, not throw
-      const module = await loadUnifiedTagLibModule();
+    // Auto mode loads the WASI backend here — it is not a fallback case.
+    // This used to assert an Emscripten fallback inside a try/catch that
+    // swallowed every failure, so it passed whatever the loader did.
+    const module = await loadUnifiedTagLibModule();
 
-      expect(module).not.toBeNull();
-      expect(module).toBeDefined();
-      expect(module.runtime).not.toBeNull();
-      expect(module.runtime).toBeDefined();
-
-      // Should have detected our environment correctly
-      expect(module.runtime.environment).toStrictEqual("node-wasi");
-
-      // Should have fallen back to Emscripten due to missing WASI binary
-      expect(module.isEmscripten).toStrictEqual(true);
-      expect(module.isWasi).toStrictEqual(false);
-
-      console.log("✅ WASI unavailable correctly falls back to Emscripten");
-    } catch (error) {
-      console.log(`⚠️  Test skipped (expected without build): ${error}`);
-    }
+    expect(module.runtime.environment).toStrictEqual("node-wasi");
+    expect(module.isWasi).toStrictEqual(true);
+    expect(module.isEmscripten).toStrictEqual(false);
+    expect(typeof module.createFileHandle).toStrictEqual("function");
   });
 
   it("WASI memory manager - should fail fast without memory", () => {
@@ -77,34 +65,15 @@ describe("UnifiedLoaderComponents", () => {
     console.log("✅ Memory manager correctly fails fast without WASI memory");
   });
 
-  it("File handle factory - graceful fallback behavior", async () => {
-    try {
-      const { loadUnifiedTagLibModule } =
-        await import("../src/runtime/unified-loader/index.ts");
+  it("File handle factory - provides a usable handle", async () => {
+    const { loadUnifiedTagLibModule } =
+      await import("../src/runtime/unified-loader/index.ts");
 
-      // Load module (will fallback to Emscripten)
-      const module = await loadUnifiedTagLibModule();
+    const module = await loadUnifiedTagLibModule();
+    const fileHandle = module.createFileHandle();
 
-      // Should have valid module with createFileHandle
-      expect(module).not.toBeNull();
-      expect(module).toBeDefined();
-      expect(module.createFileHandle).not.toBeNull();
-      expect(module.createFileHandle).toBeDefined();
-
-      // Since it fell back to Emscripten, createFileHandle should work
-      const fileHandle = module.createFileHandle();
-      expect(fileHandle).not.toBeNull();
-      expect(fileHandle).toBeDefined();
-      expect(fileHandle.loadFromBuffer).not.toBeNull();
-      expect(fileHandle.loadFromBuffer).toBeDefined();
-
-      console.log(
-        "✅ File handle factory works correctly with Emscripten fallback",
-      );
-    } catch (error) {
-      // If no build is available, that's expected
-      console.log(`⚠️  Test skipped (expected without build): ${error}`);
-    }
+    expect(typeof fileHandle.loadFromBuffer).toStrictEqual("function");
+    expect(typeof fileHandle.isValid).toStrictEqual("function");
   });
 
   it("File handle operations - fail fast instead of fake success", async () => {
@@ -293,38 +262,17 @@ describe("UnifiedLoaderComponents", () => {
     console.log("✅ All error messages are descriptive and actionable");
   });
 
-  it("Module loading fallback works correctly", async () => {
-    try {
-      const { loadUnifiedTagLibModule } =
-        await import("../src/runtime/unified-loader/index.ts");
+  it("Module loading works in auto mode", async () => {
+    const { loadUnifiedTagLibModule } =
+      await import("../src/runtime/unified-loader/index.ts");
 
-      // Test that WASI failure falls back to Emscripten
-      const module = await loadUnifiedTagLibModule();
+    const module = await loadUnifiedTagLibModule();
 
-      // Should have loaded something (either WASI or Emscripten fallback)
-      expect(module).not.toBeNull();
-      expect(module).toBeDefined();
-
-      // Should have the expected interface
-      expect(module.runtime).not.toBeNull();
-      expect(module.runtime).toBeDefined();
-      expect(typeof module.isWasi).toStrictEqual("boolean");
-      expect(typeof module.isEmscripten).toStrictEqual("boolean");
-
-      // Should have fallen back to Emscripten (since no WASI binary available)
-      expect(module.isEmscripten).toStrictEqual(true);
-      expect(module.isWasi).toStrictEqual(false);
-
-      console.log(
-        `✅ Module loading works: ${
-          module.isWasi ? "WASI" : "Emscripten"
-        } mode`,
-      );
-    } catch (error) {
-      console.log(
-        `⚠️  Module loading test skipped (expected without build): ${error}`,
-      );
-    }
+    expect(typeof module.isWasi).toStrictEqual("boolean");
+    expect(typeof module.isEmscripten).toStrictEqual("boolean");
+    // Auto mode in this environment loads the WASI backend.
+    expect(module.isWasi).toStrictEqual(true);
+    expect(module.isEmscripten).toStrictEqual(false);
   });
 
   it("Memory cleanup works correctly", () => {

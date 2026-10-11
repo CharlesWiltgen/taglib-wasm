@@ -53,84 +53,44 @@ describe("Runtime detection", () => {
 
 describe("Unified loader", () => {
   it("auto-detects optimal implementation", async () => {
-    try {
-      const module = await loadUnifiedTagLibModule();
+    const module = await loadUnifiedTagLibModule();
 
-      expect(module).not.toBeNull();
-      expect(module).toBeDefined();
-      expect(module.runtime).not.toBeNull();
-      expect(module.runtime).toBeDefined();
-      expect(typeof module.isWasi).toStrictEqual("boolean");
-      expect(typeof module.isEmscripten).toStrictEqual("boolean");
+    expect(module.isWasi).toStrictEqual(true);
+    expect(module.isEmscripten).toStrictEqual(false);
+    expect(module.runtime.environment).toStrictEqual("node-wasi");
 
-      expect(module.isWasi).toStrictEqual(true);
-      expect(module.isEmscripten).toStrictEqual(false);
-      expect(module.runtime.environment).toStrictEqual("node-wasi");
-
-      if (module.getPerformanceMetrics) {
-        const metrics = module.getPerformanceMetrics();
-        expect(typeof metrics.initTime).toStrictEqual("number");
-        expect(metrics.wasmType).toStrictEqual("wasi");
-        expect(metrics.environment).toStrictEqual("node-wasi");
-      }
-
-      console.log(
-        `Loaded unified module: ${module.isWasi ? "WASI" : "Emscripten"}`,
-      );
-    } catch (error) {
-      console.warn(`Unified loader test skipped due to error: ${error}`);
-    }
+    const metrics = module.getPerformanceMetrics();
+    expect(typeof metrics.initTime).toStrictEqual("number");
+    expect(metrics.wasmType).toStrictEqual("wasi");
+    expect(metrics.environment).toStrictEqual("node-wasi");
   });
 
   it("supports forced Emscripten mode", async () => {
-    try {
-      const module = await loadUnifiedTagLibModule({
-        forceWasmType: "emscripten",
-      });
+    const module = await loadUnifiedTagLibModule({
+      forceWasmType: "emscripten",
+    });
 
-      expect(module).not.toBeNull();
-      expect(module).toBeDefined();
-      expect(module.isWasi).toStrictEqual(false);
-      expect(module.isEmscripten).toStrictEqual(true);
-
-      console.log(`Forced Emscripten mode: ${module.isEmscripten}`);
-    } catch (error) {
-      console.warn(`Forced Emscripten test skipped due to error: ${error}`);
-    }
+    expect(module.isWasi).toStrictEqual(false);
+    expect(module.isEmscripten).toStrictEqual(true);
   });
 
   it("compares performance between implementations", async () => {
-    try {
-      const startWasi = performance.now();
-      const wasiModule = await loadUnifiedTagLibModule({
-        forceWasmType: "wasi",
-      });
-      const wasiTime = performance.now() - startWasi;
+    const startWasi = performance.now();
+    const wasiModule = await loadUnifiedTagLibModule({
+      forceWasmType: "wasi",
+    });
+    const wasiTime = performance.now() - startWasi;
 
-      const startEmscripten = performance.now();
-      const emscriptenModule = await loadUnifiedTagLibModule({
-        forceWasmType: "emscripten",
-      });
-      const emscriptenTime = performance.now() - startEmscripten;
+    const startEmscripten = performance.now();
+    const emscriptenModule = await loadUnifiedTagLibModule({
+      forceWasmType: "emscripten",
+    });
+    const emscriptenTime = performance.now() - startEmscripten;
 
-      console.log(`WASI init time: ${wasiTime.toFixed(2)}ms`);
-      console.log(`Emscripten init time: ${emscriptenTime.toFixed(2)}ms`);
-
-      expect(wasiTime < 1000).toBeTruthy();
-      expect(emscriptenTime < 1000).toBeTruthy();
-
-      if (wasiModule.getPerformanceMetrics) {
-        console.log("WASI metrics:", wasiModule.getPerformanceMetrics());
-      }
-      if (emscriptenModule.getPerformanceMetrics) {
-        console.log(
-          "Emscripten metrics:",
-          emscriptenModule.getPerformanceMetrics(),
-        );
-      }
-    } catch (error) {
-      console.warn(`Performance comparison skipped due to error: ${error}`);
-    }
+    expect(wasiTime < 1000).toBeTruthy();
+    expect(emscriptenTime < 1000).toBeTruthy();
+    expect(wasiModule.isWasi).toStrictEqual(true);
+    expect(emscriptenModule.isEmscripten).toStrictEqual(true);
   });
 
   it("selects Emscripten deterministically when wasmBinary is supplied in auto mode (taglib-pbz)", async () => {
@@ -203,85 +163,43 @@ describe("Main API", () => {
   });
 
   it("maintains backward compatibility with auto-selection", async () => {
-    try {
-      const module = await loadTagLibModule();
+    const module = await loadTagLibModule();
 
-      expect(module).not.toBeNull();
-      expect(module).toBeDefined();
-      expect(module.createFileHandle).not.toBeNull();
-      expect(module.createFileHandle).toBeDefined();
-
-      const fileHandle = module.createFileHandle();
-      expect(fileHandle).not.toBeNull();
-      expect(fileHandle).toBeDefined();
-      expect(fileHandle.loadFromBuffer).not.toBeNull();
-      expect(fileHandle.loadFromBuffer).toBeDefined();
-      expect(fileHandle.isValid).not.toBeNull();
-      expect(fileHandle.isValid).toBeDefined();
-
-      console.log("Main API backward compatibility verified");
-    } catch (error) {
-      console.warn(`Main API test skipped due to error: ${error}`);
-    }
+    const fileHandle = module.createFileHandle();
+    expect(typeof fileHandle.loadFromBuffer).toStrictEqual("function");
+    expect(typeof fileHandle.isValid).toStrictEqual("function");
+    expect(module.isWasi).toStrictEqual(true);
   });
 
   it("supports buffer mode", async () => {
-    try {
-      const module = await loadTagLibModule({ forceWasmType: "emscripten" });
+    const module = await loadTagLibModule({ forceWasmType: "emscripten" });
 
-      expect(module).not.toBeNull();
-      expect(module).toBeDefined();
-      expect(module.createFileHandle).not.toBeNull();
-      expect(module.createFileHandle).toBeDefined();
-
-      expect("runtime" in module).toStrictEqual(false);
-      expect("isWasi" in module).toStrictEqual(false);
-      expect("isEmscripten" in module).toStrictEqual(false);
-
-      console.log("Buffer mode compatibility verified");
-    } catch (error) {
-      console.warn(`Buffer mode test skipped due to error: ${error}`);
-    }
+    expect("runtime" in module).toStrictEqual(false);
+    expect("isWasi" in module).toStrictEqual(false);
+    expect("isEmscripten" in module).toStrictEqual(false);
+    expect(typeof module.createFileHandle).toStrictEqual("function");
   });
 });
 
 describe("TagLib.initialize", () => {
   it("works with unified loader", async () => {
-    try {
-      const taglib = await TagLib.initialize();
+    const taglib = await TagLib.initialize();
 
-      expect(taglib).not.toBeNull();
-      expect(taglib).toBeDefined();
-      expect(typeof taglib.version).toStrictEqual("function");
-      expect(
-        /^\d+\.\d+\.\d+\S* \(TagLib \d+\.\d+\.\d+\)$/.test(taglib.version()),
-      ).toBeTruthy();
-
-      console.log(`TagLib.initialize works, version: ${taglib.version()}`);
-    } catch (error) {
-      console.warn(`TagLib.initialize test skipped due to error: ${error}`);
-    }
+    expect(typeof taglib.version).toStrictEqual("function");
+    expect(
+      /^\d+\.\d+\.\d+\S* \(TagLib \d+\.\d+\.\d+\)$/.test(taglib.version()),
+    ).toBeTruthy();
   });
 
   it("works with options", async () => {
-    try {
-      const taglib1 = await TagLib.initialize({ forceWasmType: "wasi" });
-      expect(taglib1).not.toBeNull();
-      expect(taglib1).toBeDefined();
+    const taglib1 = await TagLib.initialize({ forceWasmType: "wasi" });
+    const taglib2 = await TagLib.initialize({ forceWasmType: "emscripten" });
+    const taglib3 = await TagLib.initialize({ disableOptimizations: true });
 
-      const taglib2 = await TagLib.initialize({ forceWasmType: "emscripten" });
-      expect(taglib2).not.toBeNull();
-      expect(taglib2).toBeDefined();
-
-      const taglib3 = await TagLib.initialize({ disableOptimizations: true });
-      expect(taglib3).not.toBeNull();
-      expect(taglib3).toBeDefined();
-
-      console.log("TagLib.initialize with options works");
-    } catch (error) {
-      console.warn(
-        `TagLib.initialize options test skipped due to error: ${error}`,
-      );
+    for (const taglib of [taglib1, taglib2, taglib3]) {
+      expect(
+        /^\d+\.\d+\.\d+\S* \(TagLib \d+\.\d+\.\d+\)$/.test(taglib.version()),
+      ).toBeTruthy();
     }
   });
 
