@@ -69,6 +69,12 @@
   now; verified by compiling a probe against Deno 2.9.6 (the binary reports
   `true`, `deno run` still reports `false`) (taglib-d6bs).
 
+- **`isEncrypted` is no longer gated on a hardcoded MP4/ASF list.** Both
+  adapters pass a reported value through for any container — MP4/ASF keep
+  defaulting to `false` when the parse did not set the flag — so a format
+  whose C++ properties carry the flag cannot be silently dropped by the TS
+  side (taglib-rcz).
+
 ## 2.3.1
 
 ### Changed

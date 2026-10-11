@@ -195,7 +195,11 @@ export interface AudioProperties {
   readonly mpegVersion?: number;
   /** MPEG layer (1, 2, or 3, MP3 only) */
   readonly mpegLayer?: number;
-  /** Whether the audio is DRM-encrypted (MP4, ASF) */
+  /**
+   * Whether the audio is DRM-encrypted. Reported for every format whose
+   * container carries the flag (MP4 and ASF always report it; elsewhere it is
+   * absent unless the format supports it).
+   */
   readonly isEncrypted?: boolean;
   /** Format-specific version number (APE, WavPack, TTA, etc.) */
   readonly formatVersion?: number;

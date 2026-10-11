@@ -204,6 +204,10 @@ export function wrapEmbindHandle(raw: EmbindFileHandle): WasmFileHandle {
       const mpegVersion = pw.mpegVersion();
       const formatVersion = pw.formatVersion();
       const bitrateMode = pw.bitrateMode();
+      // isEncrypted: true is reported only for formats whose properties carry
+      // the flag, so pass it through whatever the container; MP4/ASF always
+      // report it, defaulting to false (taglib-rcz).
+      const isEncrypted = pw.isEncrypted();
       return {
         duration: pw.lengthInSeconds(),
         durationMs: pw.lengthInMilliseconds(),
@@ -215,8 +219,10 @@ export function wrapEmbindHandle(raw: EmbindFileHandle): WasmFileHandle {
         containerFormat,
         isLossless: pw.isLossless(),
         ...(mpegVersion > 0 ? { mpegVersion, mpegLayer: pw.mpegLayer() } : {}),
-        ...(containerFormat === "MP4" || containerFormat === "ASF"
-          ? { isEncrypted: pw.isEncrypted() }
+        ...(isEncrypted ||
+        containerFormat === "MP4" ||
+        containerFormat === "ASF"
+          ? { isEncrypted }
           : {}),
         ...(formatVersion > 0 ? { formatVersion } : {}),
         ...(isValidBitrateMode(bitrateMode) ? { bitrateMode } : {}),
