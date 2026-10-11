@@ -65,9 +65,11 @@
   `deno-compile-<name>` temporary directory, not the `deno-compile://` scheme
   older releases used, so the predicate answered false: the automatic
   embedded-Wasm search never ran and `initializeForDenoCompile()`'s
-  explicit-path strategies were unreachable no-ops. Both forms are recognized
-  now; verified by compiling a probe against Deno 2.9.6 (the binary reports
-  `true`, `deno run` still reports `false`) (taglib-d6bs).
+  explicit-path strategies were unreachable no-ops. Detection now defers to
+  Deno's own `Deno.build.standalone` flag (with the two main-module forms as
+  the fallback), so a path that merely contains a `deno-compile-` directory
+  no longer counts; verified by compiling a probe against Deno 2.9.6 (the
+  binary reports `true`, `deno run` still reports `false`) (taglib-d6bs).
 
 - **`isEncrypted` is no longer gated on a hardcoded MP4/ASF list.** Both
   adapters pass a reported value through for any container — MP4/ASF keep
@@ -77,8 +79,8 @@
 
 - **WAV files report their real codec on the WASI backend.** The WASI shim
   hardcoded `PCM` and lossless for every WAV; it now maps the RIFF format code
-  the way Emscripten does — `IEEEFloat` for float WAVs, `WAV` for anything
-  else — and derives `isLossless` from the codec, so an A-law WAV no longer
+  the way Emscripten does — `PCM` (format 1) and `IEEEFloat` (format 3) stay
+  lossless, anything else reports `WAV` and lossy — so an A-law WAV no longer
   claims to be lossless (taglib-e2cg).
 
 ## 2.3.1
