@@ -1,6 +1,7 @@
 import type { AudioFile } from "../taglib/audio-file-interface.ts";
 import type { AudioFileInput, OpenOptions } from "../types.ts";
 import { FileOperationError, InvalidFormatError } from "../errors.ts";
+import { readFileData } from "../utils/file.ts";
 import { getTagLib } from "./config.ts";
 
 export async function withAudioFile<T>(
@@ -26,8 +27,13 @@ export async function withAudioFileSave(
   file: AudioFileInput,
   fn: (audioFile: AudioFile) => void,
 ): Promise<Uint8Array> {
+  // A path is an input here, never a write target (taglib-chrs): these writers
+  // promise the modified buffer and nothing else, while a path-mode handle
+  // makes save() reach writeTagsToWasmPath and rewrite the caller's file. The
+  // disk surfaces are applyTagsToFile and the batch writers.
+  const input = typeof file === "string" ? await readFileData(file) : file;
   return withAudioFile(
-    file,
+    input,
     (audioFile) => {
       fn(audioFile);
       if (!audioFile.save()) {

@@ -103,6 +103,18 @@ Simple API batch layer) are pinned by looped-backend suites in `tests/`:
   concurrency > 1, raw wire-key `properties` (multi-value), empty-array
   removal without carrier, PUBLISHER+LABEL pair, combined tags+properties;
   both `[wasi]` and `[emscripten]` suites via `setBufferMode`.
+- `tests/simple-write-contract.test.ts` (taglib-chrs) — the byte-returning
+  writers (`applyTags`, `clearTags`) treat a path as an input: the file on disk
+  stays byte-identical, the tagged bytes are the return value, and
+  `applyTagsToFile` remains the writing surface; both backends, WASI is the
+  guard and emscripten the baseline.
+
+**Pitfall: a `setBufferMode` call at describe scope is collected before any
+test runs, so the last one wins for the whole file** — a `[wasi]` suite written
+that way silently runs on emscripten (found in `tests/simple-write-contract.ts`
+during taglib-chrs: the WASI guard passed vacuously). Call it in the suite's
+`beforeAll`, and assert the loaded backend (`module.isWasi`) so the suite can
+only cover what its name claims.
 
 ## Parity gaps (filed as sub-issues of taglib-7ek)
 

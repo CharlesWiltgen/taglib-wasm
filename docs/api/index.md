@@ -109,7 +109,9 @@ const tagsFromFile = await readTags(file);
 
 ### applyTags()
 
-Apply metadata tags to an audio file and return the modified buffer.
+Apply metadata tags to an audio file and return the modified buffer. The input
+file is not modified — a path is read, not written; use
+[`applyTagsToFile()`](#applytagstofile) to update a file in place.
 
 ```typescript
 function applyTags(

@@ -38,6 +38,10 @@ export async function readTags(
 /**
  * Applies metadata tag changes to an audio file and returns the modified content as a buffer.
  *
+ * The input is read, never written: a path is only where the bytes come from,
+ * so the file on disk is left untouched. Use {@link applyTagsToFile} for an
+ * in-place update.
+ *
  * @param file - File path, Uint8Array, ArrayBuffer, or File object
  * @param tags - Partial tag fields to merge with existing metadata
  * @returns Modified audio file contents with updated tags
@@ -150,6 +154,9 @@ export async function readFormat(
 
 /**
  * Removes all metadata tags and pictures from an audio file and returns the stripped content.
+ *
+ * The input is read, never written: a path is only where the bytes come from,
+ * so the file on disk is left untouched.
  *
  * @param file - File path, Uint8Array, ArrayBuffer, or File object
  * @returns Modified audio file contents with all tags and pictures cleared
