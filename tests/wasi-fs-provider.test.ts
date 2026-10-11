@@ -127,11 +127,16 @@ function runProviderTests(
 
     it("should identify not-found errors", async () => {
       const fs = await getProvider();
+      let threw = false;
       try {
         fs.openSync("/nonexistent/path/file.txt", { read: true, write: false });
       } catch (e) {
+        threw = true;
         expect(fs.isNotFoundError(e)).toStrictEqual(true);
       }
+      // Without this the case passed vacuously whenever openSync did not
+      // throw: the only assertion lived inside the catch (taglib-xh2s.10).
+      expect(threw).toStrictEqual(true);
     });
 
     it("should not misidentify other errors as not-found", async () => {
