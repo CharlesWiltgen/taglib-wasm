@@ -21,7 +21,7 @@ import type { AudioProperties } from "../src/types.ts";
 
 function wasiMapping(
   containerFormat: string,
-  encrypted: true | undefined,
+  encrypted: boolean | undefined,
 ): AudioProperties | null {
   return getAudioProperties({
     length: 1,
@@ -71,7 +71,7 @@ function visible(props: AudioProperties | null): boolean | undefined {
 const scenarios: Array<{
   name: string;
   containerFormat: string;
-  snapshot: true | undefined;
+  snapshot: boolean | undefined;
   wrapper: boolean;
   expected: boolean | undefined;
 }> = [
@@ -107,6 +107,13 @@ const scenarios: Array<{
     name: "WAV without the flag stays absent (never fabricated as false)",
     containerFormat: "WAV",
     snapshot: undefined,
+    wrapper: false,
+    expected: undefined,
+  },
+  {
+    name: "WAV with an explicit false is dropped (both adapters omit it)",
+    containerFormat: "WAV",
+    snapshot: false,
     wrapper: false,
     expected: undefined,
   },

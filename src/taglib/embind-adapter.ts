@@ -206,7 +206,8 @@ export function wrapEmbindHandle(raw: EmbindFileHandle): WasmFileHandle {
       const bitrateMode = pw.bitrateMode();
       // isEncrypted: true is reported only for formats whose properties carry
       // the flag, so pass it through whatever the container; MP4/ASF always
-      // report it, defaulting to false (taglib-rcz).
+      // report it, defaulting to false. The WASI adapter evaluates the same
+      // way (taglib-rcz).
       const isEncrypted = pw.isEncrypted();
       return {
         duration: pw.lengthInSeconds(),

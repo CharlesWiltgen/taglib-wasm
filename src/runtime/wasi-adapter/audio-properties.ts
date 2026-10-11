@@ -78,12 +78,12 @@ export function getAudioProperties(
     ...(mpegVersion > 0
       ? { mpegVersion, mpegLayer: (d.mpegLayer as number) ?? 0 }
       : {}),
-    // isEncrypted: pass a reported value through whatever the container — a
-    // format the C++ populates later must not be dropped by a hardcoded list
-    // here. MP4/ASF always report the flag, so they keep defaulting to false
-    // when the parse did not set it (taglib-rcz).
-    ...(d.isEncrypted !== undefined
-      ? { isEncrypted: d.isEncrypted as boolean }
+    // isEncrypted: include it only when the parse reports true, or default it
+    // for the two formats whose contract carries the flag; an explicit false
+    // from any other format stays absent — the exact evaluation the
+    // Emscripten adapter performs (taglib-rcz).
+    ...(d.isEncrypted === true
+      ? { isEncrypted: true }
       : containerFormat === "MP4" || containerFormat === "ASF"
         ? { isEncrypted: false }
         : {}),
