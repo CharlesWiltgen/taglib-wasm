@@ -303,6 +303,7 @@ jobs:
             build/taglib-web.wasm
             build/taglib-wrapper.js
             build/taglib-wrapper.d.ts
+          retention-days: 1
 
   build-wasi:
     name: Build (WASI)
@@ -425,6 +426,7 @@ jobs:
         with:
           name: wasi-fresh-reference
           path: dist/wasi/taglib-wasi.wasm
+          retention-days: 1
 
       - name: Verify WASI artifacts
         run: |
@@ -438,6 +440,7 @@ jobs:
           name: wasi-build
           path: |
             dist/wasi/
+          retention-days: 1
 
   test:
     name: Test (${{ matrix.os }})
@@ -504,6 +507,7 @@ jobs:
           name: coverage-lcov
           # Vitest's v8/lcov reporter (vite.config.ts) writes this directly.
           path: coverage/lcov.info
+          retention-days: 1
 
   test-wasi:
     name: Test (WASI)
