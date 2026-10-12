@@ -71,6 +71,18 @@ jobs:
         # tests/ and src/ together.
         run: pnpm exec tsc --noEmit -p tsconfig.check.json
 
+      - name: Type check the examples
+        # examples/ is excluded from tsconfig.check.json, so this config is its
+        # only type gate (taglib-1zn1). It joins src/global.d.ts for the Deno
+        # globals and needs the glue wrappers materialized above.
+        run: pnpm exec tsc --noEmit -p tsconfig.examples.json
+
+      - name: Examples gate
+        # Resolution + run + working-tree guard (scripts/check-examples.ts). A
+        # guard that does not run in CI is decoration; the Lint job is the one
+        # non-matrix job, and nothing here is OS-specific.
+        run: pnpm run check:examples
+
       - name: Install ast-grep
         # Global CLI tools stay on npm: npm's global bin dir is on PATH on every
         # runner. pnpm owns the project's dependency graph, not runner tooling.

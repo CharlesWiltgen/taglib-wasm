@@ -20,15 +20,15 @@ demonstrate core functionality:
   Volume normalization metadata
 - **[tag-constants.ts](https://github.com/CharlesWiltgen/TagLib-Wasm/blob/main/examples/common/tag-constants.ts)** -
   Using type-safe property constants
-- **[embind-example.ts](https://github.com/CharlesWiltgen/TagLib-Wasm/blob/main/examples/browser/embind-example.ts)** -
-  Direct usage of the Embind-based low-level API (browser: it fetches its
-  fixture with a relative URL, so serve the repository rather than opening the
-  script from the filesystem)
 
 ### Runtime-Specific Examples
 
 - **[browser/](https://github.com/CharlesWiltgen/TagLib-Wasm/tree/main/examples/browser)** -
   Browser-specific implementations
+- **[embind-example.ts](https://github.com/CharlesWiltgen/TagLib-Wasm/blob/main/examples/browser/embind-example.ts)** -
+  Direct usage of the Embind-based low-level API. Browser-only: it fetches its
+  fixture with a relative URL, so serve the repository rather than opening the
+  script from the filesystem
 - **[top-level scripts](https://github.com/CharlesWiltgen/TagLib-Wasm/tree/main/examples)** -
   Standalone scripts over the repository source (`batch-performance.ts`,
   `folder-operations.ts`, `partial-loading.ts`), run with `deno run`
@@ -70,11 +70,7 @@ deno run --allow-read examples/common/basic-usage.ts
 #### Node.js
 
 ```bash
-# TypeScript files need to be compiled first
-pnpm run build:ts
-node dist/examples/common/basic-usage.js
-
-# Or use tsx for direct execution
+# Run a TypeScript example directly with tsx
 pnpm exec tsx examples/common/basic-usage.ts
 ```
 
