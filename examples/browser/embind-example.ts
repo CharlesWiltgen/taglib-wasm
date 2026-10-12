@@ -112,12 +112,11 @@ async function main() {
   console.log("\n=== Example Complete ===");
 }
 
-// Run the example
-if (typeof window === "undefined") {
-  // Node.js environment
-  main().catch(console.error);
-} else {
-  // Browser environment
+// Run the example. Browser-only: it fetches its fixture with a relative URL, so
+// serve the repository rather than opening this file from disk. Guarded on
+// `window` so importing the module does nothing — the examples gate imports
+// every example, and Node (or Deno, or Bun) has no `window`.
+if (typeof window !== "undefined") {
   globalThis.addEventListener("DOMContentLoaded", () => {
     main().catch(console.error);
   });

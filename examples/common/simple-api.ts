@@ -15,9 +15,7 @@ import {
   readProperties,
   readTags,
 } from "../../src/simple/index.ts";
-
-// For go-taglib style constants
-import * as taglib from "../../src/simple/index.ts";
+import { PROPERTIES } from "../../src/index.ts";
 import { isMainModule } from "./is-main.ts";
 
 async function demonstrateSimpleAPI() {
@@ -34,11 +32,11 @@ async function demonstrateSimpleAPI() {
   console.log("Album:", tags.album);
   console.log("Year:", tags.year);
 
-  // Example 2: Using constants (go-taglib compatibility)
-  console.log("\n📖 Example 2: Using field constants");
-  console.log(`${taglib.Title}:`, tags.title);
-  console.log(`${taglib.Artist}:`, tags.artist);
-  console.log(`${taglib.Album}:`, tags.album);
+  // Example 2: Using type-safe property constants
+  console.log("\n📖 Example 2: Using property constants");
+  console.log(`${PROPERTIES.title.key}:`, tags.title);
+  console.log(`${PROPERTIES.artist.key}:`, tags.artist);
+  console.log(`${PROPERTIES.album.key}:`, tags.album);
 
   // Example 3: Read audio properties
   console.log("\n🎧 Example 3: Reading audio properties");
@@ -113,7 +111,9 @@ async function demonstrateBatchProcessing() {
       console.log(`  Title: "${tags.title || "(none)"}""`);
       console.log(`  Artist: "${tags.artist || "(none)"}""`);
     } catch (error) {
-      console.log(`\n❌ ${file}: ${error.message}`);
+      console.log(
+        `\n❌ ${file}: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 }
@@ -171,7 +171,10 @@ async function demonstrateRealWorldUsage() {
     const result = await processAudioFile(testFile);
     console.log("File processed successfully:", result);
   } catch (error) {
-    console.error("Processing failed:", error.message);
+    console.error(
+      "Processing failed:",
+      error instanceof Error ? error.message : error,
+    );
   }
 
   // Pattern 4: Bulk metadata update
@@ -195,7 +198,9 @@ async function demonstrateRealWorldUsage() {
         `✅ ${file}: ${updated.byteLength} bytes of updated metadata (in memory)`,
       );
     } catch (error) {
-      console.log(`❌ Failed: ${file} - ${error.message}`);
+      console.log(
+        `❌ Failed: ${file} - ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 }

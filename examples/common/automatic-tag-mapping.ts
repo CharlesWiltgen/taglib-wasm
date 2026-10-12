@@ -126,7 +126,7 @@ async function demonstrateAdvancedMetadata() {
     console.log("• Consistent behavior regardless of audio format");
     console.log("• Professional-grade metadata handling");
   } catch (error) {
-    console.error("❌ Error:", error.message);
+    console.error("❌ Error:", error instanceof Error ? error.message : error);
   }
 }
 

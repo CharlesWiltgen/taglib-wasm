@@ -1,0 +1,31 @@
+{
+  // Examples type-check config (taglib-1zn1). examples/ is outside every other
+  // gate: the formatter ignored it (until a staged-file commit passes it), the
+  // build config includes only src/, and tsconfig.check.json excludes it — which
+  // is how four rotted examples went unnoticed in one pass (taglib-wo7z,
+  // taglib-dxnz, and two more). Scripts and docs are not type-checked on purpose;
+  // this config exists for the example surface the docs link by URL.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "emitDeclarationOnly": false,
+    "declaration": false,
+    // tsconfig.json sets rootDir to src/ for the *build*; examples live outside it
+    // and tsc rejects any input outside rootDir (TS6059) even with noEmit.
+    "rootDir": ".",
+    // tsconfig.json sets declarationMap: true; TS5069 rejects a declaration map
+    // without `declaration` (or `composite`), so this override is required.
+    "declarationMap": false,
+    // Examples run on Node 24 / Deno 2 / Bun, not the ES2022 build target.
+    "lib": ["ESNext", "DOM", "ESNext.Disposable"]
+  },
+  // examples import src/, so the imported modules are in this program and need
+  // the Deno global declarations that `src/**` includes carry into the other
+  // configs (taglib-1zn1).
+  "include": [
+    "examples/common/**/*.ts",
+    "examples/browser/**/*.ts",
+    "src/global.d.ts"
+  ],
+  "exclude": ["node_modules", "dist", "lib", "build"]
+}

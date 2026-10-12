@@ -19,9 +19,11 @@ demonstrate core functionality:
 - **[replaygain-soundcheck.ts](https://github.com/CharlesWiltgen/TagLib-Wasm/blob/main/examples/common/replaygain-soundcheck.ts)** -
   Volume normalization metadata
 - **[tag-constants.ts](https://github.com/CharlesWiltgen/TagLib-Wasm/blob/main/examples/common/tag-constants.ts)** -
-  Using type-safe tag constants
-- **[embind-example.ts](https://github.com/CharlesWiltgen/TagLib-Wasm/blob/main/examples/common/embind-example.ts)** -
-  Direct usage of the Embind-based low-level API
+  Using type-safe property constants
+- **[embind-example.ts](https://github.com/CharlesWiltgen/TagLib-Wasm/blob/main/examples/browser/embind-example.ts)** -
+  Direct usage of the Embind-based low-level API (browser: it fetches its
+  fixture with a relative URL, so serve the repository rather than opening the
+  script from the filesystem)
 
 ### Runtime-Specific Examples
 

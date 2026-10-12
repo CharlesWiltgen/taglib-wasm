@@ -174,7 +174,7 @@ async function demonstrateReplayGainAndSoundCheck() {
     console.log("• Apple ecosystem compatibility (Sound Check support)");
     console.log("• Cross-platform audio applications");
   } catch (error) {
-    console.error("❌ Error:", error.message);
+    console.error("❌ Error:", error instanceof Error ? error.message : error);
   }
 }
 

@@ -47,6 +47,9 @@ async function demonstrateBasicUsage() {
     // Step 4: Read audio properties
     console.log("\n🎧 Audio Properties:");
     const props = file.audioProperties();
+    if (!props) {
+      throw new Error("No audio properties in this file");
+    }
     console.log(`  Duration: ${props.duration} seconds`);
     console.log(`  Bitrate: ${props.bitrate} kbps`);
     console.log(`  Sample Rate: ${props.sampleRate} Hz`);
@@ -104,8 +107,8 @@ async function demonstrateBasicUsage() {
 
     console.log("\n🎉 Example completed successfully!");
   } catch (error) {
-    console.error("❌ Error:", error.message);
-    if (error.stack) {
+    console.error("❌ Error:", error instanceof Error ? error.message : error);
+    if (error instanceof Error && error.stack) {
       console.error("Stack trace:", error.stack);
     }
     process.exitCode = 1;
@@ -142,8 +145,10 @@ async function demonstrateBatchProcessing() {
 
           console.log(`✅ ${filePath}:`);
           console.log(`   Format: ${format || "Unknown"}`);
-          console.log(`   Duration: ${props.duration}s`);
-          console.log(`   Bitrate: ${props.bitrate} kbps`);
+          if (props) {
+            console.log(`   Duration: ${props.duration}s`);
+            console.log(`   Bitrate: ${props.bitrate} kbps`);
+          }
           console.log(`   Title: "${tags.title || "(none)"}"`);
 
           file.dispose();
@@ -151,14 +156,19 @@ async function demonstrateBatchProcessing() {
           console.log(`❌ ${filePath}: Invalid file`);
         }
       } catch (error) {
-        console.log(`❌ ${filePath}: ${error.message}`);
+        console.log(
+          `❌ ${filePath}: ${error instanceof Error ? error.message : error}`,
+        );
       }
       console.log();
     }
 
     console.log("🎉 Batch processing completed!");
   } catch (error) {
-    console.error("❌ Batch processing error:", error.message);
+    console.error(
+      "❌ Batch processing error:",
+      error instanceof Error ? error.message : error,
+    );
   }
 }
 
