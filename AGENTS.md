@@ -660,6 +660,17 @@ runs the artifact probes (both wasm backends under Node, plus path-mode reads an
 the shipped-Wasm resolver under Deno); the Publish workflow runs it on
 `publish-dir` _before_ the PUT and again from the registry afterwards.
 
+**The action artifacts are hand-offs, so they expire in a day.** Every
+`upload-artifact` step in `ci.yml` sets `retention-days: 1`: `embind-build`,
+`wasi-build` and `wasi-fresh-reference` are consumed by jobs in the same run
+(`download-artifact`), and `coverage-lcov` exists for a human download —
+SonarCloud computes its own lcov. Published bytes ship through npm/JSR/GitHub
+Releases, not through these, and the 90-day default had left 837 artifacts
+(476 MB) of superseded builds behind by 2026-10-12. A day covers the hand-off
+and a same-day rerun. `retention-days` is an `upload-artifact` input, not a
+workflow-level key — at the top level GitHub fails the workflow's validation
+run with no jobs and no logs, which reads as an unexplained red X.
+
 **One test suite.** `pnpm exec vp test` covers all 97 test files under `tests/`
 and `src/`. The only exclusions are `tests/bun-integration.test.ts` (registered
 with `bun:test`, run via `pnpm run test:bun`), `tests/cross-runtime/**` (run
