@@ -37,7 +37,8 @@
     "dist/**/*",
     "README.md",
     "LICENSE",
-    "NOTICE"
+    "NOTICE",
+    "legal/COPYING.LGPL"
   ],
   "type": "module",
   "sideEffects": false,

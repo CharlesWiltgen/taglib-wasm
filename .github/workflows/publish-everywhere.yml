@@ -314,6 +314,7 @@ jobs:
             README.md
             LICENSE
             NOTICE
+            legal/
           retention-days: 1
 
   publish-jsr:
@@ -460,6 +461,7 @@ jobs:
           mkdir -p publish-dir
           cp -r dist publish-dir/
           cp package.json README.md LICENSE NOTICE publish-dir/
+          cp -r legal publish-dir/
           cd publish-dir
           echo "Contents of publish directory:"
           ls -la
@@ -629,6 +631,7 @@ jobs:
           mkdir -p publish-dir
           cp -r dist publish-dir/
           cp package.json README.md LICENSE NOTICE publish-dir/
+          cp -r legal publish-dir/
 
       - name: Update package.json for GitHub
         run: |

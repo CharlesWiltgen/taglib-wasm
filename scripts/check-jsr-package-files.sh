@@ -39,6 +39,7 @@ STRAY="$(printf '%s\n' "$FILES" | while IFS= read -r f; do
     *.test.ts) echo "$f" ;;
     src/*) ;;
     jsr.json | README.md | LICENSE | NOTICE) ;;
+    legal/COPYING.LGPL) ;;
     build/taglib-web.wasm | build/taglib-wasi.wasm | build/taglib-wrapper.js | build/taglib-wrapper.d.ts) ;;
     dist/taglib-wrapper.js) ;;
     *) echo "$f" ;;
@@ -58,7 +59,7 @@ MISSING=""
 for f in \
   src/index.ts src/simple.ts src/folder.ts src/disc-folder.ts src/web.ts src/rating.ts \
   build/taglib-web.wasm build/taglib-wasi.wasm build/taglib-wrapper.js build/taglib-wrapper.d.ts \
-  README.md LICENSE NOTICE; do
+  README.md LICENSE NOTICE legal/COPYING.LGPL; do
   printf '%s\n' "$FILES" | grep -qxF "$f" || MISSING="$MISSING $f"
 done
 # dist/taglib-wrapper.js is a build output (gitignored): a bare checkout has no

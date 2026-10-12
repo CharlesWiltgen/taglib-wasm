@@ -9,9 +9,10 @@ contributors (https://taglib.org/).
 
 The WebAssembly binaries (build/taglib-web.wasm for the Emscripten backend and
 build/taglib-wasi.wasm for the WASI backend, shipped as dist/*.wasm) contain
-compiled TagLib code, which is licensed under LGPL-2.1-or-later. The TagLib
-source is vendored as a git submodule at lib/taglib/; see
-lib/taglib/COPYING.LGPL for the full LGPL license terms.
+compiled TagLib code, which is licensed under LGPL-2.1-or-later (TagLib is
+dual-licensed LGPL-2.1-or-later / MPL-1.1). The full LGPL-2.1 text ships with
+this package as legal/COPYING.LGPL — a verbatim copy of the same file in the
+vendored TagLib source at lib/taglib/ (git submodule).
 
 LGPL compliance
 ---------------

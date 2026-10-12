@@ -747,8 +747,9 @@ means:
 - If you modify the TagLib C++ code, you must share those changes
 - You must provide a way for users to relink with a modified TagLib
 
-For details, see [NOTICE](NOTICE) — it is the copy that travels with the
-published package — and
+For details, see [NOTICE](NOTICE) and the LGPL text it ships with
+([legal/COPYING.LGPL](legal/COPYING.LGPL)) — both travel with the published
+package — and
 [TagLib's COPYING.LGPL](https://github.com/taglib/taglib/blob/master/COPYING.LGPL);
 this repository vendors TagLib as a git submodule at `lib/taglib`, so that path
 belongs to the submodule rather than to this tree.

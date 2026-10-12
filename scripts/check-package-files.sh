@@ -17,7 +17,7 @@ cd "$ROOT"
 # does not stage ships in `npm pack` but never in the published package, which makes
 # every local tarball test a test of the wrong artifact.
 EXPECTED="$(printf '%s\n' \
-  'LICENSE' 'NOTICE' 'README.md' 'dist/**/*' | LC_ALL=C sort)"
+  'LICENSE' 'NOTICE' 'README.md' 'dist/**/*' 'legal/COPYING.LGPL' | LC_ALL=C sort)"
 ACTUAL="$(node -e 'process.stdout.write(require("./package.json").files.slice().sort().join("\n"))')"
 if [ "$EXPECTED" != "$ACTUAL" ]; then
   echo "::error::package.json \"files\" allowlist changed — update scripts/check-package-files.sh if intentional:"
@@ -52,7 +52,13 @@ fi
 OUTSIDE="$(printf '%s' "$PACK" | node -e '
   let s = "";
   process.stdin.on("data", (d) => (s += d)).on("end", () => {
-    const allowed = new Set(["package.json", "README.md", "LICENSE", "NOTICE"]);
+    const allowed = new Set([
+      "package.json",
+      "README.md",
+      "LICENSE",
+      "NOTICE",
+      "legal/COPYING.LGPL",
+    ]);
     const files = JSON.parse(s)[0].files.map((f) => f.path);
     process.stdout.write(
       files.filter((p) => !p.startsWith("dist/") && !allowed.has(p)).join("\n"),
@@ -73,7 +79,13 @@ fi
 REQUIRED_MISSING="$(printf '%s' "$PACK" | node -e '
   let s = "";
   process.stdin.on("data", (d) => (s += d)).on("end", () => {
-    const required = ["package.json", "README.md", "LICENSE", "NOTICE"];
+    const required = [
+      "package.json",
+      "README.md",
+      "LICENSE",
+      "NOTICE",
+      "legal/COPYING.LGPL",
+    ];
     const files = new Set(JSON.parse(s)[0].files.map((f) => f.path));
     process.stdout.write(required.filter((f) => !files.has(f)).join("\n"));
   });

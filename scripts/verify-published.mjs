@@ -168,9 +168,13 @@ if (localArtifact) {
   // unless something asserts presence. This is that assertion, on the
   // installed tree, which is byte-for-byte what a consumer receives.
   const installed = join(app, "node_modules", "taglib-wasm");
-  const missing = ["package.json", "README.md", "LICENSE", "NOTICE"].filter(
-    (f) => !existsSync(join(installed, f)),
-  );
+  const missing = [
+    "package.json",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "legal/COPYING.LGPL",
+  ].filter((f) => !existsSync(join(installed, f)));
   if (missing.length > 0 || !existsSync(join(installed, "dist"))) {
     console.error(`\n✗ ${label} is missing files the registry must receive:`);
     for (const f of missing) console.error(`  ${f}`);
