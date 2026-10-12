@@ -128,10 +128,10 @@ describe("Partial Loading", () => {
   it("should handle save with partial loading", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const filePath = join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3");
-    const outputPath = join(
-      TEST_FILES_DIR,
-      "mp3/kiss-snippet-partial-save.mp3",
-    );
+    // A temp path, not a fixture-dir one: this file exists only between the
+    // write and the rm, and folder-api scans tests/test-files concurrently
+    // (taglib-otze).
+    const outputPath = await createTempFile(".mp3");
 
     const file = await taglib.open(filePath, { partial: true });
 
@@ -155,10 +155,7 @@ describe("Partial Loading", () => {
   it("should preserve audio data when saving partially loaded file", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
     const filePath = join(TEST_FILES_DIR, "mp3/kiss-snippet.mp3");
-    const outputPath = join(
-      TEST_FILES_DIR,
-      "mp3/kiss-snippet-partial-preserve.mp3",
-    );
+    const outputPath = await createTempFile(".mp3");
 
     const originalData = new Uint8Array(await readFile(filePath));
     const originalSize = originalData.byteLength;
@@ -222,9 +219,11 @@ describe("Partial Loading", () => {
   // is exercised on Emscripten, where partial loading actually engages.
   it("should preserve chapters and ratings set on a partially loaded file (taglib-upg)", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    // Isolated copy — never mutate the shared fixture.
-    const src = join(TEST_FILES_DIR, "mp3/_upg-src.mp3");
-    const out = join(TEST_FILES_DIR, "mp3/_upg-out.mp3");
+    // Isolated copies in the temp dir — never mutate the shared fixture, and
+    // never land inside tests/test-files, which folder-api scans concurrently
+    // (taglib-otze).
+    const src = await createTempFile(".mp3");
+    const out = await createTempFile(".mp3");
     await writeFile(
       src,
       new Uint8Array(
@@ -267,8 +266,8 @@ describe("Partial Loading", () => {
   // path-opens are full loads).
   it("propagates a text-property deletion on a partial load, preserving other tags (taglib-d14)", async () => {
     const taglib = await TagLib.initialize({ forceWasmType: "emscripten" });
-    const src = join(TEST_FILES_DIR, "mp3/_d14-src.mp3");
-    const out = join(TEST_FILES_DIR, "mp3/_d14-out.mp3");
+    const src = await createTempFile(".mp3");
+    const out = await createTempFile(".mp3");
     await writeFile(
       src,
       new Uint8Array(
