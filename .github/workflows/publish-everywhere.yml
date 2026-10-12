@@ -313,6 +313,7 @@ jobs:
             jsr.json
             README.md
             LICENSE
+            NOTICE
           retention-days: 1
 
   publish-jsr:
@@ -432,8 +433,9 @@ jobs:
       # The pre-publish verification below runs this commit's
       # scripts/verify-published.mjs and reads a fixture from tests/test-files,
       # so the repository has to be here. The artifact then lands ON TOP of the
-      # checkout: it overwrites package.json, README.md and LICENSE (its copies
-      # are the publish inputs) and adds dist/. That is only correct because the
+      # checkout: it overwrites package.json, README.md, LICENSE and NOTICE
+      # (its copies are the publish inputs) and adds dist/. That is only correct
+      # because the
       # artifact was built from this same SHA — which is exactly why the
       # verification below also checks the staged version.
       - uses: actions/checkout@v7
@@ -457,7 +459,7 @@ jobs:
           # Create a clean directory with only files to publish
           mkdir -p publish-dir
           cp -r dist publish-dir/
-          cp package.json README.md LICENSE publish-dir/
+          cp package.json README.md LICENSE NOTICE publish-dir/
           cd publish-dir
           echo "Contents of publish directory:"
           ls -la
@@ -626,7 +628,7 @@ jobs:
           # Create a clean directory with only files to publish
           mkdir -p publish-dir
           cp -r dist publish-dir/
-          cp package.json README.md LICENSE publish-dir/
+          cp package.json README.md LICENSE NOTICE publish-dir/
 
       - name: Update package.json for GitHub
         run: |

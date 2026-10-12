@@ -36,7 +36,8 @@
   "files": [
     "dist/**/*",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "type": "module",
   "sideEffects": false,

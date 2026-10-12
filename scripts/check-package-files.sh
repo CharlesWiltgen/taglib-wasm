@@ -13,11 +13,11 @@ cd "$ROOT"
 # top-level entry (a vendored subtree, a stray build dir) must be a deliberate
 # edit here too — that is the point. Keep it equal to what the Publish
 # workflow's "Prepare publish directory" steps copy: `dist/` plus
-# package.json, README.md and LICENSE. A `files` entry that the workflow does
-# not stage ships in `npm pack` but never in the published package, which makes
+# package.json, README.md, LICENSE and NOTICE. A `files` entry that the workflow
+# does not stage ships in `npm pack` but never in the published package, which makes
 # every local tarball test a test of the wrong artifact.
 EXPECTED="$(printf '%s\n' \
-  'LICENSE' 'README.md' 'dist/**/*' | LC_ALL=C sort)"
+  'LICENSE' 'NOTICE' 'README.md' 'dist/**/*' | LC_ALL=C sort)"
 ACTUAL="$(node -e 'process.stdout.write(require("./package.json").files.slice().sort().join("\n"))')"
 if [ "$EXPECTED" != "$ACTUAL" ]; then
   echo "::error::package.json \"files\" allowlist changed — update scripts/check-package-files.sh if intentional:"
@@ -45,14 +45,14 @@ if [ -n "$STRAY" ]; then
 fi
 
 # (c) The packed set is exactly what the publish workflow stages: everything
-# under dist/ plus package.json, README.md and LICENSE. This is the half (a)
+# under dist/ plus package.json, README.md, LICENSE and NOTICE. This is the half (a)
 # cannot see: (a) pins the allowlist text, this pins the resulting file set, so
 # an entry that makes `npm pack` ship files the workflow never copies fails
 # here instead of shipping a tarball nobody tested.
 OUTSIDE="$(printf '%s' "$PACK" | node -e '
   let s = "";
   process.stdin.on("data", (d) => (s += d)).on("end", () => {
-    const allowed = new Set(["package.json", "README.md", "LICENSE"]);
+    const allowed = new Set(["package.json", "README.md", "LICENSE", "NOTICE"]);
     const files = JSON.parse(s)[0].files.map((f) => f.path);
     process.stdout.write(
       files.filter((p) => !p.startsWith("dist/") && !allowed.has(p)).join("\n"),
@@ -63,6 +63,24 @@ if [ -n "$OUTSIDE" ]; then
   echo "::error::npm tarball ships files the Publish workflow does not stage:"
   printf '%s\n' "$OUTSIDE"
   echo "Add them to the Prepare publish directory steps of publish-everywhere.yml too, or drop them from package.json files."
+  exit 1
+fi
+
+# (d) The license-bearing files must be IN the pack. `files` entries are
+# silently skipped when the path is missing, so the allowlist text pinned in (a)
+# cannot tell a shipped NOTICE from a forgotten one — this is the positive half
+# the JSR guard already carries.
+REQUIRED_MISSING="$(printf '%s' "$PACK" | node -e '
+  let s = "";
+  process.stdin.on("data", (d) => (s += d)).on("end", () => {
+    const required = ["package.json", "README.md", "LICENSE", "NOTICE"];
+    const files = new Set(JSON.parse(s)[0].files.map((f) => f.path));
+    process.stdout.write(required.filter((f) => !files.has(f)).join("\n"));
+  });
+')"
+if [ -n "$REQUIRED_MISSING" ]; then
+  echo "::error::npm tarball is missing files every consumer must receive:"
+  printf '%s\n' "$REQUIRED_MISSING"
   exit 1
 fi
 

@@ -160,14 +160,15 @@ if (localArtifact) {
     process.exit(2);
   }
 
-  // The delivered set. `files` names dist/** plus package.json, README.md and
-  // LICENSE (scripts/check-package-files.sh pins that allowlist on the repo
+  // The delivered set. `files` names dist/** plus package.json, README.md,
+  // LICENSE and NOTICE (scripts/check-package-files.sh pins that allowlist on the repo
   // side); npm filters anything else at pack time, so extra staging files
+  // are harmless and omissions are not.
   // cannot ship — but a file the staging step forgot to copy is lost silently
   // unless something asserts presence. This is that assertion, on the
   // installed tree, which is byte-for-byte what a consumer receives.
   const installed = join(app, "node_modules", "taglib-wasm");
-  const missing = ["package.json", "README.md", "LICENSE"].filter(
+  const missing = ["package.json", "README.md", "LICENSE", "NOTICE"].filter(
     (f) => !existsSync(join(installed, f)),
   );
   if (missing.length > 0 || !existsSync(join(installed, "dist"))) {

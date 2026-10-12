@@ -642,8 +642,10 @@ catches bundler-resolution breaks — e.g. a JSR import that isn't an npm
 dependency — that pass the test suite but break the published package.
 
 **What actually ships.** The published package is `dist/` plus `package.json`,
-`README.md` and `LICENSE` — nothing else: neither `src/` nor `AGENTS.md` is
-published. `package.json` `files` (plus npm's own auto-includes) decides what the
+`README.md`, `LICENSE` and `NOTICE` — nothing else: neither `src/` nor `AGENTS.md` is
+published. (`LICENSE` is the MIT text only, so GitHub detects the license;
+the LGPL notes for the compiled TagLib in the Wasm binaries live in `NOTICE`.)
+`package.json` `files` (plus npm's own auto-includes) decides what the
 registry receives; `scripts/check-package-files.sh` pins that allowlist _and_ the
 packed file set, and the Publish workflow's "Prepare publish directory" steps
 must stage every one of those files. Staging extras is harmless — npm filters

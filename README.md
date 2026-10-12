@@ -737,7 +737,7 @@ This project uses dual licensing:
 
 - **TypeScript/JavaScript code** – MIT License (see [LICENSE](LICENSE))
 - **WebAssembly binaries (taglib-web.wasm, taglib-wasi.wasm)** – LGPL-2.1-or-later
-  (inherited from TagLib)
+  (inherited from TagLib; the compliance and relinking notes ship in [NOTICE](NOTICE))
 
 The TagLib library is dual-licensed under LGPL/MPL. When compiled to
 WebAssembly, the resulting binary must comply with LGPL requirements. This
@@ -747,10 +747,11 @@ means:
 - If you modify the TagLib C++ code, you must share those changes
 - You must provide a way for users to relink with a modified TagLib
 
-For details, see [TagLib's COPYING.LGPL](https://github.com/taglib/taglib/blob/master/COPYING.LGPL)
-— this repository vendors TagLib as a git submodule at `lib/taglib`, so that
-path belongs to the submodule and is not part of this tree (the npm package
-ships `LICENSE` only).
+For details, see [NOTICE](NOTICE) — it is the copy that travels with the
+published package — and
+[TagLib's COPYING.LGPL](https://github.com/taglib/taglib/blob/master/COPYING.LGPL);
+this repository vendors TagLib as a git submodule at `lib/taglib`, so that path
+belongs to the submodule rather than to this tree.
 
 ## Acknowledgments
 

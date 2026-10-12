@@ -1,0 +1,34 @@
+NOTICE
+======
+
+Third-party and binary licensing for taglib-wasm. The project's own
+TypeScript/JavaScript code is MIT — see LICENSE.
+
+This product includes software developed by Scott Wheeler and the TagLib
+contributors (https://taglib.org/).
+
+The WebAssembly binaries (build/taglib-web.wasm for the Emscripten backend and
+build/taglib-wasi.wasm for the WASI backend, shipped as dist/*.wasm) contain
+compiled TagLib code, which is licensed under LGPL-2.1-or-later. The TagLib
+source is vendored as a git submodule at lib/taglib/; see
+lib/taglib/COPYING.LGPL for the full LGPL license terms.
+
+LGPL compliance
+---------------
+
+The WebAssembly binaries are subject to LGPL requirements. This means:
+
+- You may use them in commercial applications
+- Modifications to TagLib must be shared under LGPL
+- You must enable users to relink with modified TagLib versions
+
+To rebuild the WebAssembly binaries with a modified TagLib:
+
+1. Modify the TagLib source in lib/taglib/
+2. Run: pnpm run build:wasm  (builds both backends; requires the
+   Emscripten SDK and WASI SDK 34 — see .github/CONTRIBUTING.md)
+3. The new binaries will be in build/taglib-web.wasm and
+   build/taglib-wasi.wasm
+
+Rendered licensing notes:
+https://github.com/CharlesWiltgen/TagLib-Wasm/blob/main/README.md#license
