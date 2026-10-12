@@ -610,6 +610,8 @@ pnpm run check:all        # EVERY gate, in one command (see the note below)
 pnpm exec vp check        # Format + lint gates (oxlint, type-aware rules)
 pnpm exec vp test         # Tests (Vitest): 97 files across tests/ and src/
 pnpm exec tsc --noEmit -p tsconfig.check.json   # Type gate (includes tests/)
+pnpm exec tsc --noEmit -p tsconfig.examples.json # Examples type gate
+pnpm run check:examples   # Examples gate: resolution, run, working-tree guard
 pnpm run build:ts         # Bundle gate: catches bundler-resolution breaks
 pnpm run build:wasm       # Rebuild both Wasm backends
 pnpm run build:wasm:wasi  # Rebuild WASI Wasm only (requires WASI SDK 34)
