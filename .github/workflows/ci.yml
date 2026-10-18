@@ -239,7 +239,7 @@ jobs:
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v16
         with:
-          version: 6.0.9
+          version: 6.0.12
 
       - name: Build WebAssembly
         # Emscripten-only by design: this job installs emsdk but not the WASI
@@ -262,6 +262,20 @@ jobs:
             exit 1
           fi
           echo "build/taglib-web.wasm and build/taglib-wrapper.js match the fresh build"
+
+      # The gate above fails on exactly the state a toolchain bump starts in
+      # (committed bytes predate the new emsdk). Publish the fresh build as the
+      # reference to commit, mirroring wasi-fresh-reference below.
+      - name: Upload fresh Emscripten binaries (reference for the committed copy)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: embind-fresh-reference
+          path: |
+            build/taglib-web.wasm
+            build/taglib-wrapper.js
+            build/taglib-wrapper.d.ts
+          retention-days: 1
 
       # Hard gate: the Emscripten wasm must actually instantiate on Node. The
       # unit suite skips the Emscripten backend on load-failure (so a broken
@@ -363,7 +377,7 @@ jobs:
           echo "$WASI_SDK_DIR/bin" >> "$GITHUB_PATH"
 
       - name: Install wasm-opt (binaryen) and ninja
-        # binaryen is pinned at 132.0.0 — the same version as emsdk 6.0.9's
+        # binaryen is pinned at 132.0.0 — the same version as emsdk 6.0.12's
         # vendored Binaryen — so the WASI rebuild is byte-deterministic and
         # the freshness compare below is meaningful (taglib-peml).
         #
