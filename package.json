@@ -157,14 +157,14 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
-    "@types/node": "^24.13.5",
-    "@vitest/coverage-v8": "5.0.3",
-    "fast-check": "^4.10.1",
-    "knip": "^6.36.0",
+    "@types/node": "^24.19.2",
+    "@vitest/coverage-v8": "5.0.5",
+    "fast-check": "^4.10.2",
+    "knip": "^6.42.0",
     "publint": "^0.3.25",
-    "tsx": "^4.23.13",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vite-plus": "1.1.0",
+    "vite-plus": "1.3.0",
     "vitest-sonar-reporter": "^3.0.0"
   },
   "peerDependencies": {
@@ -178,7 +178,7 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "packageManager": "pnpm@12.10.1",
+  "packageManager": "pnpm@12.14.0",
   "knip": {
     "entry": [
       "src/{index,index.browser,simple,simple.browser,folder,disc-folder,web,web.browser,rating}.ts!",
@@ -201,6 +201,9 @@
     ],
     "ignoreDependencies": [
       "vitest-sonar-reporter"
+    ],
+    "ignoreBinaries": [
+      "vite"
     ],
     "ignoreExportsUsedInFile": true,
     "ignoreIssues": {
