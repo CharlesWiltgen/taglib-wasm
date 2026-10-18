@@ -155,7 +155,7 @@ jobs:
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v16
         with:
-          version: 6.0.9
+          version: 6.0.12
 
       - name: Determine version
         id: version

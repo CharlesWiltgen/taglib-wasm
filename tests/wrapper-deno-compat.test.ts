@@ -53,6 +53,16 @@ const MINIFIED = [
   `var imports={a:wasmImports};`,
 ].join("\n");
 
+/** Emscripten 6.0.12 parenthesizes the dynamic import:
+ * `await(import("node:module"))`. */
+const PAREN_MINIFIED = [
+  `var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";`,
+  `if(ENVIRONMENT_IS_NODE){const{createRequire}=await(import("node:module"));var require=createRequire(import.meta.url)}`,
+  `var readAsync,readBinary;if(ENVIRONMENT_IS_NODE){readBinary=f=>{return 1}}`,
+  `if(!ENVIRONMENT_IS_NODE){throw new Error("x")}`,
+  `var imports={a:wasmImports};`,
+].join("\n");
+
 /** The same glue as a debug (-g2) build emits it — a `//` comment and an
  * `@suppress{duplicate}` annotation inside the createRequire block, and a
  * QUOTED import key. */
@@ -103,6 +113,7 @@ describe("fix-deno-compat", () => {
 
   it.each([
     ["minified", MINIFIED],
+    ["minified (parenthesized await)", PAREN_MINIFIED],
     ["unminified", UNMINIFIED],
   ])("applies every patch to %s glue", (_shape, source) => {
     const { absolute, result } = runOnFixture(source);

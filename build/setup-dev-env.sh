@@ -74,7 +74,7 @@ check_command pnpm "Install pnpm (https://pnpm.io/installation) or run corepack 
 echo ""
 echo "Optional tools:"
 check_command bun "Install from https://bun.sh" || true
-# binaryen is pinned at the same version as emsdk 6.0.9's vendored Binaryen
+# binaryen is pinned at the same version as emsdk 6.0.12's vendored Binaryen
 # so dev builds are byte-identical to CI's (taglib-peml byte-compare gate).
 # Local toolchains (node, binaryen) also come from mise.toml, which
 # pins the same versions for this repo.
@@ -106,8 +106,8 @@ else
     cd "$HOME/emsdk"
     
     # Install pinned SDK (must match CI: .github/workflows/ci.yml)
-    ./emsdk install 6.0.9
-    ./emsdk activate 6.0.9
+    ./emsdk install 6.0.12
+    ./emsdk activate 6.0.12
     
     # Add to shell config
     SHELL_CONFIG=""
@@ -231,7 +231,7 @@ fi
 # Install global tools
 echo ""
 echo "Installing global WebAssembly tools..."
-# binaryen@132.0.0: pinned to emsdk 6.0.9's vendored Binaryen version so the
+# binaryen@132.0.0: pinned to emsdk 6.0.12's vendored Binaryen version so the
 # WASI rebuild is byte-deterministic across machines (taglib-peml). wasm-strip
 # has no npm package and is no longer used by the build.
 # npm is retained here as the global-tool installer; pnpm owns project dependencies.

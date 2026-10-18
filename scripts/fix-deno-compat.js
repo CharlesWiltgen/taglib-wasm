@@ -55,11 +55,15 @@ export const PATCHES = [
   {
     // Normalises the createRequire block; `find` deliberately also matches its
     // own output, so this one is idempotent without an `applied` probe.
+    // emcc <=6.0.9 emitted `await import("node:module")`; 6.0.12 parenthesizes
+    // the call (`await(import("node:module"))`), so both shapes are accepted.
     name: "node-module-loading",
     find: new RegExp(
       `if\\s*\\(\\s*ENVIRONMENT_IS_NODE(?:\\s*&&\\s*!ENVIRONMENT_IS_DENO)?\\s*\\)\\s*\\{` +
         GAP +
-        `const\\s*\\{\\s*createRequire\\s*\\}\\s*=\\s*await\\s+import\\(\\s*"(?:node:)?module"\\s*\\)\\s*;?` +
+        `const\\s*\\{\\s*createRequire\\s*\\}\\s*=\\s*` +
+        `(?:await\\s+import\\(\\s*"(?:node:)?module"\\s*\\)|await\\s*\\(\\s*import\\(\\s*"(?:node:)?module"\\s*\\)\\s*\\))` +
+        `\\s*;?` +
         GAP +
         `var\\s+require\\s*=\\s*createRequire\\(\\s*import\\.meta\\.url\\s*\\)\\s*;?\\s*\\}`,
     ),
