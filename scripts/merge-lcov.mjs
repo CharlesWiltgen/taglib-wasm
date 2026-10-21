@@ -3,19 +3,21 @@
 /**
  * Merge secondary runtime coverage into a primary lcov report.
  *
- * The primary report (Vitest) defines the measured scope: a secondary report
- * (Deno, Bun) contributes hits only for files/lines the primary already
- * records. Secondary lcov files also list every module their runtime loaded
- * with zero hits; feeding those records straight to SonarCloud expands
- * lines-to-cover from the measured set to the whole codebase (3,353 -> 9,009
- * lines in one observed run), turning previously unmeasured code into
- * new-code debt.
+ * The primary report (Vitest) defines the measured scope for files it contains:
+ * a secondary report (Deno, Bun) may raise hits on those files/lines. A
+ * secondary-only file is adopted only when every DA record it carries is
+ * covered; a partially covered file would bring its zero-hit lines and expand
+ * SonarCloud's lines-to-cover to modules the primary run never measured
+ * (observed 3,353 -> 9,009 lines).
+ *
+ * Fails when no secondary hit matches the primary, so a path-normalization
+ * break cannot silently publish pre-merge coverage.
  *
  * Usage: node scripts/merge-lcov.mjs <primary> <secondary>... [-o <output>]
  * Writes to stdout unless -o is given.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 
 const args = process.argv.slice(2);
 const outIndex = args.indexOf("-o");
@@ -28,13 +30,21 @@ if (!primaryPath || secondaryPaths.length === 0) {
   process.exit(2);
 }
 
-const root = process.cwd().replace(/\/+$/, "") + "/";
+// Deno can emit realpath-resolved SF paths; match both the working directory
+// and its canonical form so a symlinked checkout still normalizes.
+const roots = new Set(
+  [process.cwd(), realpathSync(process.cwd())].map(
+    (root) => root.replace(/\/+$/, "") + "/",
+  ),
+);
 
 function relativeSf(path) {
-  if (path.startsWith(`file://${root}`)) {
-    return path.slice(`file://${root}`.length);
+  for (const root of roots) {
+    if (path.startsWith(`file://${root}`)) {
+      return path.slice(`file://${root}`.length);
+    }
+    if (path.startsWith(root)) return path.slice(root.length);
   }
-  if (path.startsWith(root)) return path.slice(root.length);
   return path;
 }
 
@@ -55,29 +65,58 @@ function readBlocks(path) {
   return blocks;
 }
 
-// The primary report defines the scope; collect its DA lines and hit counts.
-const primary = readBlocks(primaryPath);
-const hits = new Map();
-for (const block of primary) {
+function daEntries(block) {
+  const entries = [];
   for (const line of block.lines) {
     if (!line.startsWith("DA:")) continue;
     const [ln, count] = line.slice(3).split(",");
-    hits.set(`${block.sf}:${ln}`, Number(count));
+    entries.push([Number(ln), Number(count)]);
+  }
+  return entries;
+}
+
+// The primary report defines the scope for the files it contains.
+const primary = readBlocks(primaryPath);
+const primaryFiles = new Set(primary.map((block) => block.sf));
+const hits = new Map();
+for (const block of primary) {
+  for (const [ln, count] of daEntries(block)) {
+    hits.set(`${block.sf}:${ln}`, count);
   }
 }
 
-// Secondary reports may only raise hits on lines the primary measures.
+// Secondary-only files are adopted only when fully covered.
+const extra = new Map();
+let matched = 0;
 for (const path of secondaryPaths) {
   for (const block of readBlocks(path)) {
-    for (const line of block.lines) {
-      if (!line.startsWith("DA:")) continue;
-      const [ln, count] = line.slice(3).split(",");
+    if (!primaryFiles.has(block.sf)) {
+      const file = extra.get(block.sf) ?? {
+        lines: new Map(),
+        fullyCovered: true,
+      };
+      for (const [ln, count] of daEntries(block)) {
+        file.lines.set(ln, Math.max(file.lines.get(ln) ?? 0, count));
+        if (count === 0) file.fullyCovered = false;
+      }
+      extra.set(block.sf, file);
+      continue;
+    }
+
+    for (const [ln, count] of daEntries(block)) {
       const key = `${block.sf}:${ln}`;
       if (!hits.has(key)) continue;
-      const merged = Math.max(hits.get(key), Number(count));
-      hits.set(key, merged);
+      matched++;
+      hits.set(key, Math.max(hits.get(key), count));
     }
   }
+}
+
+if (matched === 0) {
+  console.error(
+    "merge-lcov: no secondary coverage matched the primary report; check SF paths",
+  );
+  process.exit(1);
 }
 
 const out = [];
@@ -85,9 +124,7 @@ for (const block of primary) {
   const daLines = [];
   let lf = 0;
   let lh = 0;
-  for (const line of block.lines) {
-    if (!line.startsWith("DA:")) continue;
-    const [ln] = line.slice(3).split(",");
+  for (const [ln] of daEntries(block)) {
     const count = hits.get(`${block.sf}:${ln}`) ?? 0;
     daLines.push(`DA:${ln},${count}`);
     lf++;
@@ -102,6 +139,16 @@ for (const block of primary) {
     else if (line.startsWith("DA:")) out.push(daLines[da++]);
     else out.push(line);
   }
+}
+
+for (const [sf, file] of extra) {
+  if (!file.fullyCovered) continue;
+  const lines = [...file.lines].sort(([a], [b]) => a - b);
+  out.push(`SF:${sf}`);
+  for (const [ln, count] of lines) out.push(`DA:${ln},${count}`);
+  out.push(`LF:${lines.length}`);
+  out.push(`LH:${lines.filter(([, count]) => count > 0).length}`);
+  out.push("end_of_record");
 }
 
 const text = out.join("\n") + "\n";
