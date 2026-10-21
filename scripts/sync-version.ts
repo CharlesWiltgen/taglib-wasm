@@ -3,8 +3,8 @@
 /**
  * @fileoverview Synchronize the package version across the repo.
  *
- * Propagates a version to package.json, jsr.json, src/version.ts and
- * sonar-project.properties, and checks that all four agree.
+ * Propagates a version to package.json, jsr.json and src/version.ts, and
+ * checks that all three agree.
  *
  * Usage:
  *   pnpm exec tsx scripts/sync-version.ts patch
