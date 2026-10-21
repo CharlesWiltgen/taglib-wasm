@@ -81,10 +81,6 @@ jobs:
           deno test --allow-read --allow-write --allow-env \
             --coverage=coverage-deno tests/deno-*.test.ts
           deno coverage coverage-deno --lcov --output=coverage-deno.lcov
-          # Deno writes absolute SF: paths; Sonar matches the repository-
-          # relative ones produced by the Vitest and Bun reporters.
-          sed -E "s|^SF:${GITHUB_WORKSPACE}/|SF:|" \
-            coverage-deno.lcov > coverage-deno-relative.lcov
 
       - name: Run Bun integration tests with coverage
         # tests/bun-integration.test.ts registers with bun:test and is excluded
@@ -94,6 +90,17 @@ jobs:
           bun test tests/bun-integration.test.ts \
             --coverage --coverage-reporter=lcov \
             --coverage-dir=coverage-bun
+
+      - name: Merge runtime coverage
+        # The Vitest report defines the measured scope. The native reports also
+        # list every module their runtime loaded with zero hits; passing those
+        # records to Sonar expands lines-to-cover from the measured set to the
+        # whole codebase (3,353 -> 9,009 lines), so they contribute hits only
+        # on lines the primary report already measures.
+        run: |
+          node scripts/merge-lcov.mjs coverage/lcov.info \
+            coverage-deno.lcov coverage-bun/lcov.info \
+            -o coverage/merged-lcov.info
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
@@ -107,9 +114,9 @@ jobs:
           # <testsuites>, which this property rejects, which is why the report
           # is produced by a separate reporter rather than by junit.xml.
           # Coverage is the union of the three runtime legs: Vitest (Node),
-          # Deno, and Bun. The native legs cover the providers that the Node
-          # run cannot execute, and Sonar merges the reports per line.
+          # Deno, and Bun, merged by scripts/merge-lcov.mjs. The native legs
+          # cover the providers that the Node run cannot execute.
           args: >
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info,coverage-deno-relative.lcov,coverage-bun/lcov.info
-            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info,coverage-deno-relative.lcov,coverage-bun/lcov.info
+            -Dsonar.javascript.lcov.reportPaths=coverage/merged-lcov.info
+            -Dsonar.typescript.lcov.reportPaths=coverage/merged-lcov.info
             -Dsonar.testExecutionReportPaths=sonar-report.xml
