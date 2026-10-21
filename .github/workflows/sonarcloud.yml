@@ -30,9 +30,23 @@ jobs:
           # would install.
           cache: pnpm
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          # Pinned like ci.yml's cross-runtime job. Deno is a supported
+          # consumer runtime, and the coverage leg below runs its test files.
+          deno-version: "2.9.6"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # Pinned: "latest" resolves via the oven-sh/bun refs/tags API on
+          # every run, which 503s intermittently from Actions runners.
+          bun-version: 1.4.2
+
       - name: Install dependencies
-        # Vitest and its coverage provider are pnpm devDependencies; this job
-        # needs no other toolchain (it previously installed only Deno).
+        # Vitest and its coverage provider are pnpm devDependencies. Deno and
+        # Bun are installed for the native-runtime coverage legs below.
         run: pnpm install --frozen-lockfile
 
       - name: Materialize committed WASM binaries for tests
@@ -58,6 +72,29 @@ jobs:
         # and the paths in it are already repository-relative.
         run: pnpm run test:sonar
 
+      - name: Run Deno tests with coverage
+        # tests/deno-*.test.ts are excluded from Vitest (vite.config.ts) but
+        # cover code that ships on Deno: deno-compile, the Deno filesystem
+        # provider, and createDenoIO. Without this leg SonarCloud counts those
+        # lines as uncovered new code because only the Node run feeds it.
+        run: |
+          deno test --allow-read --allow-write --allow-env \
+            --coverage=coverage-deno tests/deno-*.test.ts
+          deno coverage coverage-deno --lcov --output=coverage-deno.lcov
+          # Deno writes absolute SF: paths; Sonar matches the repository-
+          # relative ones produced by the Vitest and Bun reporters.
+          sed -E "s|^SF:${GITHUB_WORKSPACE}/|SF:|" \
+            coverage-deno.lcov > coverage-deno-relative.lcov
+
+      - name: Run Bun integration tests with coverage
+        # tests/bun-integration.test.ts registers with bun:test and is excluded
+        # from Vitest; its readPartial cases exercise createBunIO, which the
+        # Node run cannot reach.
+        run: |
+          bun test tests/bun-integration.test.ts \
+            --coverage --coverage-reporter=lcov \
+            --coverage-dir=coverage-bun
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         env:
@@ -69,8 +106,10 @@ jobs:
           # <testCase> per test). Vitest's own JUnit reporter emits
           # <testsuites>, which this property rejects, which is why the report
           # is produced by a separate reporter rather than by junit.xml.
-          # Coverage continues to flow via lcov below.
+          # Coverage is the union of the three runtime legs: Vitest (Node),
+          # Deno, and Bun. The native legs cover the providers that the Node
+          # run cannot execute, and Sonar merges the reports per line.
           args: >
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info,coverage-deno-relative.lcov,coverage-bun/lcov.info
+            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info,coverage-deno-relative.lcov,coverage-bun/lcov.info
             -Dsonar.testExecutionReportPaths=sonar-report.xml
