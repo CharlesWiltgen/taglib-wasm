@@ -23,7 +23,6 @@ interface PackageJson {
 
 const PACKAGE_JSON_PATH = "./package.json";
 const JSR_MANIFEST_PATH = "./jsr.json";
-const SONAR_PROPERTIES_PATH = "./sonar-project.properties";
 const VERSION_TS_PATH = "./src/version.ts";
 
 /**
@@ -94,15 +93,6 @@ async function checkVersions(): Promise<boolean> {
 
   const versionTsVersion = await readVersionTs();
 
-  let sonarVersion: string | null = null;
-  try {
-    const content = await readFile(SONAR_PROPERTIES_PATH, "utf8");
-    const match = content.match(/^sonar\.projectVersion=(.+)$/m);
-    if (match) sonarVersion = match[1];
-  } catch {
-    // sonar-project.properties not found
-  }
-
   let jsrVersion: string | null = null;
   try {
     const jsr = await readJsonFile<PackageJson>(JSR_MANIFEST_PATH);
@@ -113,7 +103,6 @@ async function checkVersions(): Promise<boolean> {
 
   const allMatch =
     (!versionTsVersion || versionTsVersion === packageJson.version) &&
-    (!sonarVersion || sonarVersion === packageJson.version) &&
     (!jsrVersion || jsrVersion === packageJson.version);
 
   console.log(`package.json version:           ${packageJson.version}`);
@@ -122,9 +111,6 @@ async function checkVersions(): Promise<boolean> {
   }
   if (jsrVersion) {
     console.log(`jsr.json:                       ${jsrVersion}`);
-  }
-  if (sonarVersion) {
-    console.log(`sonar-project.properties:       ${sonarVersion}`);
   }
   console.log(
     `Status: ${allMatch ? "✅ Versions match" : "❌ Versions differ"}`,
@@ -172,23 +158,6 @@ async function updateJsrManifest(newVersion: string): Promise<boolean> {
   }
 }
 
-async function updateSonarProperties(newVersion: string): Promise<boolean> {
-  try {
-    const content = await readFile(SONAR_PROPERTIES_PATH, "utf8");
-    const updated = content.replace(
-      /^sonar\.projectVersion=.+$/m,
-      `sonar.projectVersion=${newVersion}`,
-    );
-    if (updated !== content) {
-      await writeFile(SONAR_PROPERTIES_PATH, updated);
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Update version in all files
  */
@@ -213,14 +182,10 @@ async function updateVersion(newVersion: string): Promise<void> {
   // Update jsr.json (the JSR package manifest)
   const updatedJsr = await updateJsrManifest(newVersion);
 
-  // Update sonar-project.properties
-  const updatedSonar = await updateSonarProperties(newVersion);
-
   console.log(`✅ Updated version: ${oldVersion} → ${newVersion}`);
   console.log(`   Updated: package.json`);
   console.log(`   Updated: src/version.ts`);
   if (updatedJsr) console.log(`   Updated: jsr.json`);
-  if (updatedSonar) console.log(`   Updated: sonar-project.properties`);
 }
 
 /**

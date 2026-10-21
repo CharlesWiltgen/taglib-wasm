@@ -500,7 +500,7 @@ publish_release() {
     # name every file sync-version.ts writes (jsr.json included — CI's
     # check-jsr-package-files.sh asserts it matches package.json, so a bump that
     # leaves it behind fails Package Compatibility).
-    git add package.json sonar-project.properties src/version.ts jsr.json
+    git add package.json src/version.ts jsr.json
     if git diff --cached --quiet; then
         print_warning "Version already at $version, skipping commit"
     else

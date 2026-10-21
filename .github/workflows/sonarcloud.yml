@@ -102,6 +102,16 @@ jobs:
             coverage-deno.lcov coverage-bun/lcov.info \
             -o coverage/merged-lcov.info
 
+      - name: Resolve package version
+        id: pkg_version
+        # The analysis label must track the package version. Deriving it from
+        # package.json here — rather than storing another copy in
+        # sonar-project.properties — keeps it correct on every scan, including
+        # scheduled ones, with no release-time sync step to forget.
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         env:
@@ -117,6 +127,7 @@ jobs:
           # Deno, and Bun, merged by scripts/merge-lcov.mjs. The native legs
           # cover the providers that the Node run cannot execute.
           args: >
+            -Dsonar.projectVersion=${{ steps.pkg_version.outputs.version }}
             -Dsonar.javascript.lcov.reportPaths=coverage/merged-lcov.info
             -Dsonar.typescript.lcov.reportPaths=coverage/merged-lcov.info
             -Dsonar.testExecutionReportPaths=sonar-report.xml
