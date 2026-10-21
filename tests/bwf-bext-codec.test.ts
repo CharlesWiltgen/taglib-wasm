@@ -100,6 +100,24 @@ it("encodeBext: round-trips a v2 struct unchanged", () => {
   expect(decodeBext(encodeBext(original))).toStrictEqual(original);
 });
 
+it("encodeBext: infers version 1 from a UMID when version is not an integer", () => {
+  const base: BroadcastAudioExtension = {
+    description: "",
+    originator: "",
+    originatorReference: "",
+    originationDate: "",
+    originationTime: "",
+    timeReferenceSamples: 0n,
+    version: 1.5,
+    umid: "00".repeat(64),
+    codingHistory: "",
+  };
+
+  const decoded = decodeBext(encodeBext(base))!;
+  expect(decoded.version).toStrictEqual(1);
+  expect(decoded.umid).toStrictEqual("00".repeat(64));
+});
+
 it("encodeBext: buffer is always 602 + codingHistory bytes", () => {
   const base = {
     description: "",

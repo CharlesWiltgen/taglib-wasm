@@ -277,6 +277,12 @@ describe("isDenoCompiled detection (taglib-d6bs)", () => {
     }
   }
 
+  it("detectRuntime reports deno-wasi when the Deno global is present", () => {
+    withDeno({}, () => {
+      expect(detectRuntime().environment).toStrictEqual("deno-wasi");
+    });
+  });
+
   it("prefers Deno.build.standalone: true inside a compiled binary", () => {
     withDeno(
       {
